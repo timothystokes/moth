@@ -1,7 +1,8 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Amplifier from './components/Amplifier.jsx';
 import Oscillator from './components/Oscillator.jsx';
 import Filter from './components/Filter.jsx';
+import Keyboard from './components/Keyboard.jsx';
 import { connectModules, disconnectInput } from './audio/audioEngine.js';
 
 function App() {
@@ -9,6 +10,12 @@ function App() {
         {
             id: 'amplifier-singleton',
             type: 'amplifier',
+            x: 100,
+            y: 100
+        },
+        {
+            id: 'keyboard-singleton',
+            type: 'keyboard',
             x: 100,
             y: 100
         }
@@ -24,30 +31,32 @@ function App() {
     const canvasRef = useRef(null);
 
     const handleModuleDragStart = (e, moduleId) => {
+        e.preventDefault();
         const module = modules.find(m => m.id === moduleId);
         const rect = e.target.getBoundingClientRect();
+        const canvasRect = canvasRef.current?.getBoundingClientRect();
+        
         setDraggedModule(moduleId);
         setDragOffset({
             x: e.clientX - rect.left,
             y: e.clientY - rect.top
         });
-        
-        // Hide the default drag ghost image
-        if (e.dataTransfer) {
-            const img = new Image();
-            img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=';
-            e.dataTransfer.setDragImage(img, 0, 0);
-        }
     };
 
     const handleModuleDrag = (e) => {
         if (!draggedModule) return;
         
-        if (e.clientX === 0 && e.clientY === 0) return;
+        // Get canvas position to calculate relative coordinates
+        const canvasRect = canvasRef.current?.getBoundingClientRect();
+        if (!canvasRect) return;
         
         setModules(prev => prev.map(m => 
             m.id === draggedModule 
-                ? { ...m, x: e.clientX - dragOffset.x, y: e.clientY - dragOffset.y }
+                ? { 
+                    ...m, 
+                    x: e.clientX - canvasRect.left - dragOffset.x, 
+                    y: e.clientY - canvasRect.top - dragOffset.y 
+                }
                 : m
         ));
     };
@@ -55,6 +64,29 @@ function App() {
     const handleModuleDragEnd = () => {
         setDraggedModule(null);
     };
+    
+    // Add global mouse listeners
+    useEffect(() => {
+        const handleGlobalMouseMove = (e) => {
+            if (draggedModule) {
+                handleModuleDrag(e);
+            }
+        };
+        
+        const handleGlobalMouseUp = () => {
+            if (draggedModule) {
+                handleModuleDragEnd();
+            }
+        };
+        
+        window.addEventListener('mousemove', handleGlobalMouseMove);
+        window.addEventListener('mouseup', handleGlobalMouseUp);
+        
+        return () => {
+            window.removeEventListener('mousemove', handleGlobalMouseMove);
+            window.removeEventListener('mouseup', handleGlobalMouseUp);
+        };
+    }, [draggedModule, dragOffset]);
 
     const handleOutputClick = (moduleId, outputId, position) => {
         if (connectingFrom) {
@@ -114,10 +146,21 @@ function App() {
             setConnections(prev => [...prev, newConnection]);
             
             // Create direct function reference in audio engine (always output -> input)
+            // For keyboard outputs, map to the correct registered module ID
+            let sourceModuleId = outputModule;
+            if (outputModule === 'keyboard-singleton') {
+                // Map keyboard outputs to their respective registered IDs
+                if (outputPort === 'cv-out') {
+                    sourceModuleId = 'keyboard-singleton-cv';
+                } else if (outputPort === 'gate-out') {
+                    sourceModuleId = 'keyboard-singleton-gate';
+                }
+            }
+            
             connectModules(
-                outputModule,  // source (output)
-                inputModule,   // destination (input)
-                inputPort      // input name on destination
+                sourceModuleId,  // source (output)
+                inputModule,     // destination (input)
+                inputPort        // input name on destination
             );
             
             setConnectingFrom(null);
@@ -181,6 +224,7 @@ function App() {
     };
 
     const amplifierModule = modules.find(m => m.type === 'amplifier');
+    const keyboardModule = modules.find(m => m.type === 'keyboard');
     
     const togglePower = () => {
         setIsPoweredOn(prev => !prev);
@@ -189,6 +233,96 @@ function App() {
     return (
         <div style={{ width: '100%', height: '100%', position: 'relative', display: 'flex' }}>
             <Toolbar addModule={addModule} isPoweredOn={isPoweredOn} togglePower={togglePower} />
+            
+            {/* SVG overlay for connections - covers entire viewport */}
+            <svg style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                width: '100vw',
+                height: '100vh',
+                pointerEvents: 'none',
+                zIndex: 9999
+            }}>
+                {/* Draw connections */}
+                {connections.map(conn => {
+                    // Get current port positions from DOM
+                    const fromPort = document.querySelector(`[data-module-id="${conn.from.moduleId}"][data-port-id="${conn.from.outputId}"]`);
+                    const toPort = document.querySelector(`[data-module-id="${conn.to.moduleId}"][data-port-id="${conn.to.outputId}"]`);
+                    
+                    if (!fromPort || !toPort) return null;
+                    
+                    const fromRect = fromPort.getBoundingClientRect();
+                    const toRect = toPort.getBoundingClientRect();
+                    
+                    const x1 = fromRect.left + fromRect.width / 2;
+                    const y1 = fromRect.top + fromRect.height / 2;
+                    const x2 = toRect.left + toRect.width / 2;
+                    const y2 = toRect.top + toRect.height / 2;
+                    
+                    return (
+                        <g key={conn.id}>
+                            <path
+                                d={`M ${x1} ${y1} C ${x1 + 50} ${y1}, ${x2 - 50} ${y2}, ${x2} ${y2}`}
+                                stroke="#00ff00"
+                                strokeWidth="2"
+                                fill="none"
+                                style={{ pointerEvents: 'stroke', cursor: 'pointer' }}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    removeConnection(conn.id);
+                                }}
+                            />
+                        </g>
+                    );
+                })}
+                
+                {/* Draw temporary connection while dragging */}
+                {connectingFrom && tempConnection && (() => {
+                    const fromPort = document.querySelector(`[data-module-id="${connectingFrom.moduleId}"][data-port-id="${connectingFrom.outputId}"]`);
+                    if (!fromPort) return null;
+                    
+                    const fromRect = fromPort.getBoundingClientRect();
+                    const canvasRect = canvasRef.current?.getBoundingClientRect();
+                    
+                    const x1 = fromRect.left + fromRect.width / 2;
+                    const y1 = fromRect.top + fromRect.height / 2;
+                    
+                    // tempConnection coordinates are relative to canvas, need to adjust
+                    const x2 = canvasRect ? canvasRect.left + tempConnection.x : tempConnection.x;
+                    const y2 = canvasRect ? canvasRect.top + tempConnection.y : tempConnection.y;
+                    
+                    return (
+                        <path
+                            d={`M ${x1} ${y1} L ${x2} ${y2}`}
+                            stroke="#00ff0066"
+                            strokeWidth="2"
+                            fill="none"
+                            strokeDasharray="5,5"
+                        />
+                    );
+                })()}
+            </svg>
+            
+            {/* Fixed left panel for Keyboard */}
+            {keyboardModule && (
+                <div style={{
+                    width: '160px',
+                    height: '100%',
+                    background: '#1a1a1a',
+                    borderRight: '2px solid #444',
+                    paddingTop: '50px',
+                    flexShrink: 0
+                }}>
+                    <Keyboard
+                        module={keyboardModule}
+                        onOutputClick={handleOutputClick}
+                        isConnecting={connectingFrom?.moduleId === 'keyboard-singleton'}
+                        audioContext={audioContext}
+                        isFixed={true}
+                    />
+                </div>
+            )}
             
             {/* Main canvas area for modules */}
             <div style={{ flex: 1, position: 'relative' }}>
@@ -261,9 +395,6 @@ function Toolbar({ addModule, isPoweredOn, togglePower }) {
             <button onClick={() => addModule('envelope')} style={buttonStyle}>
                 + Envelope
             </button>
-            <button onClick={() => addModule('keyboard')} style={buttonStyle}>
-                + Keyboard
-            </button>
             <div style={{ marginLeft: 'auto' }}>
                 <button 
                     onClick={togglePower}
@@ -312,72 +443,9 @@ function Canvas({
                 backgroundSize: '20px 20px'
             }}
         >
-            <svg style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                height: '100%',
-                pointerEvents: 'none',
-                zIndex: 9999
-            }}>
-                {/* Draw connections */}
-                {connections.map(conn => {
-                    // Get current port positions from DOM
-                    const fromPort = document.querySelector(`[data-module-id="${conn.from.moduleId}"][data-port-id="${conn.from.outputId}"]`);
-                    const toPort = document.querySelector(`[data-module-id="${conn.to.moduleId}"][data-port-id="${conn.to.outputId}"]`);
-                    
-                    if (!fromPort || !toPort) return null;
-                    
-                    const fromRect = fromPort.getBoundingClientRect();
-                    const toRect = toPort.getBoundingClientRect();
-                    
-                    const x1 = fromRect.left + fromRect.width / 2;
-                    const y1 = fromRect.top + fromRect.height / 2;
-                    const x2 = toRect.left + toRect.width / 2;
-                    const y2 = toRect.top + toRect.height / 2;
-                    
-                    return (
-                        <g key={conn.id}>
-                            <path
-                                d={`M ${x1} ${y1} C ${x1 + 50} ${y1}, ${x2 - 50} ${y2}, ${x2} ${y2}`}
-                                stroke="#00ff00"
-                                strokeWidth="2"
-                                fill="none"
-                                style={{ pointerEvents: 'stroke', cursor: 'pointer' }}
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onRemoveConnection(conn.id);
-                                }}
-                            />
-                        </g>
-                    );
-                })}
-                
-                {/* Draw temporary connection while dragging */}
-                {connectingFrom && tempConnection && (() => {
-                    const fromPort = document.querySelector(`[data-module-id="${connectingFrom.moduleId}"][data-port-id="${connectingFrom.outputId}"]`);
-                    if (!fromPort) return null;
-                    
-                    const fromRect = fromPort.getBoundingClientRect();
-                    const x1 = fromRect.left + fromRect.width / 2;
-                    const y1 = fromRect.top + fromRect.height / 2;
-                    
-                    return (
-                        <path
-                            d={`M ${x1} ${y1} L ${tempConnection.x} ${tempConnection.y}`}
-                            stroke="#00ff0066"
-                            strokeWidth="2"
-                            fill="none"
-                            strokeDasharray="5,5"
-                        />
-                    );
-                })()}
-            </svg>
-            
             {modules.map(module => {
-                // Skip amplifier - it's rendered in the fixed right panel
-                if (module.type === 'amplifier') {
+                // Skip amplifier and keyboard - they're rendered in the fixed right panel
+                if (module.type === 'amplifier' || module.type === 'keyboard') {
                     return null;
                 }
                 

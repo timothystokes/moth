@@ -96,13 +96,9 @@ function Filter({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isConne
             }}
         >
             <div 
-                draggable
-                onDragStart={(e) => {
-                    e.preventDefault = () => {};
+                onMouseDown={(e) => {
                     onDragStart(e, module.id);
                 }}
-                onDrag={onDrag}
-                onDragEnd={onDragEnd}
                 style={{ 
                     fontSize: '12px', 
                     fontWeight: 'bold', 

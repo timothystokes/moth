@@ -45,7 +45,8 @@ export function registerModule(moduleId, processorFn) {
 // Unregister a module
 export function unregisterModule(moduleId) {
     moduleOutputFunctions.delete(moduleId);
-    moduleInputFunctions.delete(moduleId);
+    // Note: we don't delete moduleInputFunctions here because connections should persist
+    // across module re-registrations (e.g., when parameters change)
 }
 
 // Connect source module's output directly to destination module's input

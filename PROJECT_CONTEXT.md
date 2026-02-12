@@ -13,14 +13,21 @@ Web based modular synthesiser
 - [x] Filter with 2 Sliders and 2 Inputs for Cutoff and Resonance. 1 audio output
     - The filter should have a switch to say if it's a low pass or high pass filter. And should implement the logic to apply the filtering based on the cutoff and resonance to the input values before they are passed to the output.
 - [ ] Envelope generator with 4 sliders, 4 inputs and 1 output
-- [ ] Virtual Keyboard that can be used with a mouse and which generates a key signal (1v per octave)
-- [x] Aplifier. Sliders for Amplitude. Inputs: Amplitude, Output: NONE. it goes directly to the web audio interface. 
+- [x] Virtual Keyboard that can be used with a mouse and which generates a key signal (1v per octave)
+    - Implemented with two separate outputs: CV (1V/octave frequency control) and Gate (velocity 0-1 when pressed, -1 when off)
+    - Keyboard displays 3 octaves (C2 to C5) with proper black/white key layout in vertical orientation
+    - CV output holds the last pressed note value even after key is released (gate drops to -1 but CV persists)
+    - Gate signal: -1 when note is off, 0-1 when note is pressed (carries velocity information)
+    - Keyboard is implemented as a singleton in a fixed left-hand panel
+    - Both CV and Gate outputs available for future envelope generator implementation
+- [x] Amplifier. Sliders for Amplitude. Inputs: Amplitude, Output: NONE. it goes directly to the web audio interface. 
     - Should show a small Oscilliscope showing the actual values over time visually.
     - The oscilliscope should auto scale to some degree to focus on showing the shapes. i.e. at very low frequencies one cycle should be shown. At very high frequencies no more than 40 cycles should be shown.
     - The Oscilliscope should start each sample when it observes the previous 3 values below 0 and the next 3 values above 0. i.e. when the wave crosses the 0 threashold. In this way the waves will visualy align for each frame and make the waveform easier to see. 
     - Use a buffer the width of the oscilliscope to ensure there is not page tearing when draweing the sampled values. 
     - The zero crossing function needs to be done before the 360 samples are processes else the display will read into the next cycle the amount that is dropped before the crossing point.
-- [ ] A power button to connect the web audio api should be shown on the top right of the top nav bar. 
+- [x] A power button to connect the web audio api should be shown on the top right of the top nav bar. 
+
 
 ## Technical Stack
 
@@ -65,10 +72,17 @@ Web based modular synthesiser
 - Each Module should have a banner that is used to initiate dragging it. The rest of the module below the banner should allow normal control operation without the module moving.
 - Connections between modules should be connected by dragging the mouse from input/output on one module to input/output on another. Only a single connection can be made between any two ports. If a port is clicked on that has an existing connection then the first thing to happen is that the existing connection should be removed and the UI should allow a new connection to be made. If the user clicks onto no port for the other end then no new connection is established and the UI returns to normal mode.
 - The connections between modules MUST ALWAYS be drawn over the top of the view from the relevant input and output ports as SVG paths with z-index 9999.
-- The connection points should stick out the side of each module AND should align horizontally to their equivalent sliders where a slider exists for the same control. They share the same label above the port and slider. The sliders provide a static base value when no connection is in place, or add an adjustment/modulation function (shifting the voltage) when there is a connection. Modulation voltages (±10V) are scaled and added to the base slider value, with clamping to keep values in valid ranges. Generally inputs on the left (red border) and outputs on the right (blue border). Green border when connecting.
+- The connection points should stick out the side of each module AND should align horizontally to their equivalent sliders where a slider exists for the same control. They share the same label above the port and slider. When no connection is present, sliders provide the base value for the parameter. When a connection IS present, the slider still provides the base value which is then modulated by the connected signal. For example, an oscillator with frequency slider at 130Hz and a 1V CV input connected will produce 260Hz (130 * 2^1). The slider acts as a base frequency that the CV shifts exponentially according to 1V/octave. Modulation voltages (±10V) are scaled appropriately (exponential for frequency, linear for amplitude, etc.) and combined with the base slider value. Generally inputs on the left (red border) and outputs on the right (blue border). Green border when connecting.
 - Regardless of the order the connections are wired by the user they should always be drawn from output to input.
 - Connection positions are stored at the moment of connection using getBoundingClientRect() to capture exact port center coordinates.
 - Ensure there is logic to apply the input jack's assigned function (via a connection) to the amplitude when calculating each value in the audio loop. i.e. a control voltage attached to the Amp port on the Apolifier would modulate the volume from a second oscilator instance if i connected it. The slider position should not actually move based on the port value as it becomes an adjuster for the stream of values not a visual representation of the values.
 - Values of each slider should be displayed when there is no connection.
 - The Oscilator frequency range should allow low frequencies so they can be used as LFOs.
-- seeing as the amplifier is always shown. lock it in as a right hand panel of the UI that is always there. Taking up the full right hand colum  of the canvas.
+- seeing as the amplifier is always shown. lock it in as a right hand panel of the UI that is always there. Taking up the full right hand column of the canvas (200px width).
+- Keyboard module is locked in as a left hand panel of the UI that is always there. Taking up the full left hand column of the canvas (200px width).
+- Central canvas area uses flex-grow: 1 for draggable modules.
+- Modules on the canvas can be dragged using mouse events (onMouseDown on module banner + global mousemove/mouseup listeners).
+- Drag calculations account for canvas offset (subtracting canvasRect.left and canvasRect.top from clientX/clientY).
+- No drag ghost images appear (using pure mouse event system, not HTML5 drag API).
+- Connections displayed as SVG lines with bezier curves in a fixed-position overlay (position: fixed, top: 0, left: 0, width: 100vw, height: 100vh, pointer-events: none, z-index: 9999) covering the entire viewport.
+- Port positions calculated using getBoundingClientRect() for accurate connection rendering across all panels (left fixed panel, canvas, right fixed panel).

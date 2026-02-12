@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { registerModule, unregisterModule } from '../audio/audioEngine.js';
 
 function Oscillator({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isConnecting, audioContext, connections }) {
-    const [frequency, setFrequency] = useState(10); // Hz - starting at 10Hz for LFO
+    const [frequency, setFrequency] = useState(220); // Hz - A3 for musical use
     const [amplitude, setAmplitude] = useState(0.5); // 0 to 1
     const [shape, setShape] = useState(0.5); // 0 = sawtooth, 0.5 = square, 1 = sine
     
@@ -17,8 +17,12 @@ function Oscillator({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isC
             // Calculate final parameters with modulation
             let finalFreq = frequency;
             if (freqModFn) {
-                const modVoltage = freqModFn(time); // 1V/octave or ±10V adjustment
-                finalFreq = frequency * Math.pow(2, modVoltage); // V/octave exponential scaling
+                const modVoltage = freqModFn(time); // 1V/octave CV
+                // When CV is connected, use standard 1V/octave where 0V = C2 = 65.41Hz
+                // This ensures keyboard CV values produce correct musical pitches
+                const referenceFreq = 65.41; // C2 (MIDI note 36)
+                const sliderOffset = Math.log2(frequency / referenceFreq); // Slider acts as transpose in octaves
+                finalFreq = referenceFreq * Math.pow(2, modVoltage + sliderOffset);
             }
             
             let finalAmp = amplitude;
@@ -87,13 +91,9 @@ function Oscillator({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isC
             }}
         >
             <div 
-                draggable
-                onDragStart={(e) => {
-                    e.preventDefault = () => {};
+                onMouseDown={(e) => {
                     onDragStart(e, module.id);
                 }}
-                onDrag={onDrag}
-                onDragEnd={onDragEnd}
                 style={{ 
                     fontSize: '12px', 
                     fontWeight: 'bold', 
