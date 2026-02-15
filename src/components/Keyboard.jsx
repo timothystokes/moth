@@ -1,11 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { registerModule } from '../audio/audioEngine.js';
+import { addVirtualNote, removeVirtualNote, initializeMIDI } from '../audio/midiManager.js';
+import { registerModule, unregisterModule } from '../audio/audioEngine.js';
+import { getActiveVoices } from '../audio/voiceAllocator.js';
 
 function Keyboard({ module, onOutputClick, isConnecting, audioContext, isFixed }) {
-    // Musical keyboard state
+    // Musical keyboard state - just for UI display now
     const [activeNote, setActiveNote] = useState(null); // { noteNumber, velocity }
     const [hoveredKey, setHoveredKey] = useState(null);
-    const lastNoteRef = useRef(null); // Hold the last note CV even after release
+    const activeNoteRef = useRef(null); // Track active note for mouse up handler
+    
+    // Initialize MIDI on mount
+    useEffect(() => {
+        initializeMIDI().then(success => {
+            if (success) {
+                console.log('MIDI initialized successfully');
+            }
+        });
+    }, []);
     
     // Define keyboard layout: 88 keys (A0 to C8) - full piano range
     // Note numbers: A0=21 (MIDI), C8=108
@@ -31,58 +42,33 @@ function Keyboard({ module, onOutputClick, isConnecting, audioContext, isFixed }
     // Reverse for vertical display (high notes at top)
     notes.reverse();
     
-    // Register audio processing function
+    // Register gate output as a module
     useEffect(() => {
-        if (!audioContext) return;
-        
-        // Update lastNoteRef when activeNote changes
-        if (activeNote) {
-            lastNoteRef.current = activeNote.noteNumber;
-        }
-        
-        // Register CV output (frequency voltage)
-        const cvProcessorFn = (time, inputFns) => {
-            // No inputs for keyboard - it's a source
-            // Output: frequency in 1V per octave format
-            // Reference: C2 (MIDI 36) = 0V, each semitone up adds 1/12V
-            
-            // Use current active note, or hold the last note if released
-            const noteToUse = activeNote ? activeNote.noteNumber : lastNoteRef.current;
-            
-            if (noteToUse !== null) {
-                // Convert MIDI note to 1V/octave
-                // C2 (36) = 0V, C3 (48) = 1V, etc.
-                const voltage = (noteToUse - 36) / 12;
-                return voltage;
-            }
-            
-            return 0; // No note ever pressed
+        // Gate output: returns gate value for the voice being processed
+        // Each voice gets its own gate value from voiceContext
+        const gateProcessor = (time, voiceContext, inputFns) => {
+            return voiceContext.gate; // Return per-voice gate value (0 to 1)
         };
         
-        // Register Gate output (velocity)
-        const gateProcessorFn = (time, inputFns) => {
-            // Gate: -1 for off, 0-1 for velocity
-            if (activeNote) {
-                return activeNote.velocity;
-            }
-            
-            return -1; // Note off
-        };
-        
-        // Register both outputs with different suffixes
-        registerModule(`${module.id}-cv`, cvProcessorFn);
-        registerModule(`${module.id}-gate`, gateProcessorFn);
+        registerModule(module.id + '-gate', gateProcessor);
         
         return () => {
-            // Cleanup on unmount
+            unregisterModule(module.id + '-gate');
         };
-    }, [audioContext, activeNote, module.id]);
+    }, [module.id]);
     
     const handleMouseDown = (note) => {
-        setActiveNote({ noteNumber: note.noteNumber, velocity: 0.8 });
+        const noteData = { noteNumber: note.noteNumber, velocity: 0.8 };
+        setActiveNote(noteData);
+        activeNoteRef.current = noteData;
+        addVirtualNote(note.noteNumber, 0.8);
     };
     
     const handleMouseUp = () => {
+        if (activeNoteRef.current) {
+            removeVirtualNote(activeNoteRef.current.noteNumber);
+            activeNoteRef.current = null;
+        }
         setActiveNote(null);
     };
     
@@ -97,12 +83,12 @@ function Keyboard({ module, onOutputClick, isConnecting, audioContext, isFixed }
     // Add global mouse up listener
     useEffect(() => {
         const handleGlobalMouseUp = () => {
-            setActiveNote(null);
+            handleMouseUp();
         };
         
         window.addEventListener('mouseup', handleGlobalMouseUp);
         return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
-    }, []);
+    }, []); // Empty deps - handleMouseUp is stable because it uses ref
     
     const keyHeight = 12; // Smaller height per key to fit 88 keys
     const whiteKeyWidth = 140; // Match panel width

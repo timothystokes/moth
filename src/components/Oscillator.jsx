@@ -8,7 +8,12 @@ function Oscillator({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isC
     
     // Register this module's processing function
     useEffect(() => {
-        const oscillatorProcessor = (time, inputFns) => {
+        const oscillatorProcessor = (time, voiceContext, inputFns) => {
+            // voiceContext = { cv, gate, velocity, voiceId }
+            // cv: MIDI note as voltage (1V/octave, C2=0V)
+            // gate: -1 for off, 0-1 for velocity
+            // velocity: 0-1 normalized velocity
+            
             // Get modulation inputs if connected
             const freqModFn = inputFns?.['freq-input'];
             const ampModFn = inputFns?.['amp-input'];
@@ -16,25 +21,41 @@ function Oscillator({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isC
             
             // Calculate final parameters with modulation
             let finalFreq = frequency;
-            if (freqModFn) {
-                const modVoltage = freqModFn(time); // 1V/octave CV
-                // When CV is connected, use standard 1V/octave where 0V = C2 = 65.41Hz
-                // This ensures keyboard CV values produce correct musical pitches
+            
+            // If CV is provided from voice context, use it
+            if (voiceContext && voiceContext.cv !== undefined) {
+                // Voice context CV overrides any direct connection
+                const cvVoltage = voiceContext.cv; // 1V/octave CV
                 const referenceFreq = 65.41; // C2 (MIDI note 36)
                 const sliderOffset = Math.log2(frequency / referenceFreq); // Slider acts as transpose in octaves
+                finalFreq = referenceFreq * Math.pow(2, cvVoltage + sliderOffset);
+            } else if (freqModFn) {
+                // Fall back to connected modulation input
+                const modVoltage = freqModFn(time, voiceContext); // 1V/octave CV
+                const referenceFreq = 65.41; // C2 (MIDI note 36)
+                const sliderOffset = Math.log2(frequency / referenceFreq);
                 finalFreq = referenceFreq * Math.pow(2, modVoltage + sliderOffset);
             }
             
             let finalAmp = amplitude;
+            
             if (ampModFn) {
-                const modVoltage = ampModFn(time); // ±10V
-                finalAmp = amplitude + (modVoltage / 20); // Add ±0.5 adjustment
-                finalAmp = Math.max(0, Math.min(1, finalAmp)); // Clamp 0-1
+                const modVoltage = ampModFn(time, voiceContext); // Gate: 0-1, CV: ±10V
+                // Detect if this is a gate signal (0-1 range) or CV signal (±10V range)
+                // Gate signals multiply (VCA behavior), CV signals add
+                if (modVoltage >= 0 && modVoltage <= 1) {
+                    // Gate/velocity input: multiply slider value (VCA behavior)
+                    finalAmp = amplitude * modVoltage;
+                } else {
+                    // CV input: add offset
+                    finalAmp = amplitude + (modVoltage / 20); // Add ±0.5 adjustment
+                    finalAmp = Math.max(0, Math.min(1, finalAmp)); // Clamp 0-1
+                }
             }
             
             let finalShape = shape;
             if (shapeModFn) {
-                const modVoltage = shapeModFn(time); // ±10V
+                const modVoltage = shapeModFn(time, voiceContext); // ±10V
                 finalShape = shape + (modVoltage / 20); // Add ±0.5 adjustment
                 finalShape = Math.max(0, Math.min(1, finalShape)); // Clamp 0-1
             }

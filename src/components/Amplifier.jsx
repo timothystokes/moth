@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { getInputFunction } from '../audio/audioEngine.js';
+import { getModuleOutputFunction } from '../audio/audioEngine.js';
+import { getActiveVoices, updateVoiceOutput, setGateMonitoring } from '../audio/voiceAllocator.js';
 
 function Amplifier({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isConnecting, audioContext, setAudioContext, connections, isFixed, isPoweredOn }) {
     const [amplitude, setAmplitude] = useState(0.5); // 0 to 1
@@ -141,9 +142,20 @@ function Amplifier({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isCo
         const bufferSize = 4096;
         const scriptProcessor = audioContext.createScriptProcessor(bufferSize, 0, 1);
         
-        // Get input functions (direct references) - outside the audio loop
-        const inputFn = getInputFunction(module.id, 'audio-input');
-        const ampModFn = getInputFunction(module.id, 'amp-input');
+        // Find connected source modules
+        const audioInputConnection = connections.find(
+            c => c.to.moduleId === module.id && c.to.outputId === 'audio-input'
+        );
+        const ampModConnection = connections.find(
+            c => c.to.moduleId === module.id && c.to.outputId === 'amp-input'
+        );
+        
+        // Detect if gate monitoring should be enabled
+        // For now, we check if an envelope or VCA module exists (future implementation)
+        // Default to disabled - voices become FREE immediately on release
+        // TODO: Enable when envelope generators are connected
+        setGateMonitoring(false);
+        
         const sampleRate = audioContext.sampleRate;
         
         scriptProcessor.onaudioprocess = (e) => {
@@ -152,24 +164,80 @@ function Amplifier({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isCo
             const currentTime = e.playbackTime * 1000; // Convert to milliseconds
             
             for (let i = 0; i < bufferSize; i++) {
-                // Calculate time for this sample in milliseconds - THIS CASCADES BACKWARD
+                // Calculate time for this sample in milliseconds
                 const sampleTime = currentTime + (i / sampleRate) * 1000;
                 
-                // Call input function with time - cascades backward to oscillator
-                // Return value (voltage) cascades forward back to here
-                const inputSignal = inputFn ? inputFn(sampleTime) : 0;
+                // Get all active and releasing voices from voice allocator
+                const activeVoices = getActiveVoices();
+                
+                let mixedSample = 0;
+                
+                if (activeVoices.length > 0) {
+                    // Process each voice and mix them together
+                    for (const voice of activeVoices) {
+                        // Create voice context from voice data
+                        const voiceContext = {
+                            cv: voice.cv,
+                            gate: voice.gate,
+                            velocity: voice.velocity,
+                            voiceId: voice.voiceId
+                        };
+                        
+                        // Get input signal for this voice
+                        let voiceSignal = 0;
+                        if (audioInputConnection) {
+                            const sourceFn = getModuleOutputFunction(audioInputConnection.from.moduleId);
+                            if (sourceFn) {
+                                voiceSignal = sourceFn(sampleTime, voiceContext);
+                            }
+                        }
+                        
+                        mixedSample += voiceSignal;
+                        
+                        // Update voice output level (for silence detection)
+                        updateVoiceOutput(voice.voiceId, voiceSignal);
+                    }
+                    
+                    // Average the voices to prevent clipping
+                    if (activeVoices.length > 0) {
+                        mixedSample /= Math.sqrt(activeVoices.length); // Use sqrt for better scaling
+                    }
+                } else {
+                    // No active notes - try to process without voice context for modules
+                    // that don't need it (like LFOs, random generators, etc.)
+                    if (audioInputConnection) {
+                        const sourceFn = getModuleOutputFunction(audioInputConnection.from.moduleId);
+                        if (sourceFn) {
+                            mixedSample = sourceFn(sampleTime, null);
+                        }
+                    }
+                }
                 
                 // Calculate final amplitude: base slider value + modulation voltage (if connected)
-                // Modulation voltage is ±10V, we scale it to adjustment range
                 let finalAmplitude = amplitude;
-                if (ampModFn) {
-                    const modVoltage = ampModFn(sampleTime); // ±10V
-                    finalAmplitude = amplitude + (modVoltage / 20); // Add ±0.5 adjustment
-                    finalAmplitude = Math.max(0, Math.min(1, finalAmplitude)); // Clamp 0-1
+                
+                if (ampModConnection) {
+                    const ampModSourceFn = getModuleOutputFunction(ampModConnection.from.moduleId);
+                    if (ampModSourceFn) {
+                        const modVoltage = ampModSourceFn(sampleTime, null);
+                        
+                        // Detect if this is a gate signal (range 0 to 1)
+                        // vs standard CV (typically ±10V range)
+                        // Gate signals should multiply, CV signals should add
+                        if (ampModConnection.from.moduleId.includes('-gate')) {
+                            // Gate signal: 0 (off) to 1 (full velocity)
+                            // Multiply directly (already 0-1 range)
+                            finalAmplitude = amplitude * modVoltage;
+                        } else {
+                            // Standard CV modulation: ±10V
+                            finalAmplitude = amplitude + (modVoltage / 20); // Add ±0.5 adjustment
+                            finalAmplitude = Math.max(0, Math.min(1, finalAmplitude)); // Clamp 0-1
+                        }
+                    }
                 }
                 
                 // Convert ±10V to ±1 for audio interface
-                const sample = (inputSignal / 10) * finalAmplitude;
+                const sample = (mixedSample / 10) * finalAmplitude;
                 output[i] = sample;
                 
                 // Store every sample in circular buffer

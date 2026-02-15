@@ -2,22 +2,30 @@ import React, { useState, useEffect, useRef } from 'react';
 import { registerModule, unregisterModule } from '../audio/audioEngine.js';
 
 function Filter({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isConnecting, audioContext, connections }) {
-    const [cutoff, setCutoff] = useState(1000); // Hz - 20Hz to 20000Hz
+    const [cutoffSlider, setCutoffSlider] = useState(0.5); // 0 to 1 slider position
     const [resonance, setResonance] = useState(0.5); // 0 to 1
     const [filterType, setFilterType] = useState('lowpass'); // 'lowpass' or 'highpass'
     
-    // Use refs to maintain filter state across parameter changes
-    const filterStateRef = useRef({
-        prevInput: 0,
-        prevOutput: 0
-    });
+    // Convert slider position to exponential frequency (20Hz to 20kHz) - reversed direction
+    const cutoff = 20 * Math.pow(1000, (1 - cutoffSlider)); // Exponential scaling, inverted
+    
+    // Use refs to maintain filter state per voice (state variable filter with two integrators)
+    const filterStatesRef = useRef(new Map()); // Map<voiceId, { lowpass, bandpass }>
+    
+    // Get or create filter state for a voice
+    const getFilterState = (voiceId) => {
+        if (!filterStatesRef.current.has(voiceId)) {
+            filterStatesRef.current.set(voiceId, { lowpass: 0, bandpass: 0 });
+        }
+        return filterStatesRef.current.get(voiceId);
+    };
     
     // Register this module's processing function
     useEffect(() => {
-        const filterProcessor = (time, inputFns) => {
+        const filterProcessor = (time, voiceContext, inputFns) => {
             // Get audio input
             const audioInputFn = inputFns?.['audio-input'];
-            const inputSignal = audioInputFn ? audioInputFn(time) : 0;
+            const inputSignal = audioInputFn ? audioInputFn(time, voiceContext) : 0;
             
             // Get modulation inputs if connected
             const cutoffModFn = inputFns?.['cutoff-input'];
@@ -26,43 +34,52 @@ function Filter({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isConne
             // Calculate final parameters with modulation
             let finalCutoff = cutoff;
             if (cutoffModFn) {
-                const modVoltage = cutoffModFn(time); // 1V/octave or ±10V
+                const modVoltage = cutoffModFn(time, voiceContext); // 1V/octave or ±10V
                 finalCutoff = cutoff * Math.pow(2, modVoltage / 5); // Exponential scaling
                 finalCutoff = Math.max(20, Math.min(20000, finalCutoff)); // Clamp 20Hz-20kHz
             }
             
             let finalResonance = resonance;
             if (resonanceModFn) {
-                const modVoltage = resonanceModFn(time); // ±10V
+                const modVoltage = resonanceModFn(time, voiceContext); // ±10V
                 finalResonance = resonance + (modVoltage / 20); // Add ±0.5 adjustment
                 finalResonance = Math.max(0, Math.min(0.99, finalResonance)); // Clamp 0-0.99
             }
             
-            // Calculate filter coefficient based on cutoff frequency
-            const sampleRate = 44100; // Assume standard sample rate
-            const dt = 1 / sampleRate;
-            const rc = 1 / (2 * Math.PI * finalCutoff);
-            const alpha = dt / (rc + dt);
+            // Get filter state for this voice
+            const voiceId = voiceContext?.voiceId || 'global';
+            const filterState = getFilterState(voiceId);
             
-            // Apply resonance as feedback
-            const feedbackAmount = finalResonance * 0.95;
-            const inputWithFeedback = inputSignal + (filterStateRef.current.prevOutput * feedbackAmount);
+            // State variable filter implementation (provides true resonance)
+            const sampleRate = 44100;
+            const nyquist = sampleRate / 2;
             
-            let output;
+            // Clamp cutoff to prevent instability (max 80% of Nyquist)
+            const safeCutoff = Math.min(finalCutoff, nyquist * 0.8);
             
-            if (filterType === 'lowpass') {
-                // Low-pass filter: smooth out high frequencies
-                output = filterStateRef.current.prevOutput + alpha * (inputWithFeedback - filterStateRef.current.prevOutput);
-            } else {
-                // High-pass filter: let high frequencies through, block low frequencies
-                // High-pass = input - low-pass
-                const lowpass = filterStateRef.current.prevOutput + alpha * (inputWithFeedback - filterStateRef.current.prevOutput);
-                output = inputWithFeedback - lowpass;
+            const f = 2 * Math.sin(Math.PI * safeCutoff / sampleRate); // Frequency coefficient
+            const fClamped = Math.min(f, 1.9); // Ensure stability (must be < 2)
+            const q = 1 - finalResonance; // Q factor (inverted - higher resonance = lower q)
+            const qNormalized = Math.max(0.01, q); // Prevent divide by zero
+            
+            // State variable filter equations
+            const lowpass = filterState.lowpass + fClamped * filterState.bandpass;
+            const highpass = inputSignal - lowpass - qNormalized * filterState.bandpass;
+            const bandpass = fClamped * highpass + filterState.bandpass;
+            
+            // Check for NaN/Infinity and reset if needed (safety check)
+            if (!isFinite(lowpass) || !isFinite(bandpass)) {
+                filterState.lowpass = 0;
+                filterState.bandpass = 0;
+                return 0;
             }
             
-            // Update state in ref
-            filterStateRef.current.prevInput = inputSignal;
-            filterStateRef.current.prevOutput = output;
+            // Update state
+            filterState.lowpass = lowpass;
+            filterState.bandpass = bandpass;
+            
+            // Return appropriate output based on filter type
+            const output = filterType === 'lowpass' ? lowpass : highpass;
             
             // Return filtered signal (already in ±10V range)
             return output;
@@ -162,11 +179,11 @@ function Filter({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isConne
                         />
                         <input
                             type="range"
-                            min="20"
-                            max="20000"
-                            step="10"
-                            value={cutoff}
-                            onChange={(e) => setCutoff(parseFloat(e.target.value))}
+                            min="0"
+                            max="1"
+                            step="0.001"
+                            value={cutoffSlider}
+                            onChange={(e) => setCutoffSlider(parseFloat(e.target.value))}
                             style={{
                                 width: '100%',
                                 cursor: 'pointer',

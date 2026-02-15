@@ -3,6 +3,7 @@ import Amplifier from './components/Amplifier.jsx';
 import Oscillator from './components/Oscillator.jsx';
 import Filter from './components/Filter.jsx';
 import Keyboard from './components/Keyboard.jsx';
+import RandomVoltageGenerator from './components/RandomVoltageGenerator.jsx';
 import { connectModules, disconnectInput } from './audio/audioEngine.js';
 
 function App() {
@@ -395,6 +396,9 @@ function Toolbar({ addModule, isPoweredOn, togglePower }) {
             <button onClick={() => addModule('envelope')} style={buttonStyle}>
                 + Envelope
             </button>
+            <button onClick={() => addModule('random')} style={buttonStyle}>
+                + Random
+            </button>
             <div style={{ marginLeft: 'auto' }}>
                 <button 
                     onClick={togglePower}
@@ -468,6 +472,22 @@ function Canvas({
                 if (module.type === 'filter') {
                     return (
                         <Filter
+                            key={module.id}
+                            module={module}
+                            onDragStart={onModuleDragStart}
+                            onDrag={onModuleDrag}
+                            onDragEnd={onModuleDragEnd}
+                            onOutputClick={onOutputClick}
+                            isConnecting={connectingFrom?.moduleId === module.id}
+                            audioContext={audioContext}
+                            connections={connections}
+                        />
+                    );
+                }
+                
+                if (module.type === 'random') {
+                    return (
+                        <RandomVoltageGenerator
                             key={module.id}
                             module={module}
                             onDragStart={onModuleDragStart}
