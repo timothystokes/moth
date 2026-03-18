@@ -1,18 +1,44 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { registerModule, unregisterModule } from '../audio/audioEngine.js';
 
+/**
+ * Oscillator module
+ *
+ * Controls:
+ *   FREQ  — logarithmic 0.1 Hz–2000 Hz slider (good for LFO through audio range)
+ *           Input socket: 1V/octave relative offset on top of the slider value.
+ *           When driven by a keyboard/voice CV the slider acts as a transpose.
+ *   AMP   — output level 0–1 (maps to ±10V peak output)
+ *           Input socket: gate (0–1) acts as VCA; CV (±10V) adds an offset.
+ *   SHAPE — morphs SQR ← SIN → TRI
+ *           Left half:  power-law waveshaper fattens sine peaks into a square
+ *                       (exponent 1→0 as slider moves left; zero crossings stay sharp).
+ *           Right half: linear crossfade from sine to triangle.
+ *           Input socket: ±10V adds ±0.5 offset to the slider position.
+ *
+ * Output: ±10V audio/CV signal
+ *
+ * Phase is accumulated per-voice (Δphase = 2π × freq × Δt) so FM modulation
+ * depth is controlled purely by the modulator's amplitude — no time-drift artefacts.
+ */
 function Oscillator({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isConnecting, audioContext, connections }) {
-    const [frequency, setFrequency] = useState(220); // Hz - A3 for musical use
-    const [amplitude, setAmplitude] = useState(0.5); // 0 to 1
-    const [shape, setShape] = useState(0.5); // 0 = sawtooth, 0.5 = square, 1 = sine
+    const [frequency, setFrequency] = useState(220); // Hz — default A3
+    const [amplitude, setAmplitude] = useState(0.5); // 0–1 (maps to 0–±10V peak)
+    const [shape, setShape] = useState(0.5);         // 0=square, 0.5=sine, 1=triangle
+
+    // Per-voice phase accumulator — keyed by voiceId (or 'default' for standalone use).
+    // Stores { phase: radians 0..2π, lastTime: ms } so phase integrates Δt × freq
+    // rather than being derived from absolute time (which causes FM to drift over time).
+    const phaseMapRef = useRef(new Map());
     
     // Register this module's processing function
     useEffect(() => {
         const oscillatorProcessor = (time, voiceContext, inputFns) => {
             // voiceContext = { cv, gate, velocity, voiceId }
-            // cv: MIDI note as voltage (1V/octave, C2=0V)
-            // gate: -1 for off, 0-1 for velocity
-            // velocity: 0-1 normalized velocity
+            //   cv:       1V/octave pitch (C2 = 0V, each +1V = +1 octave)
+            //   gate:     0–1 velocity when note is on, absent when off
+            //   velocity: 0–1 normalised note velocity
+            //   voiceId:  unique id per polyphonic voice
             
             // Get modulation inputs if connected
             const freqModFn = inputFns?.['freq-input'];
@@ -22,65 +48,85 @@ function Oscillator({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isC
             // Calculate final parameters with modulation
             let finalFreq = frequency;
             
-            // If CV is provided from voice context, use it
+            // ── Frequency ────────────────────────────────────────────────────────
+            // Freq socket is a 1V/octave relative nudge on top of the slider.
+            // ÷10 scales the engine's ±10V range so that a modulator at amplitude
+            // 0.1 (→ ±1V) produces ±1 semitone vibrato — amplitude is depth.
+            const freqNudgeOctaves = freqModFn ? freqModFn(time, voiceContext) / 10 : 0;
+
+            // With voice CV (keyboard): slider is transpose, socket adds fine pitch mod.
+            // Without voice CV: socket offsets the slider frequency directly.
             if (voiceContext && voiceContext.cv !== undefined) {
-                // Voice context CV overrides any direct connection
                 const cvVoltage = voiceContext.cv; // 1V/octave CV
                 const referenceFreq = 65.41; // C2 (MIDI note 36)
-                const sliderOffset = Math.log2(frequency / referenceFreq); // Slider acts as transpose in octaves
-                finalFreq = referenceFreq * Math.pow(2, cvVoltage + sliderOffset);
-            } else if (freqModFn) {
-                // Fall back to connected modulation input
-                const modVoltage = freqModFn(time, voiceContext); // 1V/octave CV
-                const referenceFreq = 65.41; // C2 (MIDI note 36)
-                const sliderOffset = Math.log2(frequency / referenceFreq);
-                finalFreq = referenceFreq * Math.pow(2, modVoltage + sliderOffset);
+                const sliderOffset = Math.log2(frequency / referenceFreq); // Slider as transpose
+                finalFreq = referenceFreq * Math.pow(2, cvVoltage + sliderOffset + freqNudgeOctaves);
+            } else {
+                // No voice CV — socket nudges the slider frequency
+                finalFreq = frequency * Math.pow(2, freqNudgeOctaves);
             }
             
+            // ── Amplitude ────────────────────────────────────────────────────────
             let finalAmp = amplitude;
-            
+
             if (ampModFn) {
-                const modVoltage = ampModFn(time, voiceContext); // Gate: 0-1, CV: ±10V
-                // Detect if this is a gate signal (0-1 range) or CV signal (±10V range)
-                // Gate signals multiply (VCA behavior), CV signals add
+                const modVoltage = ampModFn(time, voiceContext);
                 if (modVoltage >= 0 && modVoltage <= 1) {
-                    // Gate/velocity input: multiply slider value (VCA behavior)
+                    // 0–1 range → treat as gate/velocity: multiply (VCA behaviour)
                     finalAmp = amplitude * modVoltage;
                 } else {
-                    // CV input: add offset
-                    finalAmp = amplitude + (modVoltage / 20); // Add ±0.5 adjustment
-                    finalAmp = Math.max(0, Math.min(1, finalAmp)); // Clamp 0-1
+                    // Outside 0–1 → treat as bipolar CV: add offset (±10V = ±0.5)
+                    finalAmp = Math.max(0, Math.min(1, amplitude + modVoltage / 20));
                 }
             }
             
+            // ── Shape modulation ─────────────────────────────────────────────────
+            // ±10V maps to ±0.5 offset on the 0–1 slider range.
             let finalShape = shape;
             if (shapeModFn) {
-                const modVoltage = shapeModFn(time, voiceContext); // ±10V
-                finalShape = shape + (modVoltage / 20); // Add ±0.5 adjustment
-                finalShape = Math.max(0, Math.min(1, finalShape)); // Clamp 0-1
+                finalShape = Math.max(0, Math.min(1, shape + shapeModFn(time, voiceContext) / 20));
             }
-            
-            // Calculate phase (0 to 2π)
-            const phase = (2 * Math.PI * finalFreq * (time / 1000)) % (2 * Math.PI);
-            const normalizedPhase = phase / (2 * Math.PI); // 0 to 1
-            
-            let wave;
-            
-            // Generate base waveforms
-            const sawtoothPhase = (normalizedPhase + 0.5) % 1; // Offset by 180 degrees
-            const sawtooth = 2 * sawtoothPhase - 1; // -1 to 1 sawtooth (rising ramp)
-            const square = normalizedPhase < 0.5 ? 1 : -1; // -1 to 1 square
-            const sine = Math.sin(phase); // -1 to 1 sine
-            
-            // Blend between waveforms based on shape parameter
-            if (finalShape < 0.5) {
-                // Blend from sawtooth (0) to square (0.5)
-                const blend = finalShape * 2; // 0 to 1
-                wave = sawtooth * (1 - blend) + square * blend;
+
+            // ── Phase accumulation ───────────────────────────────────────────────
+            // Integrate Δphase = 2π × finalFreq × Δt each frame so that FM
+            // modulation is proportional only to the modulation voltage, never
+            // to the absolute elapsed time.
+            const voiceId = voiceContext?.voiceId ?? 'default';
+            const voiceState = phaseMapRef.current.get(voiceId) ?? { phase: 0, lastTime: null };
+            let accPhase;
+            if (voiceState.lastTime !== null && voiceState.lastTime !== time) {
+                const dt = (time - voiceState.lastTime) / 1000; // seconds
+                accPhase = (voiceState.phase + 2 * Math.PI * finalFreq * dt) % (2 * Math.PI);
             } else {
-                // Blend from square (0.5) to sine (1)
-                const blend = (finalShape - 0.5) * 2; // 0 to 1
-                wave = square * (1 - blend) + sine * blend;
+                accPhase = voiceState.phase;
+            }
+            phaseMapRef.current.set(voiceId, { phase: accPhase, lastTime: time });
+
+            const p = accPhase / (2 * Math.PI); // normalised phase 0–1
+
+            // ── Waveforms ────────────────────────────────────────────────────────
+            const sinVal = Math.sin(p * 2 * Math.PI);
+
+            // Triangle: peak at p=0.25, trough at p=0.75
+            const triWave = p < 0.25 ?  p * 4
+                          : p < 0.75 ?  2 - p * 4
+                          :              p * 4 - 4;
+
+            // ── Blend: shape 0=square → 0.5=sine → 1=triangle ───────────────────
+            let wave;
+            if (finalShape <= 0.5) {
+                // Power-law waveshaper: fattens the peaks toward a square.
+                //   exponent = 1   → pure sine (shape = 0.5)
+                //   exponent → 0   → pure square (shape = 0)
+                // Zero crossings stay exactly at 0; peaks stay exactly at ±1.
+                // The wave spends progressively more real time near the top/bottom
+                // and less time crossing the boundary as shape moves left.
+                const squareness = (0.5 - finalShape) * 2; // 0 at sine, 1 at square
+                const exponent = Math.max(0.001, 1 - squareness * 0.999);
+                wave = Math.sign(sinVal) * Math.pow(Math.abs(sinVal), exponent);
+            } else {
+                const t = (finalShape - 0.5) * 2; // 0 at sine, 1 at triangle
+                wave = sinVal * (1 - t) + triWave * t;
             }
             
             // Scale to ±10V
@@ -138,7 +184,7 @@ function Oscillator({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isC
                     <label style={{ fontSize: '10px', color: '#aaa', display: 'block', marginBottom: '5px' }}>
                         {connections?.some(c => c.to.moduleId === module.id && c.to.outputId === 'freq-input') 
                             ? 'FREQ' 
-                            : `FREQ: ${frequency.toFixed(1)}Hz`}
+                            : `FREQ: ${frequency < 10 ? frequency.toFixed(2) : frequency < 100 ? frequency.toFixed(1) : frequency.toFixed(0)}Hz`}
                     </label>
                     <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
                         <Port 
@@ -156,11 +202,11 @@ function Oscillator({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isC
                         />
                         <input
                             type="range"
-                            min="0.1"
-                            max="2000"
-                            step="0.1"
-                            value={frequency}
-                            onChange={(e) => setFrequency(parseFloat(e.target.value))}
+                            min="0"
+                            max="1"
+                            step="0.001"
+                            value={Math.log(frequency / 0.1) / Math.log(2000 / 0.1)}
+                            onChange={(e) => setFrequency(0.1 * Math.pow(2000 / 0.1, parseFloat(e.target.value)))}
                             style={{
                                 width: '100%',
                                 cursor: 'pointer',
@@ -212,7 +258,7 @@ function Oscillator({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isC
                     <label style={{ fontSize: '10px', color: '#aaa', display: 'block', marginBottom: '5px' }}>
                         {connections?.some(c => c.to.moduleId === module.id && c.to.outputId === 'shape-input') 
                             ? 'SHAPE' 
-                            : `SHAPE: ${shape < 0.33 ? 'SAW' : shape < 0.66 ? 'SQR' : 'SIN'}`}
+                            : `SHAPE: ${shape < 0.25 ? 'SQR' : shape < 0.75 ? 'SIN' : 'TRI'}`}
                     </label>
                     <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
                         <Port 
@@ -228,19 +274,22 @@ function Oscillator({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isC
                             }}
                             isConnecting={isConnecting}
                         />
-                        <input
-                            type="range"
-                            min="0"
-                            max="1"
-                            step="0.01"
-                            value={shape}
-                            onChange={(e) => setShape(parseFloat(e.target.value))}
-                            style={{
-                                width: '100%',
-                                cursor: 'pointer',
-                                marginLeft: '20px'
-                            }}
-                        />
+                        <div style={{ flex: 1, marginLeft: '20px' }}>
+                            <input
+                                type="range"
+                                min="0"
+                                max="1"
+                                step="0.01"
+                                value={shape}
+                                onChange={(e) => setShape(parseFloat(e.target.value))}
+                                style={{ width: '100%', cursor: 'pointer' }}
+                            />
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1px' }}>
+                                <span style={{ fontSize: '8px', color: '#555' }}>SQR</span>
+                                <span style={{ fontSize: '8px', color: '#555' }}>SIN</span>
+                                <span style={{ fontSize: '8px', color: '#555' }}>TRI</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 
