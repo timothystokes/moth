@@ -15,6 +15,14 @@ import { registerModule, unregisterModule } from '../audio/audioEngine.js';
  *                       (exponent 1→0 as slider moves left; zero crossings stay sharp).
  *           Right half: linear crossfade from sine to triangle.
  *           Input socket: ±10V adds ±0.5 offset to the slider position.
+ *   DUTY  — controls rise/fall time ratio: time spent rising (trough→peak) vs
+ *           falling (peak→trough).
+ *           CONSTRAINT: duty MUST always split the cycle at the peak and trough.
+ *           It must never be applied at zero crossings or amplitude extremes
+ *           (i.e. it must not stretch the "top" or "bottom" of the wave).
+ *           Applied at full depth for all wave shapes.
+ *           Clamped to [5%–95%] so neither half ever disappears completely.
+ *           Input socket: ±10V adds ±0.5 offset to the slider position.
  *
  * Output: ±10V audio/CV signal
  *
@@ -25,6 +33,7 @@ function Oscillator({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isC
     const [frequency, setFrequency] = useState(220); // Hz — default A3
     const [amplitude, setAmplitude] = useState(0.5); // 0–1 (maps to 0–±10V peak)
     const [shape, setShape] = useState(0.5);         // 0=square, 0.5=sine, 1=triangle
+    const [dutyCycle, setDutyCycle] = useState(0.5);  // 0–1; 0.5=equal halves, 0/1=full asymmetry
 
     // Per-voice phase accumulator — keyed by voiceId (or 'default' for standalone use).
     // Stores { phase: radians 0..2π, lastTime: ms } so phase integrates Δt × freq
@@ -44,6 +53,7 @@ function Oscillator({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isC
             const freqModFn = inputFns?.['freq-input'];
             const ampModFn = inputFns?.['amp-input'];
             const shapeModFn = inputFns?.['shape-input'];
+            const dutyModFn  = inputFns?.['duty-input'];
             
             // Calculate final parameters with modulation
             let finalFreq = frequency;
@@ -87,6 +97,14 @@ function Oscillator({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isC
                 finalShape = Math.max(0, Math.min(1, shape + shapeModFn(time, voiceContext) / 20));
             }
 
+            // ── Duty cycle modulation ────────────────────────────────────────────
+            // ±10V maps to ±0.5 offset. Clamped to [0.05, 0.95] so neither
+            // half of the cycle ever vanishes completely.
+            let finalDuty = Math.max(0.05, Math.min(0.95, dutyCycle));
+            if (dutyModFn) {
+                finalDuty = Math.max(0.05, Math.min(0.95, dutyCycle + dutyModFn(time, voiceContext) / 20));
+            }
+
             // ── Phase accumulation ───────────────────────────────────────────────
             // Integrate Δphase = 2π × finalFreq × Δt each frame so that FM
             // modulation is proportional only to the modulation voltage, never
@@ -102,30 +120,35 @@ function Oscillator({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isC
             }
             phaseMapRef.current.set(voiceId, { phase: accPhase, lastTime: time });
 
-            const p = accPhase / (2 * Math.PI); // normalised phase 0–1
+            const p = accPhase / (2 * Math.PI); // normalised real-time phase 0–1
 
-            // ── Waveforms ────────────────────────────────────────────────────────
-            const sinVal = Math.sin(p * 2 * Math.PI);
+            // ── Duty-cycle time dilation ─────────────────────────────────────────
+            // CONSTRAINT: duty MUST split the cycle at the trough→peak and
+            // peak→trough transitions — never at zero crossings or amplitude
+            // extremes. This is enforced by the waveform alignment below.
+            //
+            // Two-slope linear ramp (no conditionals):
+            //   rising  half [0→d]   maps to pw [0→0.5]
+            //   falling half [d→1]   maps to pw [0.5→1]
+            const d = finalDuty;
+            const ps = (p + 0.25) % 1;
+            const pw = Math.min(ps / (2 * d), 0.5) + Math.max((ps - d) / (2 * (1 - d)), 0);
 
-            // Triangle: peak at p=0.25, trough at p=0.75
-            const triWave = p < 0.25 ?  p * 4
-                          : p < 0.75 ?  2 - p * 4
-                          :              p * 4 - 4;
+            // ── Waveforms (all computed on pw; trough at pw=0, peak at pw=0.5) ───
+            // CONSTRAINT: both functions must equal -1 at pw=0 (trough) and +1 at
+            // pw=0.5 (peak). This guarantees duty always splits at peak/trough, not
+            // at zero crossings or the top/bottom of the wave.
+            const sinVal = -Math.cos(pw * 2 * Math.PI);
+            const triWave = pw < 0.5 ? pw * 4 - 1 : 3 - pw * 4;
 
             // ── Blend: shape 0=square → 0.5=sine → 1=triangle ───────────────────
             let wave;
             if (finalShape <= 0.5) {
-                // Power-law waveshaper: fattens the peaks toward a square.
-                //   exponent = 1   → pure sine (shape = 0.5)
-                //   exponent → 0   → pure square (shape = 0)
-                // Zero crossings stay exactly at 0; peaks stay exactly at ±1.
-                // The wave spends progressively more real time near the top/bottom
-                // and less time crossing the boundary as shape moves left.
-                const squareness = (0.5 - finalShape) * 2; // 0 at sine, 1 at square
+                const squareness = (0.5 - finalShape) * 2;
                 const exponent = Math.max(0.001, 1 - squareness * 0.999);
                 wave = Math.sign(sinVal) * Math.pow(Math.abs(sinVal), exponent);
             } else {
-                const t = (finalShape - 0.5) * 2; // 0 at sine, 1 at triangle
+                const t = (finalShape - 0.5) * 2;
                 wave = sinVal * (1 - t) + triWave * t;
             }
             
@@ -138,7 +161,7 @@ function Oscillator({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isC
         return () => {
             unregisterModule(module.id);
         };
-    }, [module.id, frequency, amplitude, shape]);
+    }, [module.id, frequency, amplitude, shape, dutyCycle]);
     
     return (
         <div
@@ -293,6 +316,39 @@ function Oscillator({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isC
                     </div>
                 </div>
                 
+                {/* Duty Cycle Control with Port */}
+                <div style={{ marginBottom: '15px', position: 'relative' }}>
+                    <label style={{ fontSize: '10px', color: '#aaa', display: 'block', marginBottom: '5px' }}>
+                        {connections?.some(c => c.to.moduleId === module.id && c.to.outputId === 'duty-input')
+                            ? 'DUTY'
+                            : `DUTY: ${(dutyCycle * 100).toFixed(0)}%`}
+                    </label>
+                    <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                        <Port
+                            type="input"
+                            moduleId={module.id}
+                            portId="duty-input"
+                            onClick={(e) => {
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                onOutputClick(module.id, 'duty-input', {
+                                    x: rect.left + rect.width / 2,
+                                    y: rect.top + rect.height / 2
+                                });
+                            }}
+                            isConnecting={isConnecting}
+                        />
+                        <input
+                            type="range"
+                            min="0"
+                            max="1"
+                            step="0.01"
+                            value={dutyCycle}
+                            onChange={(e) => setDutyCycle(parseFloat(e.target.value))}
+                            style={{ width: '100%', cursor: 'pointer', marginLeft: '20px' }}
+                        />
+                    </div>
+                </div>
+
                 {/* Output Port */}
                 <div style={{ position: 'relative', marginTop: '10px' }}>
                     <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', position: 'relative' }}>
