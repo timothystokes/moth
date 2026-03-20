@@ -98,11 +98,11 @@ function Oscillator({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isC
             }
 
             // ── Duty cycle modulation ────────────────────────────────────────────
-            // ±10V maps to ±0.5 offset. Clamped to [0.05, 0.95] so neither
+            // ±10V maps to ±0.5 offset. Clamped to [0.02, 0.98] so neither
             // half of the cycle ever vanishes completely.
-            let finalDuty = Math.max(0.05, Math.min(0.95, dutyCycle));
+            let finalDuty = Math.max(0.02, Math.min(0.98, dutyCycle));
             if (dutyModFn) {
-                finalDuty = Math.max(0.05, Math.min(0.95, dutyCycle + dutyModFn(time, voiceContext) / 20));
+                finalDuty = Math.max(0.02, Math.min(0.98, dutyCycle + dutyModFn(time, voiceContext) / 20));
             }
 
             // ── Phase accumulation ───────────────────────────────────────────────
@@ -134,26 +134,36 @@ function Oscillator({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isC
             const ps = (p + 0.25) % 1;
             const pw = Math.min(ps / (2 * d), 0.5) + Math.max((ps - d) / (2 * (1 - d)), 0);
 
-                // ── Waveforms (all computed on pw; trough at pw=0, peak at pw=0.5) ───
-                // CONSTRAINT: both functions must equal -1 at pw=0 (trough) and +1 at
-                // pw=0.5 (peak). This guarantees duty always splits at peak/trough, not
-                // at zero crossings or the top/bottom of the wave.
-                const sineWave = -Math.cos(pw * 2 * Math.PI);
-                const triangleWave = pw < 0.5 ? pw * 4 - 1 : 3 - pw * 4;
+            // ── Waveforms (all computed on pw; trough at pw=0, peak at pw=0.5) ───
+            // CONSTRAINT: both functions must equal -1 at pw=0 (trough) and +1 at
+            // pw=0.5 (peak). This guarantees duty always splits at peak/trough, not
+            // at zero crossings or the top/bottom of the wave.
+            const sineWave = -Math.cos(pw * 2 * Math.PI);
+            const triangleWave = pw < 0.5 ? pw * 4 - 1 : 3 - pw * 4;
 
-                const squareness = finalShape <= 0.5 ? (0.5 - finalShape) * 2 : 0;
-                const exponent = Math.max(0.001, 1 - squareness * 0.999);
-                const squareWave = Math.sign(sineWave) * Math.pow(Math.abs(sineWave), exponent);
+            const squareness = finalShape <= 0.5 ? (0.5 - finalShape) * 2 : 0;
 
-                // ── Blend: shape 0=square → 0.5=sine → 1=triangle ───────────────────
-                let wave;
-                if (finalShape <= 0.5) {
-                    const squareToSine = finalShape * 2;
-                    wave = squareWave * (1 - squareToSine) + sineWave * squareToSine;
-                } else {
-                    const sineToTriangle = (finalShape - 0.5) * 2;
-                    wave = sineWave * (1 - sineToTriangle) + triangleWave * sineToTriangle;
-                }
+            // Square-only pulse width: as squareness increases, move from no
+            // top/bottom split (50/50) toward the full duty setting.
+            // Build the square window from pw so its high/low plateaus stay aligned
+            // to the same duty-adjusted peak/trough timing as sine/triangle.
+            const pulseWidthAmount = squareness;
+            const squareDuty = 0.5 + (d - 0.5) * pulseWidthAmount;
+            const squareWindowPhase = (pw - (0.5 - squareDuty / 2) + 1) % 1;
+            const squarePhase = Math.min(squareWindowPhase / (2 * squareDuty), 0.5) + Math.max((squareWindowPhase - squareDuty) / (2 * (1 - squareDuty)), 0);
+            const squareCarrier = Math.sin(squarePhase * 2 * Math.PI);
+            const leftHalfSine = sineWave * (1 - pulseWidthAmount) + squareCarrier * pulseWidthAmount;
+            const squareTargetWave = Math.sign(squareCarrier) * Math.pow(Math.abs(squareCarrier), 0.001);
+            const leftHalfWave = leftHalfSine * (1 - squareness) + squareTargetWave * squareness;
+
+            // ── Blend: shape 0=square → 0.5=sine → 1=triangle ───────────────────
+            let wave;
+            if (finalShape <= 0.5) {
+                wave = leftHalfWave;
+            } else {
+                const sineToTriangle = (finalShape - 0.5) * 2;
+                wave = sineWave * (1 - sineToTriangle) + triangleWave * sineToTriangle;
+            }
             
             // Scale to ±10V
             return wave * finalAmp * 10;
