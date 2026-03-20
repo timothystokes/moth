@@ -2,7 +2,7 @@
 // Manages a pool of voices that persist until their output reaches zero
 // Voices are reused when they become silent, not when notes are released
 
-const MAX_VOICES = 16; // Maximum polyphony
+const MAX_VOICES = 8; // Maximum polyphony
 
 // Voice states
 const VOICE_FREE = 'free';       // Available for allocation
@@ -11,6 +11,9 @@ const VOICE_RELEASE = 'release'; // Note released (gate = -1) but still audible
 
 // Configuration
 let gateMonitoringEnabled = false; // If false, voices become FREE immediately on release
+let nextVoiceIndex = 0;
+let keyboardLatchModeEnabled = false;
+const KEYBOARD_LATCH_VOICE_INDEX = 0;
 
 // Voice pool
 const voices = [];
@@ -30,80 +33,135 @@ for (let i = 0; i < MAX_VOICES; i++) {
     });
 }
 
-// Note tracking: noteNumber -> voiceId
+// Note tracking: noteNumber -> [voiceId, ...]
 const noteToVoiceMap = new Map();
+
+function addVoiceMapping(noteNumber, voiceId) {
+    const voiceIds = noteToVoiceMap.get(noteNumber) ?? [];
+    voiceIds.push(voiceId);
+    noteToVoiceMap.set(noteNumber, voiceIds);
+}
+
+function removeVoiceMapping(noteNumber, voiceId) {
+    if (noteNumber === null || noteNumber === undefined) {
+        return;
+    }
+
+    const voiceIds = noteToVoiceMap.get(noteNumber);
+    if (!voiceIds) {
+        return;
+    }
+
+    const nextVoiceIds = voiceIds.filter(id => id !== voiceId);
+    if (nextVoiceIds.length > 0) {
+        noteToVoiceMap.set(noteNumber, nextVoiceIds);
+    } else {
+        noteToVoiceMap.delete(noteNumber);
+    }
+}
+
+function clearVoice(voice) {
+    removeVoiceMapping(voice.noteNumber, voice.voiceId);
+    voice.state = VOICE_FREE;
+    voice.noteNumber = null;
+    voice.velocity = 0;
+    voice.gate = 0;
+    voice.cv = 0;
+    voice.noteOnTime = 0;
+    voice.lastOutputLevel = 0;
+    voice.silentSampleCount = 0;
+}
+
+function claimRoundRobinVoice() {
+    const startIndex = nextVoiceIndex;
+
+    for (let offset = 0; offset < MAX_VOICES; offset++) {
+        const index = (startIndex + offset) % MAX_VOICES;
+        const voice = voices[index];
+        if (voice.state === VOICE_FREE) {
+            nextVoiceIndex = (index + 1) % MAX_VOICES;
+            return voice;
+        }
+    }
+
+    for (let offset = 0; offset < MAX_VOICES; offset++) {
+        const index = (startIndex + offset) % MAX_VOICES;
+        const voice = voices[index];
+        if (voice.state === VOICE_RELEASE) {
+            nextVoiceIndex = (index + 1) % MAX_VOICES;
+            return voice;
+        }
+    }
+
+    const voice = voices[startIndex];
+    nextVoiceIndex = (startIndex + 1) % MAX_VOICES;
+    return voice;
+}
+
+function getKeyboardLatchVoice() {
+    return voices[KEYBOARD_LATCH_VOICE_INDEX];
+}
+
+export function setKeyboardLatchMode(enabled) {
+    keyboardLatchModeEnabled = enabled;
+
+    if (!enabled) {
+        const latchedVoice = getKeyboardLatchVoice();
+        if (latchedVoice && latchedVoice.gate <= 0) {
+            clearVoice(latchedVoice);
+        }
+    }
+}
+
+export function isKeyboardLatchModeEnabled() {
+    return keyboardLatchModeEnabled;
+}
 
 // Allocate a voice for a note
 export function allocateVoice(noteNumber, velocity) {
-    // Check if this note is already playing (retriggering)
-    if (noteToVoiceMap.has(noteNumber)) {
-        const voiceId = noteToVoiceMap.get(noteNumber);
-        const voice = voices.find(v => v.voiceId === voiceId);
-        if (voice) {
-            // Retrigger: reset the voice with new velocity
-            voice.state = VOICE_ACTIVE;
-            voice.velocity = velocity;
-            voice.gate = velocity;
-            voice.cv = (noteNumber - 36) / 12; // 1V/octave, C2=0V
-            voice.noteOnTime = performance.now();
-            voice.silentSampleCount = 0;
-            return voice.voiceId;
-        }
-    }
-    
-    // Find a free voice
-    let targetVoice = voices.find(v => v.state === VOICE_FREE);
-    
-    // If no free voice, try to steal a releasing voice
-    if (!targetVoice) {
-        targetVoice = voices.find(v => v.state === VOICE_RELEASE);
-    }
-    
-    // If still no voice, steal the oldest active voice
-    if (!targetVoice) {
-        targetVoice = voices.reduce((oldest, v) => 
-            v.noteOnTime < oldest.noteOnTime ? v : oldest
-        );
-        // Remove old note mapping
-        if (targetVoice.noteNumber !== null) {
-            noteToVoiceMap.delete(targetVoice.noteNumber);
-        }
-    }
-    
-    // Allocate voice
+    const targetVoice = keyboardLatchModeEnabled
+        ? getKeyboardLatchVoice()
+        : claimRoundRobinVoice();
+
+    clearVoice(targetVoice);
+
     targetVoice.state = VOICE_ACTIVE;
     targetVoice.noteNumber = noteNumber;
     targetVoice.velocity = velocity;
     targetVoice.gate = velocity;
-    targetVoice.cv = (noteNumber - 36) / 12; // 1V/octave, C2=0V
+    targetVoice.cv = (noteNumber - 69) / 12; // 1V/octave, A4=0V
     targetVoice.noteOnTime = performance.now();
     targetVoice.silentSampleCount = 0;
-    
-    noteToVoiceMap.set(noteNumber, targetVoice.voiceId);
+
+    addVoiceMapping(noteNumber, targetVoice.voiceId);
     
     return targetVoice.voiceId;
 }
 
 // Release a note (set gate to -1 but keep voice allocated)
 export function releaseNote(noteNumber) {
-    const voiceId = noteToVoiceMap.get(noteNumber);
+    const voiceIds = noteToVoiceMap.get(noteNumber);
+    const voiceId = voiceIds?.[voiceIds.length - 1];
     if (!voiceId) return;
-    
+
     const voice = voices.find(v => v.voiceId === voiceId);
-    if (voice && voice.state === VOICE_ACTIVE) {
-        voice.gate = 0; // Gate off (0 = off, 0-1 = velocity)
-        
-        if (gateMonitoringEnabled) {
-            // Gate is being used by envelope/VCA - keep voice allocated until silent
-            voice.state = VOICE_RELEASE;
-        } else {
-            // No gate monitoring - voice becomes FREE immediately but keeps playing
-            // Remove from note mapping so it can be stolen by next note
-            noteToVoiceMap.delete(noteNumber);
-            voice.state = VOICE_FREE;
-            voice.noteNumber = null;
-            // Note: CV and other params stay the same so oscillator keeps playing
-        }
+    if (!voice || voice.state === VOICE_FREE) {
+        removeVoiceMapping(noteNumber, voiceId);
+        return;
+    }
+
+    removeVoiceMapping(noteNumber, voiceId);
+    voice.gate = 0;
+
+    if (keyboardLatchModeEnabled && voice.voiceId === getKeyboardLatchVoice().voiceId) {
+        voice.state = VOICE_ACTIVE;
+        return;
+    }
+
+    if (gateMonitoringEnabled) {
+        voice.state = VOICE_RELEASE;
+    } else {
+        clearVoice(voice);
     }
 }
 
@@ -137,15 +195,7 @@ export function updateVoiceOutput(voiceId, outputLevel) {
             
             if (voice.silentSampleCount >= SILENCE_SAMPLES_REQUIRED) {
                 // Voice is truly silent, deallocate it
-                if (voice.noteNumber !== null) {
-                    noteToVoiceMap.delete(voice.noteNumber);
-                }
-                voice.state = VOICE_FREE;
-                voice.noteNumber = null;
-                voice.velocity = 0;
-                voice.gate = 0;
-                voice.cv = 0;
-                voice.silentSampleCount = 0;
+                clearVoice(voice);
                 return true; // Voice was freed
             }
         } else {
@@ -160,18 +210,7 @@ export function updateVoiceOutput(voiceId, outputLevel) {
 // Get all active and releasing voices (for amplifier to process)
 export function getActiveVoices() {
     return voices
-        .filter(v => {
-            // Include ACTIVE and RELEASE voices
-            if (v.state === VOICE_ACTIVE || v.state === VOICE_RELEASE) {
-                return true;
-            }
-            // Also include FREE voices that are still playing (have been used)
-            // This happens when gate monitoring is disabled - voice is FREE but keeps playing
-            if (v.state === VOICE_FREE && v.cv !== 0) {
-                return true;
-            }
-            return false;
-        })
+        .filter(v => v.state === VOICE_ACTIVE || v.state === VOICE_RELEASE)
         .map(v => ({
             voiceId: v.voiceId,
             noteNumber: v.noteNumber,
@@ -200,9 +239,13 @@ export function getVoice(voiceId) {
 // Force release all voices (panic)
 export function releaseAllVoices() {
     voices.forEach(voice => {
-        if (voice.state === VOICE_ACTIVE) {
-            voice.state = VOICE_RELEASE;
+        if (voice.state === VOICE_ACTIVE || voice.state === VOICE_RELEASE) {
             voice.gate = 0;
+            if (gateMonitoringEnabled) {
+                voice.state = VOICE_RELEASE;
+            } else {
+                clearVoice(voice);
+            }
         }
     });
 }

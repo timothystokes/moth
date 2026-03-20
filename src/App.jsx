@@ -4,7 +4,14 @@ import Oscillator from './components/Oscillator.jsx';
 import Filter from './components/Filter.jsx';
 import Keyboard from './components/Keyboard.jsx';
 import RandomVoltageGenerator from './components/RandomVoltageGenerator.jsx';
+import Envelope from './components/Envelope.jsx';
+import Mixer from './components/Mixer.jsx';
+import Multi from './components/Multi.jsx';
 import { connectModules, disconnectInput } from './audio/audioEngine.js';
+
+function getDestinationModuleIds(moduleId, inputPort) {
+    return [moduleId];
+}
 
 function App() {
     const [modules, setModules] = useState([
@@ -135,7 +142,9 @@ function App() {
             
             if (existingConnection) {
                 // Remove the existing connection first
-                disconnectInput(existingConnection.to.moduleId, existingConnection.to.outputId);
+                getDestinationModuleIds(existingConnection.to.moduleId, existingConnection.to.outputId).forEach(destinationModuleId => {
+                    disconnectInput(destinationModuleId, existingConnection.to.outputId);
+                });
                 setConnections(prev => prev.filter(c => c.id !== existingConnection.id));
             }
             
@@ -156,13 +165,20 @@ function App() {
                 } else if (outputPort === 'gate-out') {
                     sourceModuleId = 'keyboard-singleton-gate';
                 }
+            } else if (outputPort === 'output-a' || outputPort === 'output-b') {
+                const sourceModule = modules.find(m => m.id === outputModule);
+                sourceModuleId = sourceModule?.type === 'multi'
+                    ? outputModule
+                    : `${outputModule}-${outputPort}`;
             }
             
-            connectModules(
-                sourceModuleId,  // source (output)
-                inputModule,     // destination (input)
-                inputPort        // input name on destination
-            );
+            getDestinationModuleIds(inputModule, inputPort).forEach(destinationModuleId => {
+                connectModules(
+                    sourceModuleId,
+                    destinationModuleId,
+                    inputPort
+                );
+            });
             
             setConnectingFrom(null);
             setTempConnection(null);
@@ -178,7 +194,9 @@ function App() {
             
             if (existingConnection) {
                 // Remove existing connection and start new one
-                disconnectInput(existingConnection.to.moduleId, existingConnection.to.outputId);
+                getDestinationModuleIds(existingConnection.to.moduleId, existingConnection.to.outputId).forEach(destinationModuleId => {
+                    disconnectInput(destinationModuleId, existingConnection.to.outputId);
+                });
                 setConnections(prev => prev.filter(c => c.id !== existingConnection.id));
             }
             
@@ -219,13 +237,20 @@ function App() {
         const connection = connections.find(c => c.id === connectionId);
         if (connection) {
             // Remove direct function reference in audio engine
-            disconnectInput(connection.to.moduleId, connection.to.outputId);
+            getDestinationModuleIds(connection.to.moduleId, connection.to.outputId).forEach(destinationModuleId => {
+                disconnectInput(destinationModuleId, connection.to.outputId);
+            });
         }
         setConnections(prev => prev.filter(c => c.id !== connectionId));
     };
 
     const amplifierModule = modules.find(m => m.type === 'amplifier');
     const keyboardModule = modules.find(m => m.type === 'keyboard');
+    const envelopeModuleIds = new Set(modules.filter(m => m.type === 'envelope').map(m => m.id));
+    const hasEnvelopeConnection = connections.some(c => envelopeModuleIds.has(c.from.moduleId));
+    const hasKeyboardGateOutputConnection = connections.some(
+        c => c.from.moduleId === 'keyboard-singleton' && c.from.outputId === 'gate-out'
+    );
     
     const togglePower = () => {
         setIsPoweredOn(prev => !prev);
@@ -321,6 +346,7 @@ function App() {
                         isConnecting={connectingFrom?.moduleId === 'keyboard-singleton'}
                         audioContext={audioContext}
                         isFixed={true}
+                        hasGateOutputConnection={hasKeyboardGateOutputConnection}
                     />
                 </div>
             )}
@@ -362,6 +388,7 @@ function App() {
                         audioContext={audioContext}
                         setAudioContext={setAudioContext}
                         connections={connections}
+                        hasEnvelopeConnection={hasEnvelopeConnection}
                         isFixed={true}
                         isPoweredOn={isPoweredOn}
                     />
@@ -398,6 +425,12 @@ function Toolbar({ addModule, isPoweredOn, togglePower }) {
             </button>
             <button onClick={() => addModule('random')} style={buttonStyle}>
                 + Random
+            </button>
+            <button onClick={() => addModule('mixer')} style={buttonStyle}>
+                + Mixer
+            </button>
+            <button onClick={() => addModule('multi')} style={buttonStyle}>
+                + Multi
             </button>
             <div style={{ marginLeft: 'auto' }}>
                 <button 
@@ -497,6 +530,47 @@ function Canvas({
                             isConnecting={connectingFrom?.moduleId === module.id}
                             audioContext={audioContext}
                             connections={connections}
+                        />
+                    );
+                }
+
+                if (module.type === 'envelope') {
+                    return (
+                        <Envelope
+                            key={module.id}
+                            module={module}
+                            onDragStart={onModuleDragStart}
+                            onDrag={onModuleDrag}
+                            onDragEnd={onModuleDragEnd}
+                            onOutputClick={onOutputClick}
+                            isConnecting={connectingFrom?.moduleId === module.id}
+                            audioContext={audioContext}
+                            connections={connections}
+                        />
+                    );
+                }
+
+                if (module.type === 'mixer') {
+                    return (
+                        <Mixer
+                            key={module.id}
+                            module={module}
+                            onDragStart={onModuleDragStart}
+                            onOutputClick={onOutputClick}
+                            isConnecting={connectingFrom?.moduleId === module.id}
+                            connections={connections}
+                        />
+                    );
+                }
+
+                if (module.type === 'multi') {
+                    return (
+                        <Multi
+                            key={module.id}
+                            module={module}
+                            onDragStart={onModuleDragStart}
+                            onOutputClick={onOutputClick}
+                            isConnecting={connectingFrom?.moduleId === module.id}
                         />
                     );
                 }

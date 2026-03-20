@@ -35,9 +35,15 @@ export function registerModule(moduleId, processorFn) {
         // Get input functions
         const inputFns = moduleInputFunctions.get(moduleId) || {};
         
-        // Wrap input functions to pass voiceContext
+        // Wrap only active input functions. If the source module no longer exists,
+        // omit that input entirely so processors fall back to their slider/default
+        // values exactly as if the cable had been unplugged.
         const wrappedInputFns = {};
         for (const [inputName, inputFn] of Object.entries(inputFns)) {
+            const sourceModuleId = inputFn.__sourceModuleId;
+            if (sourceModuleId && !moduleOutputFunctions.has(sourceModuleId)) {
+                continue;
+            }
             wrappedInputFns[inputName] = (t, vc) => inputFn(t, vc || voiceContext);
         }
         
@@ -73,6 +79,7 @@ export function connectModules(fromModuleId, toModuleId, inputName) {
         const sourceFn = moduleOutputFunctions.get(fromModuleId);
         return sourceFn ? sourceFn(time, voiceContext) : 0;
     };
+    wrapperFn.__sourceModuleId = fromModuleId;
     
     moduleInputFunctions.get(toModuleId)[inputName] = wrapperFn;
 }

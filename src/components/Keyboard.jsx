@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { addVirtualNote, removeVirtualNote, initializeMIDI } from '../audio/midiManager.js';
+import { addVirtualNote, removeVirtualNote, initializeMIDI, onNoteOn } from '../audio/midiManager.js';
 import { registerModule, unregisterModule } from '../audio/audioEngine.js';
-import { getActiveVoices } from '../audio/voiceAllocator.js';
+import { setKeyboardLatchMode } from '../audio/voiceAllocator.js';
 
-function Keyboard({ module, onOutputClick, isConnecting, audioContext, isFixed }) {
+function Keyboard({ module, onOutputClick, isConnecting, audioContext, isFixed, hasGateOutputConnection }) {
     // Musical keyboard state - just for UI display now
     const [activeNote, setActiveNote] = useState(null); // { noteNumber, velocity }
     const [hoveredKey, setHoveredKey] = useState(null);
     const activeNoteRef = useRef(null); // Track active note for mouse up handler
+    const lastPressedCvRef = useRef(0);
     
     // Initialize MIDI on mount
     useEffect(() => {
@@ -17,6 +18,14 @@ function Keyboard({ module, onOutputClick, isConnecting, audioContext, isFixed }
             }
         });
     }, []);
+
+    useEffect(() => {
+        setKeyboardLatchMode(!hasGateOutputConnection);
+
+        return () => {
+            setKeyboardLatchMode(false);
+        };
+    }, [hasGateOutputConnection]);
     
     // Define keyboard layout: 88 keys (A0 to C8) - full piano range
     // Note numbers: A0=21 (MIDI), C8=108
@@ -41,26 +50,49 @@ function Keyboard({ module, onOutputClick, isConnecting, audioContext, isFixed }
     
     // Reverse for vertical display (high notes at top)
     notes.reverse();
-    
-    // Register gate output as a module
+
     useEffect(() => {
+        const unsubscribeNoteOn = onNoteOn(({ noteNumber, velocity }) => {
+            lastPressedCvRef.current = (noteNumber - 69) / 12;
+            setActiveNote({ noteNumber, velocity });
+        });
+
+        return () => {
+            unsubscribeNoteOn();
+        };
+    }, []);
+    
+    // Register CV and gate outputs as modules.
+    // CV is 1V/octave with A4 = 0V. Gate returns the held note velocity (0–1).
+    useEffect(() => {
+        const cvProcessor = (time, voiceContext, inputFns) => {
+            if (voiceContext) {
+                return voiceContext.cv;
+            }
+
+            return hasGateOutputConnection ? 0 : lastPressedCvRef.current;
+        };
+
         // Gate output: returns gate value for the voice being processed
         // Each voice gets its own gate value from voiceContext
         const gateProcessor = (time, voiceContext, inputFns) => {
-            return voiceContext.gate; // Return per-voice gate value (0 to 1)
+            return voiceContext?.gate ?? 0; // Return per-voice gate value (0 to 1)
         };
         
+        registerModule(module.id + '-cv', cvProcessor);
         registerModule(module.id + '-gate', gateProcessor);
         
         return () => {
+            unregisterModule(module.id + '-cv');
             unregisterModule(module.id + '-gate');
         };
-    }, [module.id]);
+    }, [module.id, hasGateOutputConnection]);
     
     const handleMouseDown = (note) => {
         const noteData = { noteNumber: note.noteNumber, velocity: 0.8 };
         setActiveNote(noteData);
         activeNoteRef.current = noteData;
+        lastPressedCvRef.current = (note.noteNumber - 69) / 12;
         addVirtualNote(note.noteNumber, 0.8);
     };
     

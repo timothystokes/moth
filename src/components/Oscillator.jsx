@@ -7,21 +7,24 @@ import { registerModule, unregisterModule } from '../audio/audioEngine.js';
  * Controls:
  *   FREQ  — logarithmic 0.1 Hz–2000 Hz slider (good for LFO through audio range)
  *           Input socket: 1V/octave relative offset on top of the slider value.
- *           When driven by a keyboard/voice CV the slider acts as a transpose.
+ *           Keyboard pitch only affects the oscillator when patched into this
+ *           socket. 0V maps to A4 = 440Hz, so the slider stays the base tuning
+ *           and incoming CV applies a relative offset around that reference.
  *   AMP   — output level 0–1 (maps to ±10V peak output)
  *           Input socket: gate (0–1) acts as VCA; CV (±10V) adds an offset.
  *   SHAPE — morphs SQR ← SIN → TRI
- *           Left half:  power-law waveshaper fattens sine peaks into a square
- *                       (exponent 1→0 as slider moves left; zero crossings stay sharp).
+ *           Left half:  sine progressively adopts square-style pulse width and
+ *                       blends into a softly-edged square target.
  *           Right half: linear crossfade from sine to triangle.
  *           Input socket: ±10V adds ±0.5 offset to the slider position.
  *   DUTY  — controls rise/fall time ratio: time spent rising (trough→peak) vs
- *           falling (peak→trough).
+ *           falling (peak→trough). On the SQR←SIN side, square-style pulse width
+ *           is introduced gradually as shape moves toward square.
  *           CONSTRAINT: duty MUST always split the cycle at the peak and trough.
  *           It must never be applied at zero crossings or amplitude extremes
  *           (i.e. it must not stretch the "top" or "bottom" of the wave).
  *           Applied at full depth for all wave shapes.
- *           Clamped to [5%–95%] so neither half ever disappears completely.
+ *           Clamped to [2%–98%] so neither half ever disappears completely.
  *           Input socket: ±10V adds ±0.5 offset to the slider position.
  *
  * Output: ±10V audio/CV signal
@@ -30,7 +33,7 @@ import { registerModule, unregisterModule } from '../audio/audioEngine.js';
  * depth is controlled purely by the modulator's amplitude — no time-drift artefacts.
  */
 function Oscillator({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isConnecting, audioContext, connections }) {
-    const [frequency, setFrequency] = useState(220); // Hz — default A3
+    const [frequency, setFrequency] = useState(440); // Hz — default A4
     const [amplitude, setAmplitude] = useState(0.5); // 0–1 (maps to 0–±10V peak)
     const [shape, setShape] = useState(0.5);         // 0=square, 0.5=sine, 1=triangle
     const [dutyCycle, setDutyCycle] = useState(0.5);  // 0–1; 0.5=equal halves, 0/1=full asymmetry
@@ -44,7 +47,7 @@ function Oscillator({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isC
     useEffect(() => {
         const oscillatorProcessor = (time, voiceContext, inputFns) => {
             // voiceContext = { cv, gate, velocity, voiceId }
-            //   cv:       1V/octave pitch (C2 = 0V, each +1V = +1 octave)
+            //   cv:       available voice pitch CV (not applied unless patched to FREQ)
             //   gate:     0–1 velocity when note is on, absent when off
             //   velocity: 0–1 normalised note velocity
             //   voiceId:  unique id per polyphonic voice
@@ -60,21 +63,14 @@ function Oscillator({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isC
             
             // ── Frequency ────────────────────────────────────────────────────────
             // Freq socket is a 1V/octave relative nudge on top of the slider.
-            // ÷10 scales the engine's ±10V range so that a modulator at amplitude
-            // 0.1 (→ ±1V) produces ±1 semitone vibrato — amplitude is depth.
-            const freqNudgeOctaves = freqModFn ? freqModFn(time, voiceContext) / 10 : 0;
+            // Keyboard CV patched here already provides 1V/octave directly, so the
+            // incoming voltage is used as the relative octave offset.
+            const freqNudgeOctaves = freqModFn ? freqModFn(time, voiceContext) : 0;
 
-            // With voice CV (keyboard): slider is transpose, socket adds fine pitch mod.
-            // Without voice CV: socket offsets the slider frequency directly.
-            if (voiceContext && voiceContext.cv !== undefined) {
-                const cvVoltage = voiceContext.cv; // 1V/octave CV
-                const referenceFreq = 65.41; // C2 (MIDI note 36)
-                const sliderOffset = Math.log2(frequency / referenceFreq); // Slider as transpose
-                finalFreq = referenceFreq * Math.pow(2, cvVoltage + sliderOffset + freqNudgeOctaves);
-            } else {
-                // No voice CV — socket nudges the slider frequency
-                finalFreq = frequency * Math.pow(2, freqNudgeOctaves);
-            }
+            // Frequency changes only through the wired FREQ input.
+            // 0V at the input corresponds to no change, so a keyboard patched here
+            // naturally aligns A4 (0V) with the default 440Hz slider position.
+            finalFreq = frequency * Math.pow(2, freqNudgeOctaves);
             
             // ── Amplitude ────────────────────────────────────────────────────────
             let finalAmp = amplitude;
@@ -143,17 +139,20 @@ function Oscillator({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isC
 
             const squareness = finalShape <= 0.5 ? (0.5 - finalShape) * 2 : 0;
 
-            // Square-only pulse width: as squareness increases, move from no
-            // top/bottom split (50/50) toward the full duty setting.
-            // Build the square window from pw so its high/low plateaus stay aligned
-            // to the same duty-adjusted peak/trough timing as sine/triangle.
+            // Square-side pulse width: as squareness increases, move from no
+            // top/bottom split (50/50) toward the full duty setting while keeping
+            // the square plateaus aligned to the same duty-adjusted phase basis.
             const pulseWidthAmount = squareness;
             const squareDuty = 0.5 + (d - 0.5) * pulseWidthAmount;
             const squareWindowPhase = (pw - (0.5 - squareDuty / 2) + 1) % 1;
             const squarePhase = Math.min(squareWindowPhase / (2 * squareDuty), 0.5) + Math.max((squareWindowPhase - squareDuty) / (2 * (1 - squareDuty)), 0);
             const squareCarrier = Math.sin(squarePhase * 2 * Math.PI);
+            // On the left half, the sine first adopts the same pulse-width timing,
+            // then blends toward the square target as squareness increases.
             const leftHalfSine = sineWave * (1 - pulseWidthAmount) + squareCarrier * pulseWidthAmount;
-            const squareTargetWave = Math.sign(squareCarrier) * Math.pow(Math.abs(squareCarrier), 0.001);
+            const squareEdgeSmoothingAmount = 0.5;
+            const squareEdgeExponent = 0.001 + (1 - squareness) * squareEdgeSmoothingAmount;
+            const squareTargetWave = Math.sign(squareCarrier) * Math.pow(Math.abs(squareCarrier), squareEdgeExponent);
             const leftHalfWave = leftHalfSine * (1 - squareness) + squareTargetWave * squareness;
 
             // ── Blend: shape 0=square → 0.5=sine → 1=triangle ───────────────────

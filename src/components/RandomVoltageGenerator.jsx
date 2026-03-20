@@ -12,13 +12,13 @@ function RandomVoltageGenerator({ module, onDragStart, onDrag, onDragEnd, onOutp
             // Get rate modulation input if connected
             const rateModFn = inputFns?.['rate-input'];
             
-            // Calculate final rate with modulation
+            // Calculate final rate with modulation.
+            // Uses the same logarithmic slider shape as oscillator frequency, with
+            // socket CV applied as a relative exponential nudge (scaled so ±10V = ±1 octave).
             let finalRate = rate;
-            if (rateModFn) {
-                const modVoltage = rateModFn(time, voiceContext); // ±10V
-                finalRate = rate + (modVoltage / 2); // Add ±5Hz adjustment
-                finalRate = Math.max(0.1, Math.min(100, finalRate)); // Clamp 0.1-100Hz
-            }
+            const rateNudgeOctaves = rateModFn ? rateModFn(time, voiceContext) / 10 : 0;
+            finalRate = rate * Math.pow(2, rateNudgeOctaves);
+            finalRate = Math.max(0.1, Math.min(2000, finalRate));
             
             // Calculate time interval for this rate
             const intervalMs = 1000 / finalRate;
@@ -85,7 +85,7 @@ function RandomVoltageGenerator({ module, onDragStart, onDrag, onDragEnd, onOutp
                     <label style={{ fontSize: '10px', color: '#aaa', display: 'block', marginBottom: '5px' }}>
                         {connections?.some(c => c.to.moduleId === module.id && c.to.outputId === 'rate-input') 
                             ? 'RATE' 
-                            : `RATE: ${rate.toFixed(1)}Hz`}
+                            : `RATE: ${rate < 10 ? rate.toFixed(2) : rate < 100 ? rate.toFixed(1) : rate.toFixed(0)}Hz`}
                     </label>
                     <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
                         <Port 
@@ -103,11 +103,11 @@ function RandomVoltageGenerator({ module, onDragStart, onDrag, onDragEnd, onOutp
                         />
                         <input
                             type="range"
-                            min="0.1"
-                            max="50"
-                            step="0.1"
-                            value={rate}
-                            onChange={(e) => setRate(parseFloat(e.target.value))}
+                            min="0"
+                            max="1"
+                            step="0.001"
+                            value={Math.log(rate / 0.1) / Math.log(2000 / 0.1)}
+                            onChange={(e) => setRate(0.1 * Math.pow(2000 / 0.1, parseFloat(e.target.value)))}
                             style={{
                                 width: '100%',
                                 cursor: 'pointer',

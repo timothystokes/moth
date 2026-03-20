@@ -10,21 +10,32 @@ Web-based modular synthesiser built with React and Vite.
 
 ### Goals & Objectives
 - [x] Oscillator with sliders and inputs for frequency, amplitude, and shape. Output: audio (±10V)
-    - Shape blends continuously: sawtooth (0) → square (0.5) → sine (1)
+    - Shape blends continuously: square (0) → sine (0.5) → triangle (1)
+    - Frequency slider defaults to A4 = 440Hz
+    - Keyboard CV affects oscillator pitch only when patched into the FREQ input
+    - FREQ input is a relative exponential pitch offset around the slider value
     - Amplitude input detects signal type by value range: gate signals (0–1) multiply slider value (VCA behaviour), CV signals (outside 0–1) add offset
     - When gate connected, slider sets maximum amplitude; gate acts as volume control multiplier
+    - Duty control is clamped to 2%–98% and always applies on a peak/trough-aligned phase basis
+    - On the SQR←SIN side, square-style pulse width is introduced gradually as shape moves toward square
 - [x] Filter with low-pass/high-pass switch. Inputs: audio, cutoff, resonance. Output: audio
     - State variable filter (second-order) for proper resonance peaks
     - Cutoff slider uses exponential scaling (reversed direction) for musical feel
     - Maintains separate filter state per voice for clean polyphonic operation
 - [x] Random Voltage Generator with rate slider and rate CV input. Output: random voltage (±10V)
-    - Generates random values between −10V and +10V at adjustable rate (0.1–50 Hz)
-    - Rate can be modulated via CV input (clamped 0.1–100 Hz when modulated)
-- [ ] Envelope generator with 4 sliders (ADSR), 4 inputs, and 1 output
+    - Generates random values between −10V and +10V at adjustable rate (0.1–2000 Hz)
+    - Rate slider uses the same logarithmic mapping as oscillator frequency
+    - Rate CV applies a relative exponential nudge (scaled so ±10V = ±1 octave)
+- [x] Envelope generator with 4 sliders (ADSR), 4 CV inputs, and 1 output
+    - Triggered from an explicit `GATE IN` input
+    - Attack, decay, and release use logarithmic time sliders and relative exponential CV nudges
+    - Sustain uses a 0–1 slider with additive CV offset
+    - Output is 0–1, intended for VCA / amplitude modulation and other control uses
+    - When any envelope output is connected, released voices remain active until the envelope reaches silence
 - [x] Virtual Keyboard (singleton, fixed left panel)
     - 88 keys (A0 to C8) in vertical orientation with proper black/white layout
     - Integrated with Web MIDI API for hardware controller support
-    - Outputs: CV (1V/octave) and Gate (0–1 per voice from voiceContext)
+    - Outputs: CV (1V/octave, A4 / MIDI 69 = 0V) and Gate (0–1 per voice from voiceContext)
     - Virtual notes triggered via mouse click or MIDI input
 - [x] Web MIDI API Integration
     - Automatic MIDI device detection and connection
@@ -50,7 +61,7 @@ Web-based modular synthesiser built with React and Vite.
 
 ### Signal Model
 All inter-module signals are pseudo-voltages evaluated as pure functions over time:
-- **1V/octave** for pitch CV (C2 / MIDI 36 = 0V)
+- **1V/octave** for pitch CV (A4 / MIDI 69 = 0V)
 - **±10V** for audio signals
 - **0–1** for gate values (0 = off, velocity value when held)
 - **0–1** for velocity values
@@ -67,6 +78,7 @@ All audio processing functions use: `(time, voiceContext, inputFns) => outputVal
 - Modules register a processor function via `registerModule(id, processorFn)`
 - Connections create wrapper functions that look up the current module output function, allowing modules to re-register with updated parameters without breaking connections
 - Per-voice output caching using `${time}-${voiceId}-${moduleId}` keys; cache clears each time step
+- If a connection's source module no longer exists, that input is omitted so the destination falls back to its slider/default value exactly as if unplugged
 - Only the Amplifier uses the Web Audio API (`AudioContext`). All other modules are pure math
 
 ### Polyphonic Voice Architecture (`voiceAllocator.js`)
@@ -81,6 +93,7 @@ All audio processing functions use: `(time, voiceContext, inputFns) => outputVal
     4. **Voice stealing:** if all voices busy, steal a releasing voice first, then the oldest active voice
 - `getActiveVoices()` returns `ACTIVE`, `RELEASE`, and `FREE` voices that still have a non-zero CV (for gate-monitoring-disabled mode where freed voices keep sounding)
 - Gate monitoring is currently always disabled; intended to be enabled automatically when envelope generators are connected
+- Voice CV uses A4 / MIDI 69 = 0V so patched oscillator FREQ inputs align naturally with a 440Hz base tuning
 
 ### Amplifier Voice Processing
 - Loops through all voices from `getActiveVoices()`
@@ -89,9 +102,12 @@ All audio processing functions use: `(time, voiceContext, inputFns) => outputVal
 - Mixes voices with `1/sqrt(n)` scaling to prevent clipping
 - Falls back to non-voice mode (null voiceContext) when no voices are active, allowing LFOs and other global modulators to be heard
 - Amplitude CV detection: uses module ID (checks for `-gate` suffix) to distinguish gate signals (multiply) from standard CV (add offset)
+- Enables gate monitoring only when an envelope output is actually connected into the patch
 
 ### Gate Signal Handling
+- Keyboard registers both a CV output module (`keyboard-singleton-cv`) and a gate output module (`keyboard-singleton-gate`)
 - Keyboard registers a gate output module (`keyboard-singleton-gate`) that returns `voiceContext.gate` per voice
+- Envelope modules require a dedicated `GATE IN` socket; patch keyboard `GATE OUT` here to start ADSR cycles
 - Oscillator amplitude input uses value-range detection: values in 0–1 multiply (VCA), values outside that range add offset (CV)
 - These two detection methods (ID-based in amplifier, value-based in oscillator) are independent implementations
 
@@ -126,3 +142,4 @@ All audio processing functions use: `(time, voiceContext, inputFns) => outputVal
 - Slider labels show the current value only when unconnected; when connected, just the parameter name is shown
 - Sliders do not visually move in response to incoming CV — they act as offsets/multipliers for the signal stream
 - Oscillator frequency range goes down to 0.1 Hz, allowing use as an LFO
+- Random generator rate uses the same logarithmic slider range and formatting as oscillator frequency
