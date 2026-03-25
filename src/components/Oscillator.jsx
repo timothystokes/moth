@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { registerModule, unregisterModule } from '../audio/audioEngine.js';
+import { getModuleState, registerModule } from '../audio/audioEngine.js';
 
 /**
  * Oscillator module
@@ -11,7 +11,8 @@ import { registerModule, unregisterModule } from '../audio/audioEngine.js';
  *           socket. 0V maps to A4 = 440Hz, so the slider stays the base tuning
  *           and incoming CV applies a relative offset around that reference.
  *   AMP   — output level 0–1 (maps to ±10V peak output)
- *           Input socket: gate (0–1) acts as VCA; CV (±10V) adds an offset.
+ *           Input socket: gate / envelope signals in 0–5V act as VCA control;
+ *           wider CV (±10V style) adds an offset.
  *   SHAPE — morphs SQR ← SIN → TRI
  *           Left half:  sine progressively adopts square-style pulse width and
  *                       blends into a softly-edged square target.
@@ -39,6 +40,18 @@ function Oscillator({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isC
     const [dutyCycle, setDutyCycle] = useState(0.5);  // 0–1; 0.5=equal halves, 0/1=full asymmetry
 
     useEffect(() => {
+        const savedModule = getModuleState(module.id);
+        if (!savedModule?.params) {
+            return;
+        }
+
+        setFrequency(savedModule.params.frequency ?? 440);
+        setAmplitude(savedModule.params.amplitude ?? 0.5);
+        setShape(savedModule.params.shape ?? 0.5);
+        setDutyCycle(savedModule.params.dutyCycle ?? 0.5);
+    }, [module.id]);
+
+    useEffect(() => {
         registerModule(module.id, {
             type: 'oscillator',
             params: {
@@ -50,12 +63,6 @@ function Oscillator({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isC
         });
     }, [module.id, frequency, amplitude, shape, dutyCycle]);
 
-    useEffect(() => {
-        return () => {
-            unregisterModule(module.id);
-        };
-    }, [module.id]);
-    
     return (
         <div
             style={{

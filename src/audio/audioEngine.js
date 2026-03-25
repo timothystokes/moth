@@ -1,12 +1,12 @@
 const moduleStates = new Map();
 const inputConnections = new Map();
 const scopeListeners = new Set();
+const trackStates = new Map();
 
 let audioContextRef = null;
 let workletNodeRef = null;
 let workletInitializationPromise = null;
-let gateMonitoringEnabled = false;
-let keyboardLatchModeEnabled = false;
+let scopeTrackId = null;
 
 function postToWorklet(message) {
     if (workletNodeRef) {
@@ -24,6 +24,10 @@ function serializeConnections() {
     );
 }
 
+function serializeTracks() {
+    return Array.from(trackStates.entries()).map(([trackId, track]) => ({ trackId, track }));
+}
+
 function handleWorkletMessage(event) {
     const message = event.data;
     if (message.type === 'scope-data') {
@@ -36,8 +40,8 @@ function syncStateToWorklet() {
         type: 'sync-state',
         modules: serializeModules(),
         connections: serializeConnections(),
-        gateMonitoringEnabled,
-        keyboardLatchModeEnabled
+        tracks: serializeTracks(),
+        scopeTrackId
     });
 }
 
@@ -77,7 +81,34 @@ export function registerModule(moduleId, module) {
 
 export function unregisterModule(moduleId) {
     moduleStates.delete(moduleId);
+    const affectedDestinations = [];
+
+    inputConnections.forEach((inputs, toModuleId) => {
+        const nextInputs = Object.fromEntries(
+            Object.entries(inputs).filter(([, fromModuleId]) => fromModuleId !== moduleId)
+        );
+
+        if (Object.keys(nextInputs).length !== Object.keys(inputs).length) {
+            affectedDestinations.push({ toModuleId, inputNames: Object.keys(inputs) });
+            if (Object.keys(nextInputs).length > 0) {
+                inputConnections.set(toModuleId, nextInputs);
+            } else {
+                inputConnections.delete(toModuleId);
+            }
+        }
+    });
+
+    affectedDestinations.forEach(({ toModuleId, inputNames }) => {
+        inputNames.forEach((inputName) => {
+            postToWorklet({ type: 'disconnect', toModuleId, inputName });
+        });
+    });
+
     postToWorklet({ type: 'remove-module', moduleId });
+}
+
+export function getModuleState(moduleId) {
+    return moduleStates.get(moduleId) ?? null;
 }
 
 export function connectModules(fromModuleId, toModuleId, inputName) {
@@ -93,27 +124,83 @@ export function disconnectInput(toModuleId, inputName) {
     const inputs = inputConnections.get(toModuleId);
     if (inputs) {
         delete inputs[inputName];
+        if (Object.keys(inputs).length === 0) {
+            inputConnections.delete(toModuleId);
+        }
     }
 
     postToWorklet({ type: 'disconnect', toModuleId, inputName });
 }
 
-export function noteOn(noteNumber, velocity) {
-    postToWorklet({ type: 'note-on', noteNumber, velocity });
+export function upsertTrack(trackId, track) {
+    trackStates.set(trackId, track);
+    postToWorklet({ type: 'upsert-track', trackId, track });
 }
 
-export function noteOff(noteNumber) {
-    postToWorklet({ type: 'note-off', noteNumber });
+export function removeTrack(trackId) {
+    const trackPrefix = `${trackId}:`;
+    trackStates.delete(trackId);
+
+    Array.from(moduleStates.keys())
+        .filter((moduleId) => moduleId.startsWith(trackPrefix))
+        .forEach((moduleId) => {
+            moduleStates.delete(moduleId);
+        });
+
+    inputConnections.forEach((inputs, toModuleId) => {
+        if (toModuleId.startsWith(trackPrefix)) {
+            inputConnections.delete(toModuleId);
+            return;
+        }
+
+        const nextInputs = Object.fromEntries(
+            Object.entries(inputs).filter(([, fromModuleId]) => !fromModuleId.startsWith(trackPrefix))
+        );
+
+        if (Object.keys(nextInputs).length > 0) {
+            inputConnections.set(toModuleId, nextInputs);
+        } else {
+            inputConnections.delete(toModuleId);
+        }
+    });
+
+    if (scopeTrackId === trackId) {
+        scopeTrackId = null;
+    }
+
+    postToWorklet({ type: 'remove-track', trackId });
 }
 
-export function setGateMonitoring(enabled) {
-    gateMonitoringEnabled = enabled;
-    postToWorklet({ type: 'set-gate-monitoring', enabled });
+export function setScopeTrack(trackId) {
+    scopeTrackId = trackId ?? null;
+    postToWorklet({ type: 'set-scope-track', trackId: scopeTrackId });
 }
 
-export function setKeyboardLatchMode(enabled) {
-    keyboardLatchModeEnabled = enabled;
-    postToWorklet({ type: 'set-keyboard-latch-mode', enabled });
+export function noteOn(trackId, noteNumber, velocity) {
+    if (!trackId) {
+        return;
+    }
+
+    postToWorklet({ type: 'note-on', trackId, noteNumber, velocity });
+}
+
+export function noteOff(trackId, noteNumber) {
+    if (trackId === null && noteNumber === -1) {
+        postToWorklet({ type: 'all-notes-off' });
+        return;
+    }
+
+    if (!trackId) {
+        return;
+    }
+
+    postToWorklet({ type: 'note-off', trackId, noteNumber });
+}
+
+export function setGateMonitoring() {
+}
+
+export function setKeyboardLatchMode() {
 }
 
 export function subscribeToScopeData(listener) {
@@ -126,5 +213,7 @@ export function subscribeToScopeData(listener) {
 export function clearAllModules() {
     moduleStates.clear();
     inputConnections.clear();
+    trackStates.clear();
+    scopeTrackId = null;
     postToWorklet({ type: 'clear-state' });
 }

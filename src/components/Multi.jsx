@@ -1,15 +1,9 @@
 import React, { useEffect } from 'react';
-import { registerModule, unregisterModule } from '../audio/audioEngine.js';
+import { registerModule } from '../audio/audioEngine.js';
 
 function Multi({ module, onDragStart, onOutputClick, isConnecting }) {
     useEffect(() => {
         registerModule(module.id, { type: 'multi', params: {} });
-    }, [module.id]);
-
-    useEffect(() => {
-        return () => {
-            unregisterModule(module.id);
-        };
     }, [module.id]);
 
     return (

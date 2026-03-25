@@ -1,14 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
     initializeAudioEngine,
-    registerModule,
-    setGateMonitoring,
-    subscribeToScopeData,
-    unregisterModule
+    subscribeToScopeData
 } from '../audio/audioEngine.js';
 
-function Amplifier({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isConnecting, audioContext, setAudioContext, connections, hasEnvelopeConnection, isFixed, isPoweredOn }) {
-    const [amplitude, setAmplitude] = useState(0.5); // 0 to 1
+function Amplifier({ onOutputClick, isConnecting, audioContext, setAudioContext, isFixed, isPoweredOn, selectedTrackLabel }) {
     const startTimeRef = useRef(null);
     const scopeCanvasRef = useRef(null);
     const scopeSnapshotRef = useRef(new Float32Array(360));
@@ -45,26 +41,6 @@ function Amplifier({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isCo
         };
     }, []);
 
-    useEffect(() => {
-        registerModule(module.id, {
-            type: 'amplifier',
-            params: {
-                amplitude
-            }
-        });
-    }, [module.id, amplitude]);
-
-    useEffect(() => {
-        return () => {
-            unregisterModule(module.id);
-        };
-    }, [module.id]);
-
-    useEffect(() => {
-        setGateMonitoring(hasEnvelopeConnection);
-    }, [hasEnvelopeConnection]);
-    
-    // Draw oscilloscope with zero-crossing trigger
     useEffect(() => {
         if (!isPoweredOn || !scopeCanvasRef.current) return;
         
@@ -126,8 +102,6 @@ function Amplifier({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isCo
         <div
             style={{
                 position: isFixed ? 'relative' : 'absolute',
-                left: isFixed ? 'auto' : module?.x,
-                top: isFixed ? 'auto' : module?.y,
                 width: isFixed ? '100%' : '180px',
                 minHeight: '160px',
                 height: isFixed ? '100%' : 'auto',
@@ -141,13 +115,6 @@ function Amplifier({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isCo
             }}
         >
             <div 
-                draggable={!isFixed}
-                onDragStart={isFixed ? undefined : (e) => {
-                    e.preventDefault = () => {};
-                    onDragStart && onDragStart(e, module.id);
-                }}
-                onDrag={isFixed ? undefined : onDrag}
-                onDragEnd={isFixed ? undefined : onDragEnd}
                 style={{ 
                     fontSize: '12px', 
                     fontWeight: 'bold', 
@@ -157,12 +124,12 @@ function Amplifier({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isCo
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    cursor: isFixed ? 'default' : 'move',
+                    cursor: 'default',
                     background: '#2a2a2a',
                     borderBottom: '1px solid #555',
                     borderRadius: '2px 2px 0 0'
             }}>
-                <span>AMPLIFIER</span>
+                <span>{selectedTrackLabel ? `TRACK OUT · ${selectedTrackLabel}` : 'TRACK OUT'}</span>
             </div>
             
             <div style={{ padding: '10px' }}>
@@ -185,56 +152,18 @@ function Amplifier({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isCo
                     />
                 </div>
                 
-                {/* Amplitude Control with Port */}
-                <div style={{ marginBottom: '15px', position: 'relative' }}>
-                    <label style={{ fontSize: '10px', color: '#aaa', display: 'block', marginBottom: '5px' }}>
-                        {connections?.some(c => c.to.moduleId === module?.id && c.to.outputId === 'amp-input') 
-                            ? 'AMP' 
-                            : `AMP: ${(amplitude * 10).toFixed(1)}V`}
-                    </label>
-                    <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                        <Port 
-                            type="input" 
-                            moduleId={module?.id}
-                            portId="amp-input"
-                            onClick={(e) => {
-                                const rect = e.currentTarget.getBoundingClientRect();
-                                onOutputClick(module?.id, 'amp-input', { 
-                                    x: rect.left + rect.width / 2, 
-                                    y: rect.top + rect.height / 2 
-                                });
-                            }} 
-                            isConnecting={isConnecting} 
-                        />
-                        <input
-                            type="range"
-                            min="0"
-                            max="1"
-                            step="0.01"
-                            value={amplitude}
-                            onChange={(e) => setAmplitude(parseFloat(e.target.value))}
-                            style={{
-                                width: '100%',
-                                cursor: 'pointer',
-                                marginLeft: '20px'
-                            }}
-                        />
-                    </div>
-                </div>
-                
-                {/* Audio Input Port */}
                 <div style={{ position: 'relative', marginTop: '10px' }}>
                     <label style={{ fontSize: '10px', color: '#aaa', display: 'block', marginBottom: '5px' }}>
-                        IN
+                        TO MIXER
                     </label>
                     <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
                         <Port 
                             type="input" 
-                            moduleId={module?.id}
+                            moduleId="track-output-singleton"
                             portId="audio-input"
                             onClick={(e) => {
                                 const rect = e.currentTarget.getBoundingClientRect();
-                                onOutputClick(module?.id, 'audio-input', { 
+                                onOutputClick('track-output-singleton', 'audio-input', { 
                                     x: rect.left + rect.width / 2, 
                                     y: rect.top + rect.height / 2 
                                 });

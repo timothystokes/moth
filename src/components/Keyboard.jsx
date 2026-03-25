@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { addVirtualNote, removeVirtualNote, initializeMIDI, onNoteOn, onNoteOff } from '../audio/midiManager.js';
-import { registerModule, unregisterModule, setKeyboardLatchMode } from '../audio/audioEngine.js';
 
-function Keyboard({ module, onOutputClick, isConnecting, audioContext, isFixed, hasGateOutputConnection }) {
+function Keyboard({ module, onOutputClick, isConnecting, isFixed, selectedTrackId, selectedTrackLabel }) {
     // Musical keyboard state - just for UI display now
     const [activeNote, setActiveNote] = useState(null); // { noteNumber, velocity }
     const [hoveredKey, setHoveredKey] = useState(null);
@@ -18,14 +17,6 @@ function Keyboard({ module, onOutputClick, isConnecting, audioContext, isFixed, 
         });
     }, []);
 
-    useEffect(() => {
-        setKeyboardLatchMode(!hasGateOutputConnection);
-
-        return () => {
-            setKeyboardLatchMode(false);
-        };
-    }, [hasGateOutputConnection]);
-    
     // Define keyboard layout: 88 keys (A0 to C8) - full piano range
     // Note numbers: A0=21 (MIDI), C8=108
     const startNote = 21; // A0
@@ -51,12 +42,20 @@ function Keyboard({ module, onOutputClick, isConnecting, audioContext, isFixed, 
     notes.reverse();
 
     useEffect(() => {
-        const unsubscribeNoteOn = onNoteOn(({ noteNumber, velocity }) => {
+        const unsubscribeNoteOn = onNoteOn(({ trackId, noteNumber, velocity }) => {
+            if (trackId !== selectedTrackId) {
+                return;
+            }
+
             lastPressedCvRef.current = (noteNumber - 69) / 12;
             setActiveNote({ noteNumber, velocity });
         });
 
-        const unsubscribeNoteOff = onNoteOff(({ noteNumber }) => {
+        const unsubscribeNoteOff = onNoteOff(({ trackId, noteNumber }) => {
+            if (trackId !== selectedTrackId) {
+                return;
+            }
+
             setActiveNote((current) => {
                 if (!current || current.noteNumber !== noteNumber) {
                     return current;
@@ -70,31 +69,31 @@ function Keyboard({ module, onOutputClick, isConnecting, audioContext, isFixed, 
             unsubscribeNoteOn();
             unsubscribeNoteOff();
         };
-    }, []);
-    
-    useEffect(() => {
-        registerModule(module.id + '-cv', { type: 'keyboard-cv', params: {} });
-        registerModule(module.id + '-gate', { type: 'keyboard-gate', params: {} });
-    }, [module.id]);
+    }, [selectedTrackId]);
 
     useEffect(() => {
-        return () => {
-            unregisterModule(module.id + '-cv');
-            unregisterModule(module.id + '-gate');
-        };
-    }, [module.id]);
+        setActiveNote(null);
+        activeNoteRef.current = null;
+    }, [selectedTrackId]);
     
     const handleMouseDown = (note) => {
+        if (!selectedTrackId) {
+            return;
+        }
+
         const noteData = { noteNumber: note.noteNumber, velocity: 0.8 };
         setActiveNote(noteData);
-        activeNoteRef.current = noteData;
+        activeNoteRef.current = {
+            trackId: selectedTrackId,
+            noteNumber: note.noteNumber
+        };
         lastPressedCvRef.current = (note.noteNumber - 69) / 12;
-        addVirtualNote(note.noteNumber, 0.8);
+        addVirtualNote(selectedTrackId, note.noteNumber, 0.8);
     };
     
     const handleMouseUp = () => {
         if (activeNoteRef.current) {
-            removeVirtualNote(activeNoteRef.current.noteNumber);
+            removeVirtualNote(activeNoteRef.current.trackId, activeNoteRef.current.noteNumber);
             activeNoteRef.current = null;
         }
         setActiveNote(null);
@@ -147,7 +146,7 @@ function Keyboard({ module, onOutputClick, isConnecting, audioContext, isFixed, 
                 borderBottom: '1px solid #555',
                 borderRadius: isFixed ? '0' : '2px 2px 0 0'
             }}>
-                KEYBOARD
+                {selectedTrackLabel ? `KEYBOARD · ${selectedTrackLabel}` : 'KEYBOARD'}
             </div>
             
             <div style={{ padding: '10px', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
@@ -195,7 +194,7 @@ function Keyboard({ module, onOutputClick, isConnecting, audioContext, isFixed, 
                                 position: 'absolute',
                                 right: '-18px'
                             }}
-                            title="Gate Out (velocity)"
+                            title="Gate Out (+5V high, 0V low)"
                         />
                     </div>
                 </div>

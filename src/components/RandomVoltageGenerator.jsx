@@ -1,8 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { registerModule, unregisterModule } from '../audio/audioEngine.js';
+import { getModuleState, registerModule } from '../audio/audioEngine.js';
 
 function RandomVoltageGenerator({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isConnecting, audioContext, connections }) {
     const [rate, setRate] = useState(5); // Hz - random value changes per second
+
+    useEffect(() => {
+        const savedModule = getModuleState(module.id);
+        if (!savedModule?.params) {
+            return;
+        }
+
+        setRate(savedModule.params.rate ?? 5);
+    }, [module.id]);
 
     useEffect(() => {
         registerModule(module.id, {
@@ -11,12 +20,6 @@ function RandomVoltageGenerator({ module, onDragStart, onDrag, onDragEnd, onOutp
         });
     }, [module.id, rate]);
 
-    useEffect(() => {
-        return () => {
-            unregisterModule(module.id);
-        };
-    }, [module.id]);
-    
     return (
         <div
             style={{

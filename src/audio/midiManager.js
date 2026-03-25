@@ -4,21 +4,22 @@
 import { parseMidi } from 'midi-file';
 import { noteOn, noteOff } from './audioEngine.js';
 
-// Listeners for note events
 const noteOnListeners = [];
 const noteOffListeners = [];
 const sequenceTransportListeners = new Set();
 
 let midiAccess = null;
 let selectedInputId = null;
-let loadedSequence = null;
-let loadedMidiFile = null;
+let selectedTrackId = null;
+let loadedArrangement = null;
 let isSequencePlaying = false;
 let playbackPositionMs = 0;
 let playbackStartTimestampMs = 0;
 let playbackTimeouts = [];
 let playbackCompletionTimeout = null;
-const activeSequenceNotes = new Map();
+let activeSequenceNotes = new Map();
+let importBatchId = 0;
+let playbackAnimationFrameId = null;
 
 function getEventPriority(event) {
     if (event.type === 'setTempo') {
@@ -33,7 +34,7 @@ function getEventPriority(event) {
 }
 
 function getCurrentPlaybackPositionMs() {
-    if (!loadedSequence) {
+    if (!loadedArrangement) {
         return 0;
     }
 
@@ -42,20 +43,18 @@ function getCurrentPlaybackPositionMs() {
     }
 
     return Math.min(
-        loadedSequence.durationMs,
+        loadedArrangement.durationMs,
         playbackPositionMs + (performance.now() - playbackStartTimestampMs)
     );
 }
 
 function getSequenceTransportState() {
     return {
-        hasSequence: Boolean(loadedSequence),
-        fileName: loadedSequence?.fileName ?? null,
-        channel: loadedSequence?.channel ?? null,
-        channelDisplay: loadedSequence ? loadedSequence.channel + 1 : null,
-        availableChannels: loadedMidiFile?.channels ?? [],
-        durationMs: loadedSequence?.durationMs ?? 0,
-        eventCount: loadedSequence?.events.length ?? 0,
+        hasSequence: Boolean(loadedArrangement),
+        fileName: loadedArrangement?.fileName ?? null,
+        durationMs: loadedArrangement?.durationMs ?? 0,
+        trackCount: loadedArrangement?.tracks.length ?? 0,
+        tracks: loadedArrangement?.tracks ?? [],
         isPlaying: isSequencePlaying,
         playbackPositionMs: getCurrentPlaybackPositionMs()
     };
@@ -66,6 +65,29 @@ function notifySequenceTransportListeners() {
     sequenceTransportListeners.forEach((listener) => listener(state));
 }
 
+function stopPlaybackProgressUpdates() {
+    if (playbackAnimationFrameId !== null) {
+        window.cancelAnimationFrame(playbackAnimationFrameId);
+        playbackAnimationFrameId = null;
+    }
+}
+
+function startPlaybackProgressUpdates() {
+    stopPlaybackProgressUpdates();
+
+    const update = () => {
+        if (!isSequencePlaying) {
+            playbackAnimationFrameId = null;
+            return;
+        }
+
+        notifySequenceTransportListeners();
+        playbackAnimationFrameId = window.requestAnimationFrame(update);
+    };
+
+    playbackAnimationFrameId = window.requestAnimationFrame(update);
+}
+
 function clearScheduledSequencePlayback() {
     playbackTimeouts.forEach((timeoutId) => window.clearTimeout(timeoutId));
     playbackTimeouts = [];
@@ -74,31 +96,42 @@ function clearScheduledSequencePlayback() {
         window.clearTimeout(playbackCompletionTimeout);
         playbackCompletionTimeout = null;
     }
+
+    stopPlaybackProgressUpdates();
 }
 
 function releaseActiveSequenceNotes() {
-    activeSequenceNotes.forEach((count, noteNumber) => {
-        if (count > 0) {
-            handleNoteOff(Number(noteNumber), performance.now());
+    activeSequenceNotes.forEach((count, key) => {
+        if (count <= 0) {
+            return;
         }
+
+        const [trackId, noteNumber] = key.split('::');
+        handleNoteOff(trackId, Number(noteNumber), performance.now());
     });
 
-    activeSequenceNotes.clear();
+    activeSequenceNotes = new Map();
 }
 
-function registerSequenceNoteOn(noteNumber) {
-    activeSequenceNotes.set(noteNumber, (activeSequenceNotes.get(noteNumber) ?? 0) + 1);
+function makeActiveNoteKey(trackId, noteNumber) {
+    return `${trackId}::${noteNumber}`;
 }
 
-function registerSequenceNoteOff(noteNumber) {
-    const activeCount = activeSequenceNotes.get(noteNumber) ?? 0;
+function registerSequenceNoteOn(trackId, noteNumber) {
+    const key = makeActiveNoteKey(trackId, noteNumber);
+    activeSequenceNotes.set(key, (activeSequenceNotes.get(key) ?? 0) + 1);
+}
+
+function registerSequenceNoteOff(trackId, noteNumber) {
+    const key = makeActiveNoteKey(trackId, noteNumber);
+    const activeCount = activeSequenceNotes.get(key) ?? 0;
 
     if (activeCount <= 1) {
-        activeSequenceNotes.delete(noteNumber);
+        activeSequenceNotes.delete(key);
         return;
     }
 
-    activeSequenceNotes.set(noteNumber, activeCount - 1);
+    activeSequenceNotes.set(key, activeCount - 1);
 }
 
 function stopSequencePlayback({ resetPosition = false } = {}) {
@@ -117,60 +150,64 @@ function stopSequencePlayback({ resetPosition = false } = {}) {
     notifySequenceTransportListeners();
 }
 
-function extractPlayableChannels(timedEvents) {
-    const channelMap = new Map();
+function getTrackDisplayName(trackName, trackIndex, channel) {
+    const prefix = trackName?.trim() ? trackName.trim() : `Track ${trackIndex + 1}`;
+    return `${prefix} · Ch ${channel + 1}`;
+}
 
-    timedEvents.forEach((event) => {
-        if (event.channel === undefined || (event.type !== 'noteOn' && event.type !== 'noteOff')) {
+function buildNoteSegments(events) {
+    const pendingNotes = new Map();
+    const noteSegments = [];
+
+    events.forEach((event) => {
+        if (event.type === 'noteOn') {
+            const stack = pendingNotes.get(event.noteNumber) ?? [];
+            stack.push({ startMs: event.timeMs, velocity: event.velocity });
+            pendingNotes.set(event.noteNumber, stack);
             return;
         }
 
-        if (!channelMap.has(event.channel)) {
-            channelMap.set(event.channel, []);
+        const stack = pendingNotes.get(event.noteNumber);
+        if (!stack || stack.length === 0) {
+            return;
         }
 
-        channelMap.get(event.channel).push({
-            type: event.type === 'noteOn' && event.velocity > 0 ? 'noteOn' : 'noteOff',
-            timeMs: event.timeMs,
+        const startNote = stack.pop();
+        if (stack.length === 0) {
+            pendingNotes.delete(event.noteNumber);
+        }
+
+        noteSegments.push({
             noteNumber: event.noteNumber,
-            velocity: event.type === 'noteOn' ? event.velocity / 127 : 0
+            velocity: startNote.velocity,
+            startMs: startNote.startMs,
+            endMs: Math.max(startNote.startMs + 1, event.timeMs)
         });
     });
 
-    return Array.from(channelMap.entries())
-        .map(([channel, events]) => ({
-            channel,
-            channelDisplay: channel + 1,
-            eventCount: events.length,
-            durationMs: events.length > 0 ? events[events.length - 1].timeMs : 0,
-            events
-        }))
-        .filter((channelData) => channelData.events.some((event) => event.type === 'noteOn'))
-        .sort((left, right) => left.channel - right.channel);
+    const lastEventTimeMs = events.length > 0 ? events[events.length - 1].timeMs : 0;
+    pendingNotes.forEach((stack, noteNumber) => {
+        stack.forEach((pendingNote) => {
+            noteSegments.push({
+                noteNumber,
+                velocity: pendingNote.velocity,
+                startMs: pendingNote.startMs,
+                endMs: Math.max(pendingNote.startMs + 1, lastEventTimeMs)
+            });
+        });
+    });
+
+    return noteSegments.sort((left, right) => left.startMs - right.startMs || left.noteNumber - right.noteNumber);
 }
 
-function buildSequenceForChannel(fileData, channel) {
-    const channelData = fileData.channels.find((entry) => entry.channel === channel);
-
-    if (!channelData) {
-        throw new Error('The selected MIDI channel is not available in this file.');
-    }
-
-    return {
-        fileName: fileData.fileName,
-        channel: channelData.channel,
-        durationMs: channelData.durationMs,
-        events: channelData.events
-    };
-}
-
-function buildMidiFileData(midiData, fileName) {
+function buildMidiArrangement(midiData, fileName) {
     const { header, tracks } = midiData;
 
     if (!header.ticksPerBeat) {
         throw new Error('This MIDI file uses an unsupported time division.');
     }
 
+    const trackNames = new Map();
     const absoluteEvents = [];
 
     tracks.forEach((track, trackIndex) => {
@@ -178,6 +215,11 @@ function buildMidiFileData(midiData, fileName) {
 
         track.forEach((event, eventIndex) => {
             absoluteTicks += event.deltaTime ?? 0;
+
+            if (event.type === 'trackName' && !trackNames.has(trackIndex)) {
+                trackNames.set(trackIndex, event.text ?? event.name ?? `Track ${trackIndex + 1}`);
+                return;
+            }
 
             if (event.type === 'setTempo' || event.type === 'noteOn' || event.type === 'noteOff') {
                 absoluteEvents.push({
@@ -195,10 +237,10 @@ function buildMidiFileData(midiData, fileName) {
     }
 
     absoluteEvents.sort((left, right) => (
-        left.absoluteTicks - right.absoluteTicks ||
-        getEventPriority(left) - getEventPriority(right) ||
-        left.trackIndex - right.trackIndex ||
-        left.eventIndex - right.eventIndex
+        left.absoluteTicks - right.absoluteTicks
+        || getEventPriority(left) - getEventPriority(right)
+        || left.trackIndex - right.trackIndex
+        || left.eventIndex - right.eventIndex
     ));
 
     let currentTempo = 500000;
@@ -222,38 +264,87 @@ function buildMidiFileData(midiData, fileName) {
         return timedEvent;
     });
 
-    const channels = extractPlayableChannels(timedEvents);
+    importBatchId += 1;
+    const groupedTracks = new Map();
 
-    if (channels.length === 0) {
+    timedEvents.forEach((event) => {
+        if (event.channel === undefined || (event.type !== 'noteOn' && event.type !== 'noteOff')) {
+            return;
+        }
+
+        const normalizedType = event.type === 'noteOn' && event.velocity > 0 ? 'noteOn' : 'noteOff';
+        const key = `${event.trackIndex}:${event.channel}`;
+        if (!groupedTracks.has(key)) {
+            groupedTracks.set(key, {
+                id: `import-${importBatchId}-track-${event.trackIndex}-channel-${event.channel}`,
+                name: getTrackDisplayName(trackNames.get(event.trackIndex), event.trackIndex, event.channel),
+                sourceTrackIndex: event.trackIndex,
+                channel: event.channel,
+                channelDisplay: event.channel + 1,
+                events: []
+            });
+        }
+
+        groupedTracks.get(key).events.push({
+            type: normalizedType,
+            timeMs: event.timeMs,
+            noteNumber: event.noteNumber,
+            velocity: normalizedType === 'noteOn' ? event.velocity / 127 : 0
+        });
+    });
+
+    const arrangementTracks = Array.from(groupedTracks.values())
+        .filter((track) => track.events.some((event) => event.type === 'noteOn'))
+        .map((track) => {
+            const noteSegments = buildNoteSegments(track.events);
+            const durationMs = Math.max(
+                track.events.length > 0 ? track.events[track.events.length - 1].timeMs : 0,
+                noteSegments.length > 0 ? noteSegments[noteSegments.length - 1].endMs : 0
+            );
+
+            return {
+                ...track,
+                durationMs,
+                eventCount: track.events.length,
+                noteSegments
+            };
+        })
+        .sort((left, right) => (
+            left.sourceTrackIndex - right.sourceTrackIndex
+            || left.channel - right.channel
+        ));
+
+    if (arrangementTracks.length === 0) {
         throw new Error('No note data was found in this MIDI file.');
     }
 
+    const durationMs = arrangementTracks.reduce(
+        (maximum, track) => Math.max(maximum, track.durationMs),
+        0
+    );
+
     return {
         fileName,
-        channels
+        durationMs,
+        tracks: arrangementTracks
     };
 }
 
-// Initialize Web MIDI API
 export async function initializeMIDI() {
     if (!navigator.requestMIDIAccess) {
         console.warn('Web MIDI API not supported in this browser');
         return false;
     }
-    
+
     try {
         midiAccess = await navigator.requestMIDIAccess();
-        console.log('MIDI Access obtained');
-        
-        // Listen for device connections/disconnections
         midiAccess.onstatechange = handleStateChange;
-        
-        // If there's an input, auto-select the first one
+
         const inputs = Array.from(midiAccess.inputs.values());
         if (inputs.length > 0 && !selectedInputId) {
             selectMIDIInput(inputs[0].id);
         }
-        
+
         return true;
     } catch (error) {
         console.error('Failed to get MIDI access:', error);
@@ -261,10 +352,16 @@ export async function initializeMIDI() {
     }
 }
 
-// Get list of available MIDI inputs
+export function setSelectedTrack(trackId) {
+    selectedTrackId = trackId ?? null;
+}
+
 export function getMIDIInputs() {
-    if (!midiAccess) return [];
-    return Array.from(midiAccess.inputs.values()).map(input => ({
+    if (!midiAccess) {
+        return [];
+    }
+
+    return Array.from(midiAccess.inputs.values()).map((input) => ({
         id: input.id,
         name: input.name,
         manufacturer: input.manufacturer,
@@ -272,82 +369,80 @@ export function getMIDIInputs() {
     }));
 }
 
-// Select a specific MIDI input device
 export function selectMIDIInput(inputId) {
-    if (!midiAccess) return false;
-    
-    // Disconnect previous input
+    if (!midiAccess) {
+        return false;
+    }
+
     if (selectedInputId) {
-        const prevInput = midiAccess.inputs.get(selectedInputId);
-        if (prevInput) {
-            prevInput.onmidimessage = null;
+        const previousInput = midiAccess.inputs.get(selectedInputId);
+        if (previousInput) {
+            previousInput.onmidimessage = null;
         }
     }
-    
-    // Connect new input
+
     const input = midiAccess.inputs.get(inputId);
-    if (!input) return false;
-    
+    if (!input) {
+        return false;
+    }
+
     input.onmidimessage = handleMIDIMessage;
     selectedInputId = inputId;
-    console.log(`MIDI input selected: ${input.name}`);
     return true;
 }
 
-// Handle MIDI state changes (device connect/disconnect)
 function handleStateChange(event) {
-    console.log(`MIDI device ${event.port.state}: ${event.port.name}`);
-    
-    // If our selected device disconnected, clear selection
     if (event.port.id === selectedInputId && event.port.state === 'disconnected') {
         selectedInputId = null;
     }
 }
 
-// Handle incoming MIDI messages
 function handleMIDIMessage(event) {
+    if (!selectedTrackId) {
+        return;
+    }
+
     const [status, note, velocity] = event.data;
-    const command = status >> 4; // Upper 4 bits
-    const channel = status & 0x0F; // Lower 4 bits
-    
+    const command = status >> 4;
+
     switch (command) {
-        case 0x9: // Note On
+        case 0x9:
             if (velocity > 0) {
-                handleNoteOn(note, velocity / 127, event.timeStamp);
+                handleNoteOn(selectedTrackId, note, velocity / 127, event.timeStamp);
             } else {
-                // Some devices send note on with velocity 0 as note off
-                handleNoteOff(note, event.timeStamp);
+                handleNoteOff(selectedTrackId, note, event.timeStamp);
             }
             break;
-            
-        case 0x8: // Note Off
-            handleNoteOff(note, event.timeStamp);
+        case 0x8:
+            handleNoteOff(selectedTrackId, note, event.timeStamp);
             break;
-            
-        // Could add more MIDI message types here (CC, pitch bend, etc.)
+        default:
+            break;
     }
 }
 
-// Internal note on handler
-function handleNoteOn(noteNumber, velocity, timestamp) {
-    noteOn(noteNumber, velocity);
-    
-    const noteData = {
+function handleNoteOn(trackId, noteNumber, velocity, timestamp) {
+    if (!trackId) {
+        return;
+    }
+
+    noteOn(trackId, noteNumber, velocity);
+
+    noteOnListeners.forEach((listener) => listener({
+        trackId,
         noteNumber,
         velocity,
         noteOnTime: timestamp
-    };
-    
-    // Notify listeners
-    noteOnListeners.forEach(listener => listener(noteData));
+    }));
 }
 
-// Internal note off handler
-function handleNoteOff(noteNumber, timestamp) {
-    noteOff(noteNumber);
-    
-    // Notify listeners
-    noteOffListeners.forEach(listener => listener({ noteNumber, timestamp }));
+function handleNoteOff(trackId, noteNumber, timestamp) {
+    if (!trackId) {
+        return;
+    }
+
+    noteOff(trackId, noteNumber);
+    noteOffListeners.forEach((listener) => listener({ trackId, noteNumber, timestamp }));
 }
 
 export async function loadMIDIFile(file) {
@@ -359,27 +454,14 @@ export async function loadMIDIFile(file) {
     const midiData = parseMidi(new Uint8Array(arrayBuffer));
 
     stopSequencePlayback({ resetPosition: true });
-    loadedMidiFile = buildMidiFileData(midiData, file.name);
-    loadedSequence = buildSequenceForChannel(loadedMidiFile, loadedMidiFile.channels[0].channel);
-    notifySequenceTransportListeners();
-
-    return getSequenceTransportState();
-}
-
-export function selectLoadedSequenceChannel(channel) {
-    if (!loadedMidiFile) {
-        throw new Error('Load a MIDI file before choosing a channel.');
-    }
-
-    stopSequencePlayback({ resetPosition: true });
-    loadedSequence = buildSequenceForChannel(loadedMidiFile, channel);
+    loadedArrangement = buildMidiArrangement(midiData, file.name);
     notifySequenceTransportListeners();
 
     return getSequenceTransportState();
 }
 
 export async function playLoadedSequence() {
-    if (!loadedSequence) {
+    if (!loadedArrangement) {
         throw new Error('Load a MIDI file before pressing play.');
     }
 
@@ -391,26 +473,32 @@ export async function playLoadedSequence() {
     playbackPositionMs = startOffsetMs;
     playbackStartTimestampMs = performance.now();
     isSequencePlaying = true;
+    startPlaybackProgressUpdates();
 
-    const remainingEvents = loadedSequence.events.filter((event) => event.timeMs >= startOffsetMs);
+    const remainingEvents = loadedArrangement.tracks.flatMap((track) =>
+        track.events
+            .filter((event) => event.timeMs >= startOffsetMs)
+            .map((event) => ({ ...event, trackId: track.id }))
+    );
+
     playbackTimeouts = remainingEvents.map((event) => window.setTimeout(() => {
         if (event.type === 'noteOn') {
-            registerSequenceNoteOn(event.noteNumber);
-            handleNoteOn(event.noteNumber, event.velocity || 0.8, performance.now());
+            registerSequenceNoteOn(event.trackId, event.noteNumber);
+            handleNoteOn(event.trackId, event.noteNumber, event.velocity || 0.8, performance.now());
             return;
         }
 
-        registerSequenceNoteOff(event.noteNumber);
-        handleNoteOff(event.noteNumber, performance.now());
+        registerSequenceNoteOff(event.trackId, event.noteNumber);
+        handleNoteOff(event.trackId, event.noteNumber, performance.now());
     }, Math.max(0, event.timeMs - startOffsetMs)));
 
     playbackCompletionTimeout = window.setTimeout(() => {
         clearScheduledSequencePlayback();
         releaseActiveSequenceNotes();
         isSequencePlaying = false;
-        playbackPositionMs = loadedSequence.durationMs;
+        playbackPositionMs = loadedArrangement.durationMs;
         notifySequenceTransportListeners();
-    }, Math.max(0, loadedSequence.durationMs - startOffsetMs) + 10);
+    }, Math.max(0, loadedArrangement.durationMs - startOffsetMs) + 10);
 
     notifySequenceTransportListeners();
     return getSequenceTransportState();
@@ -435,43 +523,38 @@ export function subscribeToSequenceTransport(callback) {
     };
 }
 
-// Get all currently active notes - DEPRECATED, use voiceAllocator.getActiveVoices()
 export function getActiveNotes() {
-    // This is now handled by voiceAllocator
-    // Kept for backward compatibility but should not be used
-    console.warn('getActiveNotes() is deprecated, use getActiveVoices() from voiceAllocator');
     return [];
 }
 
-// Add virtual note (from computer keyboard or UI)
-export function addVirtualNote(noteNumber, velocity = 0.8) {
-    handleNoteOn(noteNumber, velocity, performance.now());
+export function addVirtualNote(trackId, noteNumber, velocity = 0.8) {
+    handleNoteOn(trackId, noteNumber, velocity, performance.now());
 }
 
-// Remove virtual note
-export function removeVirtualNote(noteNumber) {
-    handleNoteOff(noteNumber, performance.now());
+export function removeVirtualNote(trackId, noteNumber) {
+    handleNoteOff(trackId, noteNumber, performance.now());
 }
 
-// Subscribe to note on events
 export function onNoteOn(callback) {
     noteOnListeners.push(callback);
     return () => {
         const index = noteOnListeners.indexOf(callback);
-        if (index > -1) noteOnListeners.splice(index, 1);
+        if (index > -1) {
+            noteOnListeners.splice(index, 1);
+        }
     };
 }
 
-// Subscribe to note off events
 export function onNoteOff(callback) {
     noteOffListeners.push(callback);
     return () => {
         const index = noteOffListeners.indexOf(callback);
-        if (index > -1) noteOffListeners.splice(index, 1);
+        if (index > -1) {
+            noteOffListeners.splice(index, 1);
+        }
     };
 }
 
-// Clear all active notes (panic button)
 export function clearAllNotes() {
-    noteOff(-1);
+    noteOff(null, -1);
 }

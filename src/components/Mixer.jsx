@@ -1,9 +1,19 @@
 import React, { useEffect, useState } from 'react';
-import { registerModule, unregisterModule } from '../audio/audioEngine.js';
+import { getModuleState, registerModule } from '../audio/audioEngine.js';
 
 function Mixer({ module, onDragStart, onOutputClick, isConnecting, connections }) {
     const [levelA, setLevelA] = useState(0.5);
     const [levelB, setLevelB] = useState(0.5);
+
+    useEffect(() => {
+        const savedModule = getModuleState(module.id);
+        if (!savedModule?.params) {
+            return;
+        }
+
+        setLevelA(savedModule.params.levelA ?? 0.5);
+        setLevelB(savedModule.params.levelB ?? 0.5);
+    }, [module.id]);
 
     useEffect(() => {
         registerModule(module.id, {
@@ -14,12 +24,6 @@ function Mixer({ module, onDragStart, onOutputClick, isConnecting, connections }
             }
         });
     }, [module.id, levelA, levelB]);
-
-    useEffect(() => {
-        return () => {
-            unregisterModule(module.id);
-        };
-    }, [module.id]);
 
     return (
         <div

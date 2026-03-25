@@ -8,6 +8,17 @@
 ### Description
 Web-based modular synthesiser built with React and Vite.
 
+## Active Refactor Plan
+- [x] Define multitrack architecture around app tracks derived from MIDI track × channel note data
+- [x] Refactor MIDI import to split note events into app tracks by source MIDI track and MIDI channel
+- [x] Replace single-sequence transport with multitrack lane UI showing mute, volume, selection, and note events
+- [x] Move patch ownership from one global graph to per-track module and connection state
+- [x] Route UI keyboard and live MIDI input to the currently selected app track
+- [x] Replace the amplifier singleton behaviour with a selected-track output panel using `TO MIXER`
+- [x] Refactor audio engine and worklet to mix multiple tracks, each with its own voice pool and scope feed
+- [x] Add create-track and remove-track controls for manual track management
+- [x] Validate build and update this checklist as implementation lands
+
 ### Goals & Objectives
 - [x] Oscillator with sliders and inputs for frequency, amplitude, and shape. Output: audio (±10V)
     - Shape blends continuously: square (0) → sine (0.5) → triangle (1)
@@ -30,12 +41,12 @@ Web-based modular synthesiser built with React and Vite.
     - Triggered from an explicit `GATE IN` input
     - Attack, decay, and release use logarithmic time sliders and relative exponential CV nudges
     - Sustain uses a 0–1 slider with additive CV offset
-    - Output is 0–1, intended for VCA / amplitude modulation and other control uses
+    - Output is 0–5V, intended for VCA / amplitude modulation and other control uses
     - When any envelope output is connected, released voices remain active until the envelope reaches silence
 - [x] Virtual Keyboard (singleton, fixed left panel)
     - 88 keys (A0 to C8) in vertical orientation with proper black/white layout
     - Integrated with Web MIDI API for hardware controller support
-    - Outputs: CV (1V/octave, A4 / MIDI 69 = 0V) and Gate (0–1 per voice from voiceContext)
+    - Outputs: CV (1V/octave, A4 / MIDI 69 = 0V) and Gate (+5V high, 0V low per voice from voiceContext)
     - Virtual notes triggered via mouse click or MIDI input
     - Keyboard socket outputs now define whether a patch is voice-dependent; unpatched modules stay on slider/default values only
     - When `GATE OUT` is unpatched, latch mode keeps voice 1 available as an always-on keyboard control source
@@ -71,7 +82,7 @@ Web-based modular synthesiser built with React and Vite.
 All inter-module signals are pseudo-voltages evaluated as pure functions over time:
 - **1V/octave** for pitch CV (A4 / MIDI 69 = 0V)
 - **±10V** for audio signals
-- **0–1** for gate values (0 = off, velocity value when held)
+- **0V / +5V** for gate values (0 = off, +5V = on)
 - **0–1** for velocity values
 
 ### Universal Processor Signature
@@ -92,7 +103,7 @@ All audio processing functions conceptually use: `(timeMs, voiceContext) => outp
 - Pool of 8 voices (`MAX_VOICES`)
 - Voice states: `FREE`, `ACTIVE` (note held, gate > 0), `RELEASE` (note released, gate = 0)
 - **Voice lifecycle:**
-    1. **Note On:** allocate a free voice, set CV/gate/velocity (gate = velocity 0–1)
+    1. **Note On:** allocate a free voice, set CV/gate/velocity (gate = +5V, velocity remains 0–1)
     2. **Note Off:** set gate to 0 and move the voice into `RELEASE`
     3. **Release persistence:** released voices remain in the mix with their existing voice context until a later note-on reassigns that voice slot
     4. **Voice assignment:** each new gate event advances a strict cyclic ring and reuses the next voice in sequence regardless of free/release state
@@ -109,9 +120,9 @@ All audio processing functions conceptually use: `(timeMs, voiceContext) => outp
 
 ### Gate Signal Handling
 - Keyboard registers both a CV output module (`keyboard-singleton-cv`) and a gate output module (`keyboard-singleton-gate`)
-- Keyboard gate output returns `voiceContext.gate` per voice; keyboard CV output returns `voiceContext.cv`
+- Keyboard gate output returns `voiceContext.gate` per voice as 0V / +5V; keyboard CV output returns `voiceContext.cv`
 - Envelope modules require a dedicated `GATE IN` socket; patch keyboard `GATE OUT` here to start ADSR cycles
-- Oscillator amplitude input uses value-range detection: values in 0–1 multiply (VCA), values outside that range add offset (CV)
+- Oscillator amplitude input uses value-range detection: values in 0–5V multiply as VCA control, values outside that range add offset (CV)
 - MIDI note events now affect a patch only through keyboard-driven voice-dependent paths; oscillators without keyboard/CV connections remain controlled solely by sliders and patched inputs
 - Envelope state is tracked per envelope instance and per voice context; repeated same-pitch notes are allowed to overlap, and earlier instances continue through release on their existing voice slots
 

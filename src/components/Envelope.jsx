@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { registerModule, unregisterModule } from '../audio/audioEngine.js';
+import React, { useEffect, useState } from 'react';
+import { getModuleState, registerModule } from '../audio/audioEngine.js';
 
 const TIME_MIN = 0.001;
 const TIME_MAX = 10;
@@ -52,6 +52,18 @@ function Envelope({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isCon
     const sustainGuideY = 8 + (previewHeight - 16) * (1 - sustain);
 
     useEffect(() => {
+        const savedModule = getModuleState(module.id);
+        if (!savedModule?.params) {
+            return;
+        }
+
+        setAttack(savedModule.params.attack ?? 0.01);
+        setDecay(savedModule.params.decay ?? 0.2);
+        setSustain(savedModule.params.sustain ?? 0.7);
+        setRelease(savedModule.params.release ?? 0.4);
+    }, [module.id]);
+
+    useEffect(() => {
         registerModule(module.id, {
             type: 'envelope',
             params: {
@@ -62,12 +74,6 @@ function Envelope({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isCon
             }
         });
     }, [module.id, attack, decay, sustain, release]);
-
-    useEffect(() => {
-        return () => {
-            unregisterModule(module.id);
-        };
-    }, [module.id]);
 
     return (
         <div
