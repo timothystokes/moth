@@ -1,45 +1,21 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { registerModule, unregisterModule } from '../audio/audioEngine.js';
 
 function RandomVoltageGenerator({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isConnecting, audioContext, connections }) {
     const [rate, setRate] = useState(5); // Hz - random value changes per second
-    const lastOutputTime = useRef(0);
-    const currentValue = useRef(0);
-    
-    // Register this module's processing function
+
     useEffect(() => {
-        const randomVoltageProcessor = (time, voiceContext, inputFns) => {
-            // Get rate modulation input if connected
-            const rateModFn = inputFns?.['rate-input'];
-            
-            // Calculate final rate with modulation.
-            // Uses the same logarithmic slider shape as oscillator frequency, with
-            // socket CV applied as a relative exponential nudge (scaled so ±10V = ±1 octave).
-            let finalRate = rate;
-            const rateNudgeOctaves = rateModFn ? rateModFn(time, voiceContext) / 10 : 0;
-            finalRate = rate * Math.pow(2, rateNudgeOctaves);
-            finalRate = Math.max(0.1, Math.min(2000, finalRate));
-            
-            // Calculate time interval for this rate
-            const intervalMs = 1000 / finalRate;
-            
-            // Check if we need to generate a new random value
-            if (time - lastOutputTime.current >= intervalMs) {
-                // Generate new random value between -10V and +10V
-                currentValue.current = (Math.random() * 20) - 10;
-                lastOutputTime.current = time;
-            }
-            
-            // Return current value (±10V range)
-            return currentValue.current;
-        };
-        
-        registerModule(module.id, randomVoltageProcessor);
-        
+        registerModule(module.id, {
+            type: 'random',
+            params: { rate }
+        });
+    }, [module.id, rate]);
+
+    useEffect(() => {
         return () => {
             unregisterModule(module.id);
         };
-    }, [module.id, rate]);
+    }, [module.id]);
     
     return (
         <div

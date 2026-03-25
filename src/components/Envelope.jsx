@@ -18,119 +18,57 @@ const formatTime = (timeSeconds) => {
     return `${timeSeconds.toFixed(2)}s`;
 };
 
+function buildEnvelopePreviewPoints(attack, decay, sustain, release, width, height) {
+    const holdPortion = 0.2;
+    const totalTime = Math.max(attack + decay + release, TIME_MIN);
+    const attackPortion = (attack / totalTime) * (1 - holdPortion);
+    const decayPortion = (decay / totalTime) * (1 - holdPortion);
+    const releasePortion = (release / totalTime) * (1 - holdPortion);
+
+    const leftPadding = 8;
+    const rightPadding = 8;
+    const topPadding = 8;
+    const bottomPadding = 8;
+    const innerWidth = width - leftPadding - rightPadding;
+    const innerHeight = height - topPadding - bottomPadding;
+
+    const points = [
+        [leftPadding, height - bottomPadding],
+        [leftPadding + innerWidth * attackPortion, topPadding],
+        [leftPadding + innerWidth * (attackPortion + decayPortion), topPadding + innerHeight * (1 - sustain)],
+        [leftPadding + innerWidth * (attackPortion + decayPortion + holdPortion), topPadding + innerHeight * (1 - sustain)],
+        [leftPadding + innerWidth, height - bottomPadding]
+    ];
+
+    return points.map(([x, y]) => `${x},${y}`).join(' ');
+}
+
 function Envelope({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isConnecting, audioContext, connections }) {
     const [attack, setAttack] = useState(0.01);
     const [decay, setDecay] = useState(0.2);
     const [sustain, setSustain] = useState(0.7);
     const [release, setRelease] = useState(0.4);
-
-    const stateMapRef = useRef(new Map());
-
-    const getVoiceState = (voiceId) => {
-        if (!stateMapRef.current.has(voiceId)) {
-            stateMapRef.current.set(voiceId, {
-                stage: 'idle',
-                value: 0,
-                lastTime: null,
-                lastGate: 0,
-                stageElapsed: 0,
-                releaseStartValue: 0
-            });
-        }
-        return stateMapRef.current.get(voiceId);
-    };
+    const previewWidth = 156;
+    const previewHeight = 84;
+    const previewPoints = buildEnvelopePreviewPoints(attack, decay, sustain, release, previewWidth, previewHeight);
 
     useEffect(() => {
-        const envelopeProcessor = (time, voiceContext, inputFns) => {
-            const gateModFn = inputFns?.['gate-input'];
-            const attackModFn = inputFns?.['attack-input'];
-            const decayModFn = inputFns?.['decay-input'];
-            const sustainModFn = inputFns?.['sustain-input'];
-            const releaseModFn = inputFns?.['release-input'];
-
-            const finalAttack = Math.max(TIME_MIN, Math.min(TIME_MAX, attack * Math.pow(2, (attackModFn ? attackModFn(time, voiceContext) : 0) / 10)));
-            const finalDecay = Math.max(TIME_MIN, Math.min(TIME_MAX, decay * Math.pow(2, (decayModFn ? decayModFn(time, voiceContext) : 0) / 10)));
-            const finalSustain = Math.max(0, Math.min(1, sustain + (sustainModFn ? sustainModFn(time, voiceContext) : 0) / 20));
-            const finalRelease = Math.max(TIME_MIN, Math.min(TIME_MAX, release * Math.pow(2, (releaseModFn ? releaseModFn(time, voiceContext) : 0) / 10)));
-
-            const voiceId = voiceContext?.voiceId ?? 'default';
-            const voiceState = getVoiceState(voiceId);
-            const gate = gateModFn ? gateModFn(time, voiceContext) : 0;
-            const gateOn = gate > 0;
-            const gateWasOn = voiceState.lastGate > 0;
-
-            if (gateOn && !gateWasOn) {
-                voiceState.stage = 'attack';
-                voiceState.value = 0;
-                voiceState.stageElapsed = 0;
-                voiceState.releaseStartValue = 0;
-            } else if (!gateOn && gateWasOn) {
-                voiceState.stage = 'release';
-                voiceState.stageElapsed = 0;
-                voiceState.releaseStartValue = voiceState.value;
+        registerModule(module.id, {
+            type: 'envelope',
+            params: {
+                attack,
+                decay,
+                sustain,
+                release
             }
+        });
+    }, [module.id, attack, decay, sustain, release]);
 
-            const dt = voiceState.lastTime !== null && voiceState.lastTime !== time
-                ? Math.max(0, (time - voiceState.lastTime) / 1000)
-                : 0;
-            voiceState.stageElapsed += dt;
-
-            switch (voiceState.stage) {
-                case 'attack': {
-                    const progress = finalAttack <= TIME_MIN ? 1 : Math.min(1, voiceState.stageElapsed / finalAttack);
-                    voiceState.value = progress;
-                    if (progress >= 1) {
-                        voiceState.stage = 'decay';
-                        voiceState.stageElapsed = 0;
-                        voiceState.value = 1;
-                    }
-                    break;
-                }
-                case 'decay': {
-                    const progress = finalDecay <= TIME_MIN ? 1 : Math.min(1, voiceState.stageElapsed / finalDecay);
-                    voiceState.value = 1 + (finalSustain - 1) * progress;
-                    if (progress >= 1) {
-                        voiceState.stage = gateOn ? 'sustain' : 'release';
-                        voiceState.stageElapsed = 0;
-                        voiceState.value = finalSustain;
-                        if (!gateOn) {
-                            voiceState.releaseStartValue = voiceState.value;
-                        }
-                    }
-                    break;
-                }
-                case 'sustain':
-                    voiceState.value = finalSustain;
-                    break;
-                case 'release': {
-                    const progress = finalRelease <= TIME_MIN ? 1 : Math.min(1, voiceState.stageElapsed / finalRelease);
-                    voiceState.value = voiceState.releaseStartValue * (1 - progress);
-                    if (progress >= 1 || voiceState.value <= 0.00001) {
-                        voiceState.stage = 'idle';
-                        voiceState.stageElapsed = 0;
-                        voiceState.value = 0;
-                        voiceState.releaseStartValue = 0;
-                    }
-                    break;
-                }
-                default:
-                    voiceState.stage = gateOn ? 'attack' : 'idle';
-                    voiceState.value = gateOn ? voiceState.value : 0;
-                    break;
-            }
-
-            voiceState.lastGate = gate;
-            voiceState.lastTime = time;
-
-            return Math.max(0, Math.min(1, voiceState.value));
-        };
-
-        registerModule(module.id, envelopeProcessor);
-
+    useEffect(() => {
         return () => {
             unregisterModule(module.id);
         };
-    }, [module.id, attack, decay, sustain, release]);
+    }, [module.id]);
 
     return (
         <div
@@ -172,24 +110,29 @@ function Envelope({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isCon
             </div>
 
             <div style={{ padding: '10px' }}>
-                <div style={{ marginBottom: '15px', position: 'relative' }}>
+                <div style={{ marginBottom: '15px' }}>
                     <label style={{ fontSize: '10px', color: '#aaa', display: 'block', marginBottom: '5px' }}>
-                        GATE IN
+                        SHAPE
                     </label>
-                    <div style={{ display: 'flex', alignItems: 'center', position: 'relative', minHeight: '16px' }}>
-                        <Port
-                            type="input"
-                            moduleId={module.id}
-                            portId="gate-input"
-                            onClick={(e) => {
-                                const rect = e.currentTarget.getBoundingClientRect();
-                                onOutputClick(module.id, 'gate-input', {
-                                    x: rect.left + rect.width / 2,
-                                    y: rect.top + rect.height / 2
-                                });
-                            }}
-                            isConnecting={isConnecting}
-                        />
+                    <div style={{
+                        border: '1px solid #444',
+                        background: '#1a1a1a',
+                        borderRadius: '2px',
+                        overflow: 'hidden'
+                    }}>
+                        <svg width="100%" height={previewHeight} viewBox={`0 0 ${previewWidth} ${previewHeight}`} preserveAspectRatio="none">
+                            <line x1="0" y1={previewHeight - 1} x2={previewWidth} y2={previewHeight - 1} stroke="#2a2a2a" strokeWidth="1" />
+                            <line x1="0" y1={previewHeight / 2} x2={previewWidth} y2={previewHeight / 2} stroke="#2a2a2a" strokeWidth="1" />
+                            <line x1="0" y1="1" x2={previewWidth} y2="1" stroke="#2a2a2a" strokeWidth="1" />
+                            <polyline
+                                points={previewPoints}
+                                fill="none"
+                                stroke="#0f0"
+                                strokeWidth="2"
+                                strokeLinejoin="round"
+                                strokeLinecap="round"
+                            />
+                        </svg>
                     </div>
                 </div>
 
@@ -265,22 +208,41 @@ function Envelope({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isCon
                     />
                 </ParameterRow>
 
-                <div style={{ position: 'relative', marginTop: '10px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', position: 'relative' }}>
-                        <span style={{ fontSize: '9px', color: '#aaa', marginRight: '16px' }}>OUT</span>
-                        <Port
-                            type="output"
-                            moduleId={module.id}
-                            portId="output"
-                            onClick={(e) => {
-                                const rect = e.currentTarget.getBoundingClientRect();
-                                onOutputClick(module.id, 'output', {
-                                    x: rect.left + rect.width / 2,
-                                    y: rect.top + rect.height / 2
-                                });
-                            }}
-                            isConnecting={isConnecting}
-                        />
+                <div style={{ position: 'relative', marginTop: '12px', minHeight: '20px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative' }}>
+                        <div style={{ position: 'relative', minWidth: '52px', minHeight: '16px' }}>
+                            <span style={{ fontSize: '9px', color: '#aaa', marginLeft: '2px' }}>GATE IN</span>
+                            <Port
+                                type="input"
+                                moduleId={module.id}
+                                portId="gate-input"
+                                onClick={(e) => {
+                                    const rect = e.currentTarget.getBoundingClientRect();
+                                    onOutputClick(module.id, 'gate-input', {
+                                        x: rect.left + rect.width / 2,
+                                        y: rect.top + rect.height / 2
+                                    });
+                                }}
+                                isConnecting={isConnecting}
+                            />
+                        </div>
+
+                        <div style={{ position: 'relative', minWidth: '40px', minHeight: '16px', textAlign: 'right' }}>
+                            <span style={{ fontSize: '9px', color: '#aaa', marginRight: '16px' }}>OUT</span>
+                            <Port
+                                type="output"
+                                moduleId={module.id}
+                                portId="output"
+                                onClick={(e) => {
+                                    const rect = e.currentTarget.getBoundingClientRect();
+                                    onOutputClick(module.id, 'output', {
+                                        x: rect.left + rect.width / 2,
+                                        y: rect.top + rect.height / 2
+                                    });
+                                }}
+                                isConnecting={isConnecting}
+                            />
+                        </div>
                     </div>
                 </div>
             </div>

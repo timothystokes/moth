@@ -6,35 +6,20 @@ function Mixer({ module, onDragStart, onOutputClick, isConnecting, connections }
     const [levelB, setLevelB] = useState(0.5);
 
     useEffect(() => {
-        const mixerProcessor = (time, voiceContext, inputFns) => {
-            const inputAFn = inputFns?.['input-a'];
-            const inputBFn = inputFns?.['input-b'];
-            const levelAModFn = inputFns?.['level-a-input'];
-            const levelBModFn = inputFns?.['level-b-input'];
-
-            const signalA = inputAFn ? inputAFn(time, voiceContext) : 0;
-            const signalB = inputBFn ? inputBFn(time, voiceContext) : 0;
-
-            let finalLevelA = levelA;
-            let finalLevelB = levelB;
-
-            if (levelAModFn) {
-                finalLevelA = Math.max(0, Math.min(1, levelA + levelAModFn(time, voiceContext) / 20));
+        registerModule(module.id, {
+            type: 'mixer',
+            params: {
+                levelA,
+                levelB
             }
+        });
+    }, [module.id, levelA, levelB]);
 
-            if (levelBModFn) {
-                finalLevelB = Math.max(0, Math.min(1, levelB + levelBModFn(time, voiceContext) / 20));
-            }
-
-            return signalA * finalLevelA + signalB * finalLevelB;
-        };
-
-        registerModule(module.id, mixerProcessor);
-
+    useEffect(() => {
         return () => {
             unregisterModule(module.id);
         };
-    }, [module.id, levelA, levelB]);
+    }, [module.id]);
 
     return (
         <div

@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { addVirtualNote, removeVirtualNote, initializeMIDI, onNoteOn } from '../audio/midiManager.js';
-import { registerModule, unregisterModule } from '../audio/audioEngine.js';
-import { setKeyboardLatchMode } from '../audio/voiceAllocator.js';
+import { addVirtualNote, removeVirtualNote, initializeMIDI, onNoteOn, onNoteOff } from '../audio/midiManager.js';
+import { registerModule, unregisterModule, setKeyboardLatchMode } from '../audio/audioEngine.js';
 
 function Keyboard({ module, onOutputClick, isConnecting, audioContext, isFixed, hasGateOutputConnection }) {
     // Musical keyboard state - just for UI display now
@@ -57,36 +56,33 @@ function Keyboard({ module, onOutputClick, isConnecting, audioContext, isFixed, 
             setActiveNote({ noteNumber, velocity });
         });
 
+        const unsubscribeNoteOff = onNoteOff(({ noteNumber }) => {
+            setActiveNote((current) => {
+                if (!current || current.noteNumber !== noteNumber) {
+                    return current;
+                }
+
+                return null;
+            });
+        });
+
         return () => {
             unsubscribeNoteOn();
+            unsubscribeNoteOff();
         };
     }, []);
     
-    // Register CV and gate outputs as modules.
-    // CV is 1V/octave with A4 = 0V. Gate returns the held note velocity (0–1).
     useEffect(() => {
-        const cvProcessor = (time, voiceContext, inputFns) => {
-            if (voiceContext) {
-                return voiceContext.cv;
-            }
+        registerModule(module.id + '-cv', { type: 'keyboard-cv', params: {} });
+        registerModule(module.id + '-gate', { type: 'keyboard-gate', params: {} });
+    }, [module.id]);
 
-            return hasGateOutputConnection ? 0 : lastPressedCvRef.current;
-        };
-
-        // Gate output: returns gate value for the voice being processed
-        // Each voice gets its own gate value from voiceContext
-        const gateProcessor = (time, voiceContext, inputFns) => {
-            return voiceContext?.gate ?? 0; // Return per-voice gate value (0 to 1)
-        };
-        
-        registerModule(module.id + '-cv', cvProcessor);
-        registerModule(module.id + '-gate', gateProcessor);
-        
+    useEffect(() => {
         return () => {
             unregisterModule(module.id + '-cv');
             unregisterModule(module.id + '-gate');
         };
-    }, [module.id, hasGateOutputConnection]);
+    }, [module.id]);
     
     const handleMouseDown = (note) => {
         const noteData = { noteNumber: note.noteNumber, velocity: 0.8 };

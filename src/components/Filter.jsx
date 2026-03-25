@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { registerModule, unregisterModule } from '../audio/audioEngine.js';
 
 function Filter({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isConnecting, audioContext, connections }) {
@@ -9,83 +9,15 @@ function Filter({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isConne
     // Convert slider position to exponential frequency (20Hz to 20kHz) - reversed direction
     const cutoff = 20 * Math.pow(1000, (1 - cutoffSlider)); // Exponential scaling, inverted
     
-    // Use refs to maintain filter state per voice (state variable filter with two integrators)
-    const filterStatesRef = useRef(new Map()); // Map<voiceId, { lowpass, bandpass }>
-    
-    // Get or create filter state for a voice
-    const getFilterState = (voiceId) => {
-        if (!filterStatesRef.current.has(voiceId)) {
-            filterStatesRef.current.set(voiceId, { lowpass: 0, bandpass: 0 });
-        }
-        return filterStatesRef.current.get(voiceId);
-    };
-    
-    // Register this module's processing function
     useEffect(() => {
-        const filterProcessor = (time, voiceContext, inputFns) => {
-            // Get audio input
-            const audioInputFn = inputFns?.['audio-input'];
-            const inputSignal = audioInputFn ? audioInputFn(time, voiceContext) : 0;
-            
-            // Get modulation inputs if connected
-            const cutoffModFn = inputFns?.['cutoff-input'];
-            const resonanceModFn = inputFns?.['resonance-input'];
-            
-            // Calculate final parameters with modulation
-            let finalCutoff = cutoff;
-            if (cutoffModFn) {
-                const modVoltage = cutoffModFn(time, voiceContext); // 1V/octave or ±10V
-                finalCutoff = cutoff * Math.pow(2, modVoltage / 5); // Exponential scaling
-                finalCutoff = Math.max(20, Math.min(20000, finalCutoff)); // Clamp 20Hz-20kHz
+        registerModule(module.id, {
+            type: 'filter',
+            params: {
+                cutoffSlider,
+                resonance,
+                filterType
             }
-            
-            let finalResonance = resonance;
-            if (resonanceModFn) {
-                const modVoltage = resonanceModFn(time, voiceContext); // ±10V
-                finalResonance = resonance + (modVoltage / 20); // Add ±0.5 adjustment
-                finalResonance = Math.max(0, Math.min(0.99, finalResonance)); // Clamp 0-0.99
-            }
-            
-            // Get filter state for this voice
-            const voiceId = voiceContext?.voiceId || 'global';
-            const filterState = getFilterState(voiceId);
-            
-            // State variable filter implementation (provides true resonance)
-            const sampleRate = 44100;
-            const nyquist = sampleRate / 2;
-            
-            // Clamp cutoff to prevent instability (max 80% of Nyquist)
-            const safeCutoff = Math.min(finalCutoff, nyquist * 0.8);
-            
-            const f = 2 * Math.sin(Math.PI * safeCutoff / sampleRate); // Frequency coefficient
-            const fClamped = Math.min(f, 1.9); // Ensure stability (must be < 2)
-            const q = 1 - finalResonance; // Q factor (inverted - higher resonance = lower q)
-            const qNormalized = Math.max(0.01, q); // Prevent divide by zero
-            
-            // State variable filter equations
-            const lowpass = filterState.lowpass + fClamped * filterState.bandpass;
-            const highpass = inputSignal - lowpass - qNormalized * filterState.bandpass;
-            const bandpass = fClamped * highpass + filterState.bandpass;
-            
-            // Check for NaN/Infinity and reset if needed (safety check)
-            if (!isFinite(lowpass) || !isFinite(bandpass)) {
-                filterState.lowpass = 0;
-                filterState.bandpass = 0;
-                return 0;
-            }
-            
-            // Update state
-            filterState.lowpass = lowpass;
-            filterState.bandpass = bandpass;
-            
-            // Return appropriate output based on filter type
-            const output = filterType === 'lowpass' ? lowpass : highpass;
-            
-            // Return filtered signal (already in ±10V range)
-            return output;
-        };
-        
-        registerModule(module.id, filterProcessor);
+        });
     }, [module.id, cutoff, resonance, filterType]);
     
     // Separate cleanup effect that only runs on unmount

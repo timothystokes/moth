@@ -7,7 +7,31 @@ import RandomVoltageGenerator from './components/RandomVoltageGenerator.jsx';
 import Envelope from './components/Envelope.jsx';
 import Mixer from './components/Mixer.jsx';
 import Multi from './components/Multi.jsx';
+import Transport from './components/Transport.jsx';
 import { connectModules, disconnectInput } from './audio/audioEngine.js';
+import {
+    loadMIDIFile,
+    playLoadedSequence,
+    rewindLoadedSequence,
+    selectLoadedSequenceChannel,
+    stopLoadedSequence,
+    subscribeToSequenceTransport
+} from './audio/midiManager.js';
+
+const toolbarHeight = 50;
+const transportHeight = 78;
+
+const initialTransportState = {
+    hasSequence: false,
+    fileName: null,
+    channel: null,
+    channelDisplay: null,
+    availableChannels: [],
+    durationMs: 0,
+    eventCount: 0,
+    isPlaying: false,
+    playbackPositionMs: 0
+};
 
 function getDestinationModuleIds(moduleId, inputPort) {
     return [moduleId];
@@ -35,8 +59,11 @@ function App() {
     const [tempConnection, setTempConnection] = useState(null);
     const [audioContext, setAudioContext] = useState(null);
     const [isPoweredOn, setIsPoweredOn] = useState(false);
+    const [transportState, setTransportState] = useState(initialTransportState);
+    const [pendingTransportPlay, setPendingTransportPlay] = useState(false);
     
     const canvasRef = useRef(null);
+    const contentRef = useRef(null);
 
     const handleModuleDragStart = (e, moduleId) => {
         e.preventDefault();
@@ -95,6 +122,50 @@ function App() {
             window.removeEventListener('mouseup', handleGlobalMouseUp);
         };
     }, [draggedModule, dragOffset]);
+
+    useEffect(() => {
+        const unsubscribe = subscribeToSequenceTransport(setTransportState);
+
+        return () => {
+            unsubscribe();
+        };
+    }, []);
+
+    useEffect(() => {
+        if (isPoweredOn) {
+            return;
+        }
+
+        setPendingTransportPlay(false);
+        stopLoadedSequence();
+    }, [isPoweredOn]);
+
+    useEffect(() => {
+        if (!pendingTransportPlay || !audioContext || !isPoweredOn) {
+            return;
+        }
+
+        let isCancelled = false;
+
+        const startPlayback = async () => {
+            try {
+                await audioContext.resume();
+                await playLoadedSequence();
+            } catch (error) {
+                console.error('Failed to start MIDI playback:', error);
+            } finally {
+                if (!isCancelled) {
+                    setPendingTransportPlay(false);
+                }
+            }
+        };
+
+        startPlayback();
+
+        return () => {
+            isCancelled = true;
+        };
+    }, [pendingTransportPlay, audioContext, isPoweredOn]);
 
     const handleOutputClick = (moduleId, outputId, position) => {
         if (connectingFrom) {
@@ -256,17 +327,55 @@ function App() {
         setIsPoweredOn(prev => !prev);
     };
 
+    const handleSequenceLoad = async (file) => {
+        setPendingTransportPlay(false);
+        return loadMIDIFile(file);
+    };
+
+    const handleTransportPlay = async () => {
+        if (!transportState.hasSequence) {
+            throw new Error('Load a MIDI file before pressing play.');
+        }
+
+        if (!audioContext || !isPoweredOn) {
+            setPendingTransportPlay(true);
+            if (!isPoweredOn) {
+                setIsPoweredOn(true);
+            }
+            return;
+        }
+
+        await audioContext.resume();
+        await playLoadedSequence();
+    };
+
+    const handleTransportStop = () => {
+        setPendingTransportPlay(false);
+        stopLoadedSequence();
+    };
+
+    const handleTransportRewind = () => {
+        setPendingTransportPlay(false);
+        rewindLoadedSequence();
+    };
+
+    const handleTransportChannelSelect = (channel) => {
+        setPendingTransportPlay(false);
+        return selectLoadedSequenceChannel(channel);
+    };
+
     return (
-        <div style={{ width: '100%', height: '100%', position: 'relative', display: 'flex' }}>
+        <div style={{ width: '100%', height: '100%', position: 'relative', display: 'flex', flexDirection: 'column', background: '#101010' }}>
             <Toolbar addModule={addModule} isPoweredOn={isPoweredOn} togglePower={togglePower} />
-            
-            {/* SVG overlay for connections - covers entire viewport */}
+
+            <div ref={contentRef} style={{ flex: 1, position: 'relative', display: 'flex', minHeight: 0 }}>
+            {/* SVG overlay for connections */}
             <svg style={{
-                position: 'fixed',
+                position: 'absolute',
                 top: 0,
                 left: 0,
-                width: '100vw',
-                height: '100vh',
+                width: '100%',
+                height: '100%',
                 pointerEvents: 'none',
                 zIndex: 9999
             }}>
@@ -275,16 +384,17 @@ function App() {
                     // Get current port positions from DOM
                     const fromPort = document.querySelector(`[data-module-id="${conn.from.moduleId}"][data-port-id="${conn.from.outputId}"]`);
                     const toPort = document.querySelector(`[data-module-id="${conn.to.moduleId}"][data-port-id="${conn.to.outputId}"]`);
+                    const contentRect = contentRef.current?.getBoundingClientRect();
                     
-                    if (!fromPort || !toPort) return null;
+                    if (!fromPort || !toPort || !contentRect) return null;
                     
                     const fromRect = fromPort.getBoundingClientRect();
                     const toRect = toPort.getBoundingClientRect();
                     
-                    const x1 = fromRect.left + fromRect.width / 2;
-                    const y1 = fromRect.top + fromRect.height / 2;
-                    const x2 = toRect.left + toRect.width / 2;
-                    const y2 = toRect.top + toRect.height / 2;
+                    const x1 = fromRect.left - contentRect.left + fromRect.width / 2;
+                    const y1 = fromRect.top - contentRect.top + fromRect.height / 2;
+                    const x2 = toRect.left - contentRect.left + toRect.width / 2;
+                    const y2 = toRect.top - contentRect.top + toRect.height / 2;
                     
                     return (
                         <g key={conn.id}>
@@ -306,17 +416,19 @@ function App() {
                 {/* Draw temporary connection while dragging */}
                 {connectingFrom && tempConnection && (() => {
                     const fromPort = document.querySelector(`[data-module-id="${connectingFrom.moduleId}"][data-port-id="${connectingFrom.outputId}"]`);
-                    if (!fromPort) return null;
+                    const contentRect = contentRef.current?.getBoundingClientRect();
+
+                    if (!fromPort || !contentRect) return null;
                     
                     const fromRect = fromPort.getBoundingClientRect();
                     const canvasRect = canvasRef.current?.getBoundingClientRect();
                     
-                    const x1 = fromRect.left + fromRect.width / 2;
-                    const y1 = fromRect.top + fromRect.height / 2;
+                    const x1 = fromRect.left - contentRect.left + fromRect.width / 2;
+                    const y1 = fromRect.top - contentRect.top + fromRect.height / 2;
                     
                     // tempConnection coordinates are relative to canvas, need to adjust
-                    const x2 = canvasRect ? canvasRect.left + tempConnection.x : tempConnection.x;
-                    const y2 = canvasRect ? canvasRect.top + tempConnection.y : tempConnection.y;
+                    const x2 = canvasRect ? canvasRect.left - contentRect.left + tempConnection.x : tempConnection.x;
+                    const y2 = canvasRect ? canvasRect.top - contentRect.top + tempConnection.y : tempConnection.y;
                     
                     return (
                         <path
@@ -337,7 +449,6 @@ function App() {
                     height: '100%',
                     background: '#1a1a1a',
                     borderRight: '2px solid #444',
-                    paddingTop: '50px',
                     flexShrink: 0
                 }}>
                     <Keyboard
@@ -378,7 +489,6 @@ function App() {
                     height: '100%',
                     background: '#1a1a1a',
                     borderLeft: '2px solid #444',
-                    paddingTop: '50px',
                     flexShrink: 0
                 }}>
                     <Amplifier
@@ -394,6 +504,18 @@ function App() {
                     />
                 </div>
             )}
+
+            </div>
+
+            <Transport
+                transportState={transportState}
+                onLoadFile={handleSequenceLoad}
+                onPlay={handleTransportPlay}
+                onStop={handleTransportStop}
+                onRewind={handleTransportRewind}
+                onSelectChannel={handleTransportChannelSelect}
+                isPendingPlay={pendingTransportPlay}
+            />
         </div>
     );
 }
@@ -401,18 +523,15 @@ function App() {
 function Toolbar({ addModule, isPoweredOn, togglePower }) {
     return (
         <div style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            height: '50px',
+            height: `${toolbarHeight}px`,
             background: '#2a2a2a',
             borderBottom: '2px solid #444',
             display: 'flex',
             alignItems: 'center',
             padding: '0 20px',
             gap: '10px',
-            zIndex: 1000
+            zIndex: 1000,
+            flexShrink: 0
         }}>
             <button onClick={() => addModule('oscillator')} style={buttonStyle}>
                 + Oscillator
@@ -474,7 +593,6 @@ function Canvas({
             style={{
                 width: '100%',
                 height: '100%',
-                paddingTop: '50px',
                 position: 'relative',
                 background: 'repeating-linear-gradient(0deg, transparent, transparent 19px, #222 19px, #222 20px), repeating-linear-gradient(90deg, transparent, transparent 19px, #222 19px, #222 20px)',
                 backgroundSize: '20px 20px'

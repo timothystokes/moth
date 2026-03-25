@@ -1,104 +1,130 @@
-// Pure functional audio engine with polyphonic voice support
-// Direct function reference architecture: modules hold direct references to input functions
-// Now supports per-voice processing with cv/gate cascading
+const moduleStates = new Map();
+const inputConnections = new Map();
+const scopeListeners = new Set();
 
-// Store output functions for each module
-const moduleOutputFunctions = new Map();
-// Store input function references: moduleId -> { inputName: inputFunction }
-const moduleInputFunctions = new Map();
-// Cache outputs per time frame AND per voice to avoid recalculation
-let currentTime = null;
-const frameCache = new Map(); // Map<`${time}-${voiceId}-${moduleId}`, value>
+let audioContextRef = null;
+let workletNodeRef = null;
+let workletInitializationPromise = null;
+let gateMonitoringEnabled = false;
+let keyboardLatchModeEnabled = false;
 
-// Register a module's processing function
-// processorFn signature: (time, voiceContext, inputFns) => outputValue
-// voiceContext = { cv, gate, velocity, voiceId }
-// inputFns is an object like { 'audio-input': fn, 'amp-input': fn }
-// where each fn is called as fn(time, voiceContext) to get the input value
-export function registerModule(moduleId, processorFn) {
-    // Create output function for this module
-    const outputFn = (time, voiceContext) => {
-        // Create cache key that includes voice information
-        const cacheKey = `${time}-${voiceContext?.voiceId || 'global'}-${moduleId}`;
-        
-        // Clear cache when time advances
-        if (time !== currentTime) {
-            currentTime = time;
-            frameCache.clear();
-        }
-        
-        // Return cached value if available
-        if (frameCache.has(cacheKey)) {
-            return frameCache.get(cacheKey);
-        }
-        
-        // Get input functions
-        const inputFns = moduleInputFunctions.get(moduleId) || {};
-        
-        // Wrap only active input functions. If the source module no longer exists,
-        // omit that input entirely so processors fall back to their slider/default
-        // values exactly as if the cable had been unplugged.
-        const wrappedInputFns = {};
-        for (const [inputName, inputFn] of Object.entries(inputFns)) {
-            const sourceModuleId = inputFn.__sourceModuleId;
-            if (sourceModuleId && !moduleOutputFunctions.has(sourceModuleId)) {
-                continue;
-            }
-            wrappedInputFns[inputName] = (t, vc) => inputFn(t, vc || voiceContext);
-        }
-        
-        // Process this module - it calls input functions which cascade backward
-        const output = processorFn(time, voiceContext, wrappedInputFns);
-        
-        // Cache the result
-        frameCache.set(cacheKey, output);
-        
-        return output;
-    };
-    
-    moduleOutputFunctions.set(moduleId, outputFn);
-}
-
-// Unregister a module
-export function unregisterModule(moduleId) {
-    moduleOutputFunctions.delete(moduleId);
-    // Note: we don't delete moduleInputFunctions here because connections should persist
-    // across module re-registrations (e.g., when parameters change)
-}
-
-// Connect source module's output directly to destination module's input
-// This creates a wrapper function that always looks up the current output function
-export function connectModules(fromModuleId, toModuleId, inputName) {
-    if (!moduleInputFunctions.has(toModuleId)) {
-        moduleInputFunctions.set(toModuleId, {});
+function postToWorklet(message) {
+    if (workletNodeRef) {
+        workletNodeRef.port.postMessage(message);
     }
-    
-    // Store a wrapper function that looks up the current output function
-    // This allows modules to re-register with updated parameters
-    const wrapperFn = (time, voiceContext) => {
-        const sourceFn = moduleOutputFunctions.get(fromModuleId);
-        return sourceFn ? sourceFn(time, voiceContext) : 0;
-    };
-    wrapperFn.__sourceModuleId = fromModuleId;
-    
-    moduleInputFunctions.get(toModuleId)[inputName] = wrapperFn;
 }
 
-// Disconnect a specific input on a module
+function serializeModules() {
+    return Array.from(moduleStates.entries()).map(([moduleId, module]) => ({ moduleId, module }));
+}
+
+function serializeConnections() {
+    return Array.from(inputConnections.entries()).flatMap(([toModuleId, inputs]) =>
+        Object.entries(inputs).map(([inputName, fromModuleId]) => ({ fromModuleId, toModuleId, inputName }))
+    );
+}
+
+function handleWorkletMessage(event) {
+    const message = event.data;
+    if (message.type === 'scope-data') {
+        scopeListeners.forEach((listener) => listener(message.samples));
+    }
+}
+
+function syncStateToWorklet() {
+    postToWorklet({
+        type: 'sync-state',
+        modules: serializeModules(),
+        connections: serializeConnections(),
+        gateMonitoringEnabled,
+        keyboardLatchModeEnabled
+    });
+}
+
+export async function initializeAudioEngine(audioContext) {
+    if (workletNodeRef && audioContextRef === audioContext) {
+        return workletNodeRef;
+    }
+
+    if (workletInitializationPromise && audioContextRef === audioContext) {
+        return workletInitializationPromise;
+    }
+
+    audioContextRef = audioContext;
+    workletInitializationPromise = (async () => {
+        const workletUrl = new URL('./moth-synth-worklet.js', import.meta.url);
+        await audioContext.audioWorklet.addModule(workletUrl);
+
+        workletNodeRef = new AudioWorkletNode(audioContext, 'moth-synth-processor', {
+            numberOfInputs: 0,
+            numberOfOutputs: 1,
+            outputChannelCount: [1]
+        });
+        workletNodeRef.port.onmessage = handleWorkletMessage;
+        workletNodeRef.connect(audioContext.destination);
+        syncStateToWorklet();
+
+        return workletNodeRef;
+    })();
+
+    return workletInitializationPromise;
+}
+
+export function registerModule(moduleId, module) {
+    moduleStates.set(moduleId, module);
+    postToWorklet({ type: 'upsert-module', moduleId, module });
+}
+
+export function unregisterModule(moduleId) {
+    moduleStates.delete(moduleId);
+    postToWorklet({ type: 'remove-module', moduleId });
+}
+
+export function connectModules(fromModuleId, toModuleId, inputName) {
+    if (!inputConnections.has(toModuleId)) {
+        inputConnections.set(toModuleId, {});
+    }
+
+    inputConnections.get(toModuleId)[inputName] = fromModuleId;
+    postToWorklet({ type: 'connect', fromModuleId, toModuleId, inputName });
+}
+
 export function disconnectInput(toModuleId, inputName) {
-    const inputs = moduleInputFunctions.get(toModuleId);
+    const inputs = inputConnections.get(toModuleId);
     if (inputs) {
         delete inputs[inputName];
     }
+
+    postToWorklet({ type: 'disconnect', toModuleId, inputName });
 }
 
-// Get a module's output function for voice processing
-export function getModuleOutputFunction(moduleId) {
-    return moduleOutputFunctions.get(moduleId);
+export function noteOn(noteNumber, velocity) {
+    postToWorklet({ type: 'note-on', noteNumber, velocity });
 }
 
-// Clear all modules (for cleanup)
+export function noteOff(noteNumber) {
+    postToWorklet({ type: 'note-off', noteNumber });
+}
+
+export function setGateMonitoring(enabled) {
+    gateMonitoringEnabled = enabled;
+    postToWorklet({ type: 'set-gate-monitoring', enabled });
+}
+
+export function setKeyboardLatchMode(enabled) {
+    keyboardLatchModeEnabled = enabled;
+    postToWorklet({ type: 'set-keyboard-latch-mode', enabled });
+}
+
+export function subscribeToScopeData(listener) {
+    scopeListeners.add(listener);
+    return () => {
+        scopeListeners.delete(listener);
+    };
+}
+
 export function clearAllModules() {
-    moduleProcessors.clear();
-    moduleOutputs.clear();
+    moduleStates.clear();
+    inputConnections.clear();
+    postToWorklet({ type: 'clear-state' });
 }

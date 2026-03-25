@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { registerModule, unregisterModule } from '../audio/audioEngine.js';
 
 /**
@@ -38,142 +38,23 @@ function Oscillator({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isC
     const [shape, setShape] = useState(0.5);         // 0=square, 0.5=sine, 1=triangle
     const [dutyCycle, setDutyCycle] = useState(0.5);  // 0–1; 0.5=equal halves, 0/1=full asymmetry
 
-    // Per-voice phase accumulator — keyed by voiceId (or 'default' for standalone use).
-    // Stores { phase: radians 0..2π, lastTime: ms } so phase integrates Δt × freq
-    // rather than being derived from absolute time (which causes FM to drift over time).
-    const phaseMapRef = useRef(new Map());
-    
-    // Register this module's processing function
     useEffect(() => {
-        const oscillatorProcessor = (time, voiceContext, inputFns) => {
-            // voiceContext = { cv, gate, velocity, voiceId }
-            //   cv:       available voice pitch CV (not applied unless patched to FREQ)
-            //   gate:     0–1 velocity when note is on, absent when off
-            //   velocity: 0–1 normalised note velocity
-            //   voiceId:  unique id per polyphonic voice
-            
-            // Get modulation inputs if connected
-            const freqModFn = inputFns?.['freq-input'];
-            const ampModFn = inputFns?.['amp-input'];
-            const shapeModFn = inputFns?.['shape-input'];
-            const dutyModFn  = inputFns?.['duty-input'];
-            
-            // Calculate final parameters with modulation
-            let finalFreq = frequency;
-            
-            // ── Frequency ────────────────────────────────────────────────────────
-            // Freq socket is a 1V/octave relative nudge on top of the slider.
-            // Keyboard CV patched here already provides 1V/octave directly, so the
-            // incoming voltage is used as the relative octave offset.
-            const freqNudgeOctaves = freqModFn ? freqModFn(time, voiceContext) : 0;
-
-            // Frequency changes only through the wired FREQ input.
-            // 0V at the input corresponds to no change, so a keyboard patched here
-            // naturally aligns A4 (0V) with the default 440Hz slider position.
-            finalFreq = frequency * Math.pow(2, freqNudgeOctaves);
-            
-            // ── Amplitude ────────────────────────────────────────────────────────
-            let finalAmp = amplitude;
-
-            if (ampModFn) {
-                const modVoltage = ampModFn(time, voiceContext);
-                if (modVoltage >= 0 && modVoltage <= 1) {
-                    // 0–1 range → treat as gate/velocity: multiply (VCA behaviour)
-                    finalAmp = amplitude * modVoltage;
-                } else {
-                    // Outside 0–1 → treat as bipolar CV: add offset (±10V = ±0.5)
-                    finalAmp = Math.max(0, Math.min(1, amplitude + modVoltage / 20));
-                }
+        registerModule(module.id, {
+            type: 'oscillator',
+            params: {
+                frequency,
+                amplitude,
+                shape,
+                dutyCycle
             }
-            
-            // ── Shape modulation ─────────────────────────────────────────────────
-            // ±10V maps to ±0.5 offset on the 0–1 slider range.
-            let finalShape = shape;
-            if (shapeModFn) {
-                finalShape = Math.max(0, Math.min(1, shape + shapeModFn(time, voiceContext) / 20));
-            }
+        });
+    }, [module.id, frequency, amplitude, shape, dutyCycle]);
 
-            // ── Duty cycle modulation ────────────────────────────────────────────
-            // ±10V maps to ±0.5 offset. Clamped to [0.02, 0.98] so neither
-            // half of the cycle ever vanishes completely.
-            let finalDuty = Math.max(0.02, Math.min(0.98, dutyCycle));
-            if (dutyModFn) {
-                finalDuty = Math.max(0.02, Math.min(0.98, dutyCycle + dutyModFn(time, voiceContext) / 20));
-            }
-
-            // ── Phase accumulation ───────────────────────────────────────────────
-            // Integrate Δphase = 2π × finalFreq × Δt each frame so that FM
-            // modulation is proportional only to the modulation voltage, never
-            // to the absolute elapsed time.
-            const voiceId = voiceContext?.voiceId ?? 'default';
-            const voiceState = phaseMapRef.current.get(voiceId) ?? { phase: 0, lastTime: null };
-            let accPhase;
-            if (voiceState.lastTime !== null && voiceState.lastTime !== time) {
-                const dt = (time - voiceState.lastTime) / 1000; // seconds
-                accPhase = (voiceState.phase + 2 * Math.PI * finalFreq * dt) % (2 * Math.PI);
-            } else {
-                accPhase = voiceState.phase;
-            }
-            phaseMapRef.current.set(voiceId, { phase: accPhase, lastTime: time });
-
-            const p = accPhase / (2 * Math.PI); // normalised real-time phase 0–1
-
-            // ── Duty-cycle time dilation ─────────────────────────────────────────
-            // CONSTRAINT: duty MUST split the cycle at the trough→peak and
-            // peak→trough transitions — never at zero crossings or amplitude
-            // extremes. This is enforced by the waveform alignment below.
-            //
-            // Two-slope linear ramp (no conditionals):
-            //   rising  half [0→d]   maps to pw [0→0.5]
-            //   falling half [d→1]   maps to pw [0.5→1]
-            const d = finalDuty;
-            const ps = (p + 0.25) % 1;
-            const pw = Math.min(ps / (2 * d), 0.5) + Math.max((ps - d) / (2 * (1 - d)), 0);
-
-            // ── Waveforms (all computed on pw; trough at pw=0, peak at pw=0.5) ───
-            // CONSTRAINT: both functions must equal -1 at pw=0 (trough) and +1 at
-            // pw=0.5 (peak). This guarantees duty always splits at peak/trough, not
-            // at zero crossings or the top/bottom of the wave.
-            const sineWave = -Math.cos(pw * 2 * Math.PI);
-            const triangleWave = pw < 0.5 ? pw * 4 - 1 : 3 - pw * 4;
-
-            const squareness = finalShape <= 0.5 ? (0.5 - finalShape) * 2 : 0;
-
-            // Square-side pulse width: as squareness increases, move from no
-            // top/bottom split (50/50) toward the full duty setting while keeping
-            // the square plateaus aligned to the same duty-adjusted phase basis.
-            const pulseWidthAmount = squareness;
-            const squareDuty = 0.5 + (d - 0.5) * pulseWidthAmount;
-            const squareWindowPhase = (pw - (0.5 - squareDuty / 2) + 1) % 1;
-            const squarePhase = Math.min(squareWindowPhase / (2 * squareDuty), 0.5) + Math.max((squareWindowPhase - squareDuty) / (2 * (1 - squareDuty)), 0);
-            const squareCarrier = Math.sin(squarePhase * 2 * Math.PI);
-            // On the left half, the sine first adopts the same pulse-width timing,
-            // then blends toward the square target as squareness increases.
-            const leftHalfSine = sineWave * (1 - pulseWidthAmount) + squareCarrier * pulseWidthAmount;
-            const squareEdgeSmoothingAmount = 0.5;
-            const squareEdgeExponent = 0.001 + (1 - squareness) * squareEdgeSmoothingAmount;
-            const squareTargetWave = Math.sign(squareCarrier) * Math.pow(Math.abs(squareCarrier), squareEdgeExponent);
-            const leftHalfWave = leftHalfSine * (1 - squareness) + squareTargetWave * squareness;
-
-            // ── Blend: shape 0=square → 0.5=sine → 1=triangle ───────────────────
-            let wave;
-            if (finalShape <= 0.5) {
-                wave = leftHalfWave;
-            } else {
-                const sineToTriangle = (finalShape - 0.5) * 2;
-                wave = sineWave * (1 - sineToTriangle) + triangleWave * sineToTriangle;
-            }
-            
-            // Scale to ±10V
-            return wave * finalAmp * 10;
-        };
-        
-        registerModule(module.id, oscillatorProcessor);
-        
+    useEffect(() => {
         return () => {
             unregisterModule(module.id);
         };
-    }, [module.id, frequency, amplitude, shape, dutyCycle]);
+    }, [module.id]);
     
     return (
         <div

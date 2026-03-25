@@ -3,13 +3,10 @@ import { registerModule, unregisterModule } from '../audio/audioEngine.js';
 
 function Multi({ module, onDragStart, onOutputClick, isConnecting }) {
     useEffect(() => {
-        const passthroughProcessor = (time, voiceContext, inputFns) => {
-            const signalInFn = inputFns?.['signal-input'];
-            return signalInFn ? signalInFn(time, voiceContext) : 0;
-        };
+        registerModule(module.id, { type: 'multi', params: {} });
+    }, [module.id]);
 
-        registerModule(module.id, passthroughProcessor);
-
+    useEffect(() => {
         return () => {
             unregisterModule(module.id);
         };
