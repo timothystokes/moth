@@ -41,7 +41,7 @@ function buildEnvelopePreviewPoints(attack, decay, sustain, release, width, heig
     return points.map(([x, y]) => `${x},${y}`).join(' ');
 }
 
-function Envelope({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isConnecting, audioContext, connections }) {
+function Envelope({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isConnecting, audioContext, connections, onRemove }) {
     const savedParams = getModuleState(module.id)?.params ?? {};
     const [attack, setAttack] = useState(savedParams.attack ?? 0.01);
     const [decay, setDecay] = useState(savedParams.decay ?? 0.2);
@@ -76,7 +76,7 @@ function Envelope({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isCon
                 border: '2px solid #555',
                 borderRadius: '4px',
                 padding: 0,
-                zIndex: 10,
+                zIndex: 200,
                 transition: 'none',
                 boxShadow: '0 4px 8px rgba(0,0,0,0.3)'
             }}
@@ -97,10 +97,40 @@ function Envelope({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isCon
                     cursor: 'move',
                     background: '#2a2a2a',
                     borderBottom: '1px solid #555',
-                    borderRadius: '2px 2px 0 0'
+                    borderRadius: '2px 2px 0 0',
+                    position: 'relative'
                 }}
             >
                 <span>ENVELOPE</span>
+                {onRemove && (
+                    <button
+                        style={{
+                            position: 'absolute',
+                            top: 4,
+                            right: 4,
+                            zIndex: 300,
+                            background: '#444',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: '50%',
+                            width: 22,
+                            height: 22,
+                            fontWeight: 'bold',
+                            fontSize: 14,
+                            cursor: 'pointer',
+                            boxShadow: '0 1px 4px #000a',
+                            lineHeight: '22px',
+                            padding: 0
+                        }}
+                        title="Remove module"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onRemove();
+                        }}
+                    >
+                        ×
+                    </button>
+                )}
             </div>
 
             <div style={{ padding: '10px' }}>

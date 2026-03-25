@@ -33,7 +33,7 @@ import { getModuleState, registerModule } from '../audio/audioEngine.js';
  * Phase is accumulated per-voice (Δphase = 2π × freq × Δt) so FM modulation
  * depth is controlled purely by the modulator's amplitude — no time-drift artefacts.
  */
-function Oscillator({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isConnecting, audioContext, connections }) {
+function Oscillator({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isConnecting, audioContext, connections, onRemove }) {
     const savedParams = getModuleState(module.id)?.params ?? {};
     const [frequency, setFrequency] = useState(savedParams.frequency ?? 440); // Hz — default A4
     const [amplitude, setAmplitude] = useState(savedParams.amplitude ?? 0.5); // 0–1 (maps to 0–±10V peak)
@@ -64,7 +64,7 @@ function Oscillator({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isC
                 border: '2px solid #555',
                 borderRadius: '4px',
                 padding: 0,
-                zIndex: 10,
+                zIndex: 200,
                 transition: 'none',
                 boxShadow: '0 4px 8px rgba(0,0,0,0.3)'
             }}
@@ -85,9 +85,38 @@ function Oscillator({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isC
                     cursor: 'move',
                     background: '#2a2a2a',
                     borderBottom: '1px solid #555',
-                    borderRadius: '2px 2px 0 0'
+                    borderRadius: '2px 2px 0 0',
+                    position: 'relative'
             }}>
                 <span>OSCILLATOR</span>
+                {onRemove && (
+                    <button
+                        style={{
+                            top: 4,
+                            right: 4,
+                            zIndex: 300,
+                            background: '#444', // more subtle than red
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: '50%',
+                            width: 22,
+                            height: 22,
+                            fontWeight: 'bold',
+                            fontSize: 14,
+                            cursor: 'pointer',
+                            boxShadow: '0 1px 4px #000a',
+                            lineHeight: '22px',
+                            padding: 0
+                        }}
+                        title="Remove module"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onRemove();
+                        }}
+                    >
+                        ×
+                    </button>
+                )}
             </div>
             
             <div style={{ padding: '10px' }}>

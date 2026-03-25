@@ -514,14 +514,28 @@ class MothSynthProcessor extends AudioWorkletProcessor {
         const targetVoice = trackState.keyboardLatchModeEnabled
             ? this.getKeyboardLatchVoice(trackState)
             : this.claimRoundRobinVoice(trackState);
-        const gateVoltage = Math.max(0, Math.min(GATE_HIGH_VOLTAGE, (Number.isFinite(velocity) ? velocity : 1) * GATE_HIGH_VOLTAGE));
+        // Scale velocity to 0..5V (assume input velocity is 0..1)
+        const velocityV = Math.max(0, Math.min(1, Number.isFinite(velocity) ? velocity : 1)) * GATE_HIGH_VOLTAGE;
+        const gateV = velocityV > 0 ? GATE_HIGH_VOLTAGE : 0;
 
         this.clearVoice(trackState, targetVoice);
         targetVoice.state = VOICE_ACTIVE;
         targetVoice.noteNumber = noteNumber;
-        targetVoice.velocity = velocity;
-        targetVoice.gate = gateVoltage;
+        targetVoice.velocity = velocityV; // 0..5V
+        targetVoice.gate = gateV;         // 0 or 5V
         targetVoice.cv = (noteNumber - 69) / 12;
+
+        // Debug logging for voice allocation
+        if (typeof console !== 'undefined' && console.log) {
+            console.log('[MothSynth] allocateVoice', {
+                trackId,
+                voiceId: targetVoice.voiceId,
+                noteNumber,
+                cv: targetVoice.cv,
+                velocity: velocityV,
+                gate: gateV
+            });
+        }
 
         this.addVoiceMapping(trackState, noteNumber, targetVoice.voiceId);
     }
@@ -709,6 +723,8 @@ class MothSynthProcessor extends AudioWorkletProcessor {
                 return (_timeMs, laneContext) => laneContext?.cv ?? 0;
             case 'keyboard-gate':
                 return (_timeMs, laneContext) => laneContext?.gate ?? 0;
+            case 'keyboard-velocity':
+                return (_timeMs, laneContext) => laneContext?.velocity ?? 0;
             default:
                 return () => 0;
         }
@@ -719,10 +735,17 @@ class MothSynthProcessor extends AudioWorkletProcessor {
         const ampRead = this.createInputReader(moduleId, 'amp-input', activeStack);
         const shapeRead = this.createInputReader(moduleId, 'shape-input', activeStack);
         const dutyRead = this.createInputReader(moduleId, 'duty-input', activeStack);
-        // Each oscillator instance gets its own state object
-        const oscState = { phase: 0, lastTime: null };
+        // Store oscillator state per voiceId
+        const stateMap = new Map();
 
         return (timeMs, laneContext) => {
+            const voiceId = laneContext?.voiceId ?? 'global';
+            let oscState = stateMap.get(voiceId);
+            if (!oscState) {
+                oscState = { phase: 0, lastTime: null };
+                stateMap.set(voiceId, oscState);
+            }
+
             const frequency = params.frequency;
             const amplitude = params.amplitude;
             const shape = params.shape;
@@ -786,7 +809,7 @@ class MothSynthProcessor extends AudioWorkletProcessor {
                 wave = sineWave * (1 - sineToTriangle) + triangleWave * sineToTriangle;
             }
 
-            return wave * finalAmp * 10;
+            return finalAmp * wave;
         };
     }
 
@@ -794,10 +817,17 @@ class MothSynthProcessor extends AudioWorkletProcessor {
         const audioRead = this.createInputReader(moduleId, 'audio-input', activeStack);
         const cutoffRead = this.createInputReader(moduleId, 'cutoff-input', activeStack);
         const resonanceRead = this.createInputReader(moduleId, 'resonance-input', activeStack);
-        // Each filter instance gets its own state object
-        const filterState = { lowpass: 0, bandpass: 0 };
+        // Store filter state per voice
+        const stateMap = new Map();
 
         return (timeMs, laneContext) => {
+            const voiceId = laneContext?.voiceId ?? 'global';
+            let filterState = stateMap.get(voiceId);
+            if (!filterState) {
+                filterState = { lowpass: 0, bandpass: 0 };
+                stateMap.set(voiceId, filterState);
+            }
+
             const cutoff = 20 * Math.pow(1000, 1 - params.cutoffSlider);
             const resonance = params.resonance;
             const filterType = params.filterType;
@@ -841,17 +871,24 @@ class MothSynthProcessor extends AudioWorkletProcessor {
         const sustainRead = this.createInputReader(moduleId, 'sustain-input', activeStack);
         const releaseRead = this.createInputReader(moduleId, 'release-input', activeStack);
         const gateRead = this.createInputReader(moduleId, 'gate-input', activeStack);
-        // Each envelope instance gets its own state object
-        const envState = {
-            stage: 'idle',
-            value: 0,
-            lastTime: null,
-            lastGate: 0,
-            stageElapsed: 0,
-            releaseStartValue: 0
-        };
+        // Store envelope state per voice
+        const stateMap = new Map();
 
         return (timeMs, laneContext) => {
+            const voiceId = laneContext?.voiceId ?? 'global';
+            let envState = stateMap.get(voiceId);
+            if (!envState) {
+                envState = {
+                    stage: 'idle',
+                    value: 0,
+                    lastTime: null,
+                    lastGate: 0,
+                    stageElapsed: 0,
+                    releaseStartValue: 0
+                };
+                stateMap.set(voiceId, envState);
+            }
+
             const attackMod = attackRead ? attackRead(timeMs, laneContext) : 0;
             const decayMod = decayRead ? decayRead(timeMs, laneContext) : 0;
             const sustainMod = sustainRead ? sustainRead(timeMs, laneContext) : 0;
@@ -936,10 +973,17 @@ class MothSynthProcessor extends AudioWorkletProcessor {
 
     createRandomFactory(moduleId, params, activeStack) {
         const rateRead = this.createInputReader(moduleId, 'rate-input', activeStack);
-        // Each random instance gets its own state object
-        const randState = { lastOutputTime: 0, currentValue: 0 };
+        // Store random state per voice
+        const stateMap = new Map();
 
         return (timeMs, laneContext) => {
+            const voiceId = laneContext?.voiceId ?? 'global';
+            let randState = stateMap.get(voiceId);
+            if (!randState) {
+                randState = { lastOutputTime: 0, currentValue: 0 };
+                stateMap.set(voiceId, randState);
+            }
+
             let finalRate = params.rate;
 
             if (rateRead) {

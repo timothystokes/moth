@@ -873,6 +873,21 @@ function App() {
         }
     };
 
+    // Remove a module and all its connections
+    const removeModule = (moduleId) => {
+        if (!selectedTrack) return;
+        updateTrack(selectedTrack.id, (track) => ({
+            ...track,
+            modules: track.modules.filter((m) => m.id !== moduleId),
+            connections: track.connections.filter(
+                (c) => c.from.moduleId !== moduleId && c.to.moduleId !== moduleId
+            )
+        }));
+    };
+
+    // Expose removeModule for Canvas button
+    window.removeModule = removeModule;
+
     return (
         <div style={{ width: '100%', height: '100%', position: 'relative', display: 'flex', flexDirection: 'column', background: '#101010' }}>
             <input
@@ -1114,6 +1129,9 @@ function Toolbar({ addModule, isPoweredOn, togglePower, hasSelectedTrack, audioE
 }
 
 function Canvas({ canvasRef, modules, connections, connectingFrom, onModuleDragStart, onOutputClick, onMouseMove, onClick, audioContext, moduleUiRevision }) {
+    // Helper to determine if a module is fixed (not removable)
+    const isFixed = (module) => module.id === 'keyboard-singleton' || module.id === 'track-output-singleton';
+
     return (
         <div
             ref={canvasRef}
@@ -1128,23 +1146,24 @@ function Canvas({ canvasRef, modules, connections, connectingFrom, onModuleDragS
             }}
         >
             {modules.map((module) => {
+                const removeProp = !isFixed(module) ? { onRemove: () => window.removeModule(module.id) } : {};
                 if (module.type === 'oscillator') {
-                    return <Oscillator key={`${module.id}:${moduleUiRevision}`} module={module} onDragStart={onModuleDragStart} onOutputClick={onOutputClick} isConnecting={connectingFrom?.moduleId === module.id} audioContext={audioContext} connections={connections} />;
+                    return <Oscillator key={`${module.id}:${moduleUiRevision}`} module={module} onDragStart={onModuleDragStart} onOutputClick={onOutputClick} isConnecting={connectingFrom?.moduleId === module.id} audioContext={audioContext} connections={connections} {...removeProp} />;
                 }
                 if (module.type === 'filter') {
-                    return <Filter key={`${module.id}:${moduleUiRevision}`} module={module} onDragStart={onModuleDragStart} onOutputClick={onOutputClick} isConnecting={connectingFrom?.moduleId === module.id} audioContext={audioContext} connections={connections} />;
+                    return <Filter key={`${module.id}:${moduleUiRevision}`} module={module} onDragStart={onModuleDragStart} onOutputClick={onOutputClick} isConnecting={connectingFrom?.moduleId === module.id} audioContext={audioContext} connections={connections} {...removeProp} />;
                 }
                 if (module.type === 'random') {
-                    return <RandomVoltageGenerator key={`${module.id}:${moduleUiRevision}`} module={module} onDragStart={onModuleDragStart} onOutputClick={onOutputClick} isConnecting={connectingFrom?.moduleId === module.id} audioContext={audioContext} connections={connections} />;
+                    return <RandomVoltageGenerator key={`${module.id}:${moduleUiRevision}`} module={module} onDragStart={onModuleDragStart} onOutputClick={onOutputClick} isConnecting={connectingFrom?.moduleId === module.id} audioContext={audioContext} connections={connections} {...removeProp} />;
                 }
                 if (module.type === 'envelope') {
-                    return <Envelope key={`${module.id}:${moduleUiRevision}`} module={module} onDragStart={onModuleDragStart} onOutputClick={onOutputClick} isConnecting={connectingFrom?.moduleId === module.id} audioContext={audioContext} connections={connections} />;
+                    return <Envelope key={`${module.id}:${moduleUiRevision}`} module={module} onDragStart={onModuleDragStart} onOutputClick={onOutputClick} isConnecting={connectingFrom?.moduleId === module.id} audioContext={audioContext} connections={connections} {...removeProp} />;
                 }
                 if (module.type === 'mixer') {
-                    return <Mixer key={`${module.id}:${moduleUiRevision}`} module={module} onDragStart={onModuleDragStart} onOutputClick={onOutputClick} isConnecting={connectingFrom?.moduleId === module.id} connections={connections} />;
+                    return <Mixer key={`${module.id}:${moduleUiRevision}`} module={module} onDragStart={onModuleDragStart} onOutputClick={onOutputClick} isConnecting={connectingFrom?.moduleId === module.id} connections={connections} {...removeProp} />;
                 }
                 if (module.type === 'multi') {
-                    return <Multi key={`${module.id}:${moduleUiRevision}`} module={module} onDragStart={onModuleDragStart} onOutputClick={onOutputClick} isConnecting={connectingFrom?.moduleId === module.id} />;
+                    return <Multi key={`${module.id}:${moduleUiRevision}`} module={module} onDragStart={onModuleDragStart} onOutputClick={onOutputClick} isConnecting={connectingFrom?.moduleId === module.id} {...removeProp} />;
                 }
                 return null;
             })}

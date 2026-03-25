@@ -148,9 +148,9 @@ function Keyboard({ module, onOutputClick, isConnecting, isFixed, selectedTrackI
             }}>
                 {selectedTrackLabel ? `KEYBOARD · ${selectedTrackLabel}` : 'KEYBOARD'}
             </div>
-            
+
             <div style={{ padding: '10px', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-                {/* Output port */}
+                {/* Output port: CV OUT */}
                 <div style={{ marginBottom: '15px' }}>
                     <label style={{ fontSize: '10px', color: '#aaa', display: 'block', marginBottom: '5px' }}>
                         CV OUT
@@ -174,7 +174,8 @@ function Keyboard({ module, onOutputClick, isConnecting, isFixed, selectedTrackI
                         />
                     </div>
                 </div>
-                
+
+                {/* Output port: GATE OUT */}
                 <div style={{ marginBottom: '15px' }}>
                     <label style={{ fontSize: '10px', color: '#aaa', display: 'block', marginBottom: '5px' }}>
                         GATE OUT
@@ -195,6 +196,31 @@ function Keyboard({ module, onOutputClick, isConnecting, isFixed, selectedTrackI
                                 right: '-18px'
                             }}
                             title="Gate Out (+5V high, 0V low)"
+                        />
+                    </div>
+                </div>
+
+                {/* Output port: VELOCITY OUT */}
+                <div style={{ marginBottom: '15px' }}>
+                    <label style={{ fontSize: '10px', color: '#aaa', display: 'block', marginBottom: '5px' }}>
+                        VELOCITY OUT
+                    </label>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', position: 'relative' }}>
+                        <div
+                            data-module-id={module.id}
+                            data-port-id="velocity-out"
+                            data-port-type="output"
+                            onClick={() => onOutputClick(module.id, 'velocity-out')}
+                            style={{
+                                width: '16px',
+                                height: '16px',
+                                background: '#222',
+                                border: '2px solid ' + (isConnecting ? '#0f0' : '#00f'),
+                                cursor: 'pointer',
+                                position: 'absolute',
+                                right: '-18px'
+                            }}
+                            title="Velocity Out (0–5V)"
                         />
                     </div>
                 </div>

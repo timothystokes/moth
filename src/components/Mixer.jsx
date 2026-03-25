@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { getModuleState, registerModule } from '../audio/audioEngine.js';
 
-function Mixer({ module, onDragStart, onOutputClick, isConnecting, connections }) {
+function Mixer({ module, onDragStart, onOutputClick, isConnecting, connections, onRemove }) {
     const savedParams = getModuleState(module.id)?.params ?? {};
     const [levelA, setLevelA] = useState(savedParams.levelA ?? 0.5);
     const [levelB, setLevelB] = useState(savedParams.levelB ?? 0.5);
@@ -28,7 +28,7 @@ function Mixer({ module, onDragStart, onOutputClick, isConnecting, connections }
                 border: '2px solid #555',
                 borderRadius: '4px',
                 padding: 0,
-                zIndex: 10,
+                zIndex: 200,
                 transition: 'none',
                 boxShadow: '0 4px 8px rgba(0,0,0,0.3)'
             }}
@@ -49,10 +49,40 @@ function Mixer({ module, onDragStart, onOutputClick, isConnecting, connections }
                     cursor: 'move',
                     background: '#2a2a2a',
                     borderBottom: '1px solid #555',
-                    borderRadius: '2px 2px 0 0'
+                    borderRadius: '2px 2px 0 0',
+                    position: 'relative'
                 }}
             >
                 <span>MIXER</span>
+                {onRemove && (
+                    <button
+                        style={{
+                            position: 'absolute',
+                            top: 4,
+                            right: 4,
+                            zIndex: 300,
+                            background: '#444',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: '50%',
+                            width: 22,
+                            height: 22,
+                            fontWeight: 'bold',
+                            fontSize: 14,
+                            cursor: 'pointer',
+                            boxShadow: '0 1px 4px #000a',
+                            lineHeight: '22px',
+                            padding: 0
+                        }}
+                        title="Remove module"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onRemove();
+                        }}
+                    >
+                        ×
+                    </button>
+                )}
             </div>
 
             <div style={{ padding: '10px' }}>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getModuleState, registerModule } from '../audio/audioEngine.js';
 
-function Filter({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isConnecting, audioContext, connections }) {
+function Filter({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isConnecting, audioContext, connections, onRemove }) {
     const savedParams = getModuleState(module.id)?.params ?? {};
     const [cutoffSlider, setCutoffSlider] = useState(savedParams.cutoffSlider ?? 0.5); // 0 to 1 slider position
     const [resonance, setResonance] = useState(savedParams.resonance ?? 0.5); // 0 to 1
@@ -33,7 +33,7 @@ function Filter({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isConne
                 border: '2px solid #555',
                 borderRadius: '4px',
                 padding: 0,
-                zIndex: 10,
+                zIndex: 200,
                 transition: 'none',
                 boxShadow: '0 4px 8px rgba(0,0,0,0.3)'
             }}
@@ -55,10 +55,40 @@ function Filter({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isConne
                     background: '#2a2a2a',
                     borderTopLeftRadius: '4px',
                     borderTopRightRadius: '4px',
-                    userSelect: 'none'
+                    userSelect: 'none',
+                    position: 'relative'
                 }}
             >
                 FILTER
+                {onRemove && (
+                    <button
+                        style={{
+                            position: 'absolute',
+                            top: 4,
+                            right: 4,
+                            zIndex: 300,
+                            background: '#444',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: '50%',
+                            width: 22,
+                            height: 22,
+                            fontWeight: 'bold',
+                            fontSize: 14,
+                            cursor: 'pointer',
+                            boxShadow: '0 1px 4px #000a',
+                            lineHeight: '22px',
+                            padding: 0
+                        }}
+                        title="Remove module"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onRemove();
+                        }}
+                    >
+                        ×
+                    </button>
+                )}
             </div>
             
             <div style={{ padding: '10px' }}>
