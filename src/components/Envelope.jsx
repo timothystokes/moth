@@ -19,11 +19,10 @@ const formatTime = (timeSeconds) => {
 };
 
 function buildEnvelopePreviewPoints(attack, decay, sustain, release, width, height) {
-    const holdPortion = 0.2;
     const totalTime = Math.max(attack + decay + release, TIME_MIN);
-    const attackPortion = (attack / totalTime) * (1 - holdPortion);
-    const decayPortion = (decay / totalTime) * (1 - holdPortion);
-    const releasePortion = (release / totalTime) * (1 - holdPortion);
+    const attackPortion = attack / totalTime;
+    const decayPortion = decay / totalTime;
+    const releasePortion = release / totalTime;
 
     const leftPadding = 8;
     const rightPadding = 8;
@@ -36,7 +35,6 @@ function buildEnvelopePreviewPoints(attack, decay, sustain, release, width, heig
         [leftPadding, height - bottomPadding],
         [leftPadding + innerWidth * attackPortion, topPadding],
         [leftPadding + innerWidth * (attackPortion + decayPortion), topPadding + innerHeight * (1 - sustain)],
-        [leftPadding + innerWidth * (attackPortion + decayPortion + holdPortion), topPadding + innerHeight * (1 - sustain)],
         [leftPadding + innerWidth, height - bottomPadding]
     ];
 
@@ -51,6 +49,7 @@ function Envelope({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isCon
     const previewWidth = 156;
     const previewHeight = 84;
     const previewPoints = buildEnvelopePreviewPoints(attack, decay, sustain, release, previewWidth, previewHeight);
+    const sustainGuideY = 8 + (previewHeight - 16) * (1 - sustain);
 
     useEffect(() => {
         registerModule(module.id, {
@@ -124,6 +123,15 @@ function Envelope({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isCon
                             <line x1="0" y1={previewHeight - 1} x2={previewWidth} y2={previewHeight - 1} stroke="#2a2a2a" strokeWidth="1" />
                             <line x1="0" y1={previewHeight / 2} x2={previewWidth} y2={previewHeight / 2} stroke="#2a2a2a" strokeWidth="1" />
                             <line x1="0" y1="1" x2={previewWidth} y2="1" stroke="#2a2a2a" strokeWidth="1" />
+                            <line
+                                x1="0"
+                                y1={sustainGuideY}
+                                x2={previewWidth}
+                                y2={sustainGuideY}
+                                stroke="#7cff7c66"
+                                strokeWidth="1"
+                                strokeDasharray="4 4"
+                            />
                             <polyline
                                 points={previewPoints}
                                 fill="none"
