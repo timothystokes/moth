@@ -42,26 +42,15 @@ function buildEnvelopePreviewPoints(attack, decay, sustain, release, width, heig
 }
 
 function Envelope({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isConnecting, audioContext, connections }) {
-    const [attack, setAttack] = useState(0.01);
-    const [decay, setDecay] = useState(0.2);
-    const [sustain, setSustain] = useState(0.7);
-    const [release, setRelease] = useState(0.4);
+    const savedParams = getModuleState(module.id)?.params ?? {};
+    const [attack, setAttack] = useState(savedParams.attack ?? 0.01);
+    const [decay, setDecay] = useState(savedParams.decay ?? 0.2);
+    const [sustain, setSustain] = useState(savedParams.sustain ?? 0.7);
+    const [release, setRelease] = useState(savedParams.release ?? 0.4);
     const previewWidth = 156;
     const previewHeight = 84;
     const previewPoints = buildEnvelopePreviewPoints(attack, decay, sustain, release, previewWidth, previewHeight);
     const sustainGuideY = 8 + (previewHeight - 16) * (1 - sustain);
-
-    useEffect(() => {
-        const savedModule = getModuleState(module.id);
-        if (!savedModule?.params) {
-            return;
-        }
-
-        setAttack(savedModule.params.attack ?? 0.01);
-        setDecay(savedModule.params.decay ?? 0.2);
-        setSustain(savedModule.params.sustain ?? 0.7);
-        setRelease(savedModule.params.release ?? 0.4);
-    }, [module.id]);
 
     useEffect(() => {
         registerModule(module.id, {

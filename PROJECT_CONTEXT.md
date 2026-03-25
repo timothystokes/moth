@@ -19,6 +19,10 @@ Web-based modular synthesiser built with React and Vite.
 - [x] Add create-track and remove-track controls for manual track management
 - [x] Validate build and update this checklist as implementation lands
 
+## Engineering Rules
+- Never swallow an error.
+- If a track or module produces invalid runtime audio data, report it through the UI-visible error/diagnostic path and stop the active sequence rather than continuing playback silently.
+
 ### Goals & Objectives
 - [x] Oscillator with sliders and inputs for frequency, amplitude, and shape. Output: audio (±10V)
     - Shape blends continuously: square (0) → sine (0.5) → triangle (1)

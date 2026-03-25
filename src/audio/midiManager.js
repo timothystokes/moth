@@ -21,6 +21,11 @@ let activeSequenceNotes = new Map();
 let importBatchId = 0;
 let playbackAnimationFrameId = null;
 
+function normalizeTrackDisplayName(trackName, trackIndex, channel) {
+    const prefix = trackName?.trim() ? trackName.trim() : `Track ${trackIndex + 1}`;
+    return `${prefix} · Ch ${channel + 1}`;
+}
+
 function getEventPriority(event) {
     if (event.type === 'setTempo') {
         return 0;
@@ -150,16 +155,177 @@ function stopSequencePlayback({ resetPosition = false } = {}) {
     notifySequenceTransportListeners();
 }
 
-function getTrackDisplayName(trackName, trackIndex, channel) {
-    const prefix = trackName?.trim() ? trackName.trim() : `Track ${trackIndex + 1}`;
-    return `${prefix} · Ch ${channel + 1}`;
+function createDefaultTimeSignature() {
+    return {
+        tick: 0,
+        timeMs: 0,
+        numerator: 4,
+        denominator: 4,
+        clocksPerClick: 24,
+        notated32ndNotesPerBeat: 8
+    };
 }
 
-function buildNoteSegments(events) {
+function getTicksPerDisplayedBeat(ticksPerBeat, denominator) {
+    return (ticksPerBeat * 4) / denominator;
+}
+
+function createMeterResolver(timeSignatures, ticksPerBeat) {
+    const sortedTimeSignatures = (Array.isArray(timeSignatures) && timeSignatures.length > 0
+        ? timeSignatures
+        : [createDefaultTimeSignature()])
+        .slice()
+        .sort((left, right) => left.tick - right.tick);
+
+    const segments = [];
+    let barStart = 0;
+
+    sortedTimeSignatures.forEach((signature, index) => {
+        const nextSignature = sortedTimeSignatures[index + 1] ?? null;
+        const ticksPerDisplayedBeat = getTicksPerDisplayedBeat(ticksPerBeat, signature.denominator);
+        const ticksPerBar = ticksPerDisplayedBeat * signature.numerator;
+
+        segments.push({
+            ...signature,
+            barStart,
+            ticksPerDisplayedBeat,
+            ticksPerBar,
+            nextTick: nextSignature?.tick ?? Number.POSITIVE_INFINITY
+        });
+
+        if (nextSignature) {
+            const tickSpan = Math.max(0, nextSignature.tick - signature.tick);
+            barStart += Math.floor(tickSpan / ticksPerBar);
+        }
+    });
+
+    return (tick) => {
+        const safeTick = Math.max(0, tick ?? 0);
+        let segment = segments[0];
+        for (const candidate of segments) {
+            if (safeTick >= candidate.tick) {
+                segment = candidate;
+            } else {
+                break;
+            }
+        }
+
+        const offsetTicks = Math.max(0, safeTick - segment.tick);
+        const barsIntoSegment = Math.floor(offsetTicks / segment.ticksPerBar);
+        const tickInBar = offsetTicks % segment.ticksPerBar;
+        const beat = Math.floor(tickInBar / segment.ticksPerDisplayedBeat) + 1;
+        const tickInBeat = tickInBar % segment.ticksPerDisplayedBeat;
+
+        return {
+            bar: segment.barStart + barsIntoSegment + 1,
+            beat,
+            tickInBeat,
+            numerator: segment.numerator,
+            denominator: segment.denominator
+        };
+    };
+}
+
+export function buildNotesFromEvents(events, ticksPerBeat = null, timeSignatures = null) {
     const pendingNotes = new Map();
-    const noteSegments = [];
+    const notes = [];
+    const resolveMeterPosition = ticksPerBeat ? createMeterResolver(timeSignatures, ticksPerBeat) : null;
 
     events.forEach((event) => {
+        if (event.type === 'noteOn') {
+            const stack = pendingNotes.get(event.noteNumber) ?? [];
+            stack.push(event);
+            pendingNotes.set(event.noteNumber, stack);
+            return;
+        }
+
+        if (event.type !== 'noteOff') {
+            return;
+        }
+
+        const stack = pendingNotes.get(event.noteNumber);
+        if (!stack || stack.length === 0) {
+            return;
+        }
+
+        const startEvent = stack.pop();
+        if (stack.length === 0) {
+            pendingNotes.delete(event.noteNumber);
+        }
+
+        const startTick = startEvent.tick ?? startEvent.absoluteTicks ?? null;
+        const endTick = event.tick ?? event.absoluteTicks ?? startTick;
+        const durationTicks = startTick !== null && endTick !== null ? Math.max(1, endTick - startTick) : null;
+        const startMs = startEvent.timeMs ?? 0;
+        const durationMs = Math.max(1, (event.timeMs ?? startMs) - startMs);
+        const meterPosition = resolveMeterPosition && startTick !== null ? resolveMeterPosition(startTick) : null;
+
+        notes.push({
+            noteNumber: startEvent.noteNumber,
+            velocity: startEvent.velocity,
+            startMs,
+            durationMs,
+            startTick,
+            durationTicks,
+            bar: meterPosition?.bar ?? null,
+            beat: meterPosition?.beat ?? null,
+            tickInBeat: meterPosition?.tickInBeat ?? null,
+            numerator: meterPosition?.numerator ?? null,
+            denominator: meterPosition?.denominator ?? null
+        });
+    });
+
+    const lastEvent = events[events.length - 1] ?? null;
+    pendingNotes.forEach((stack, noteNumber) => {
+        stack.forEach((startEvent) => {
+            const startTick = startEvent.tick ?? startEvent.absoluteTicks ?? null;
+            const endTick = lastEvent?.tick ?? lastEvent?.absoluteTicks ?? startTick;
+            const durationTicks = startTick !== null && endTick !== null ? Math.max(1, endTick - startTick) : null;
+            const startMs = startEvent.timeMs ?? 0;
+            const durationMs = Math.max(1, (lastEvent?.timeMs ?? startMs) - startMs);
+            const meterPosition = resolveMeterPosition && startTick !== null ? resolveMeterPosition(startTick) : null;
+
+            notes.push({
+                noteNumber,
+                velocity: startEvent.velocity,
+                startMs,
+                durationMs,
+                startTick,
+                durationTicks,
+                bar: meterPosition?.bar ?? null,
+                beat: meterPosition?.beat ?? null,
+                tickInBeat: meterPosition?.tickInBeat ?? null,
+                numerator: meterPosition?.numerator ?? null,
+                denominator: meterPosition?.denominator ?? null
+            });
+        });
+    });
+
+    return notes.sort((left, right) => left.startMs - right.startMs || left.noteNumber - right.noteNumber);
+}
+
+export function buildNoteSegments(items) {
+    const noteSegments = [];
+
+    if (!Array.isArray(items) || items.length === 0) {
+        return noteSegments;
+    }
+
+    if ('durationMs' in items[0]) {
+        items.forEach((note) => {
+            noteSegments.push({
+                noteNumber: note.noteNumber,
+                velocity: note.velocity,
+                startMs: note.startMs,
+                endMs: note.startMs + Math.max(1, note.durationMs)
+            });
+        });
+
+        return noteSegments.sort((left, right) => left.startMs - right.startMs || left.noteNumber - right.noteNumber);
+    }
+
+    const pendingNotes = new Map();
+    items.forEach((event) => {
         if (event.type === 'noteOn') {
             const stack = pendingNotes.get(event.noteNumber) ?? [];
             stack.push({ startMs: event.timeMs, velocity: event.velocity });
@@ -185,7 +351,7 @@ function buildNoteSegments(events) {
         });
     });
 
-    const lastEventTimeMs = events.length > 0 ? events[events.length - 1].timeMs : 0;
+    const lastEventTimeMs = items.length > 0 ? items[items.length - 1].timeMs : 0;
     pendingNotes.forEach((stack, noteNumber) => {
         stack.forEach((pendingNote) => {
             noteSegments.push({
@@ -198,6 +364,31 @@ function buildNoteSegments(events) {
     });
 
     return noteSegments.sort((left, right) => left.startMs - right.startMs || left.noteNumber - right.noteNumber);
+}
+
+function buildPlaybackEventsFromNotes(tracks) {
+    return tracks.flatMap((track) =>
+        (track.notes ?? []).flatMap((note) => ([
+            {
+                type: 'noteOn',
+                trackId: track.id,
+                noteNumber: note.noteNumber,
+                velocity: note.velocity,
+                timeMs: note.startMs
+            },
+            {
+                type: 'noteOff',
+                trackId: track.id,
+                noteNumber: note.noteNumber,
+                velocity: 0,
+                timeMs: note.startMs + Math.max(1, note.durationMs)
+            }
+        ]))
+    ).sort((left, right) => (
+        left.timeMs - right.timeMs
+        || getEventPriority(left) - getEventPriority(right)
+        || left.noteNumber - right.noteNumber
+    ));
 }
 
 function buildMidiArrangement(midiData, fileName) {
@@ -221,7 +412,7 @@ function buildMidiArrangement(midiData, fileName) {
                 return;
             }
 
-            if (event.type === 'setTempo' || event.type === 'noteOn' || event.type === 'noteOff') {
+            if (event.type === 'setTempo' || event.type === 'timeSignature' || event.type === 'noteOn' || event.type === 'noteOff') {
                 absoluteEvents.push({
                     ...event,
                     absoluteTicks,
@@ -246,6 +437,8 @@ function buildMidiArrangement(midiData, fileName) {
     let currentTempo = 500000;
     let currentTicks = 0;
     let currentTimeMs = 0;
+    const tempoMap = [{ tick: 0, timeMs: 0, microsecondsPerBeat: currentTempo, bpm: 60000000 / currentTempo }];
+    const timeSignatures = [createDefaultTimeSignature()];
 
     const timedEvents = absoluteEvents.map((event) => {
         const deltaTicks = event.absoluteTicks - currentTicks;
@@ -259,6 +452,23 @@ function buildMidiArrangement(midiData, fileName) {
 
         if (event.type === 'setTempo') {
             currentTempo = event.microsecondsPerBeat;
+            tempoMap.push({
+                tick: event.absoluteTicks,
+                timeMs: currentTimeMs,
+                microsecondsPerBeat: event.microsecondsPerBeat,
+                bpm: 60000000 / event.microsecondsPerBeat
+            });
+        }
+
+        if (event.type === 'timeSignature') {
+            timeSignatures.push({
+                tick: event.absoluteTicks,
+                timeMs: currentTimeMs,
+                numerator: event.numerator,
+                denominator: event.denominator,
+                clocksPerClick: event.metronome ?? 24,
+                notated32ndNotesPerBeat: event.thirtyseconds ?? 8
+            });
         }
 
         return timedEvent;
@@ -277,35 +487,38 @@ function buildMidiArrangement(midiData, fileName) {
         if (!groupedTracks.has(key)) {
             groupedTracks.set(key, {
                 id: `import-${importBatchId}-track-${event.trackIndex}-channel-${event.channel}`,
-                name: getTrackDisplayName(trackNames.get(event.trackIndex), event.trackIndex, event.channel),
+                name: normalizeTrackDisplayName(trackNames.get(event.trackIndex), event.trackIndex, event.channel),
                 sourceTrackIndex: event.trackIndex,
                 channel: event.channel,
                 channelDisplay: event.channel + 1,
-                events: []
+                noteEvents: []
             });
         }
 
-        groupedTracks.get(key).events.push({
+        groupedTracks.get(key).noteEvents.push({
             type: normalizedType,
             timeMs: event.timeMs,
+            tick: event.absoluteTicks,
             noteNumber: event.noteNumber,
             velocity: normalizedType === 'noteOn' ? event.velocity / 127 : 0
         });
     });
 
     const arrangementTracks = Array.from(groupedTracks.values())
-        .filter((track) => track.events.some((event) => event.type === 'noteOn'))
+        .filter((track) => track.noteEvents.some((event) => event.type === 'noteOn'))
         .map((track) => {
-            const noteSegments = buildNoteSegments(track.events);
+            const notes = buildNotesFromEvents(track.noteEvents, header.ticksPerBeat, timeSignatures);
+            const noteSegments = buildNoteSegments(notes);
             const durationMs = Math.max(
-                track.events.length > 0 ? track.events[track.events.length - 1].timeMs : 0,
+                notes.length > 0 ? notes[notes.length - 1].startMs + notes[notes.length - 1].durationMs : 0,
                 noteSegments.length > 0 ? noteSegments[noteSegments.length - 1].endMs : 0
             );
 
             return {
                 ...track,
+                notes,
                 durationMs,
-                eventCount: track.events.length,
+                noteCount: notes.length,
                 noteSegments
             };
         })
@@ -325,6 +538,9 @@ function buildMidiArrangement(midiData, fileName) {
 
     return {
         fileName,
+        ticksPerBeat: header.ticksPerBeat,
+        tempoMap,
+        timeSignatures,
         durationMs,
         tracks: arrangementTracks
     };
@@ -457,6 +673,38 @@ export async function loadMIDIFile(file) {
     loadedArrangement = buildMidiArrangement(midiData, file.name);
     notifySequenceTransportListeners();
 
+    return loadedArrangement;
+}
+
+export function loadProjectSequence(projectSequence, projectTracks) {
+    stopSequencePlayback({ resetPosition: true });
+
+    const arrangementTracks = (projectTracks ?? [])
+        .filter((track) => Array.isArray(track?.midi?.notes) && track.midi.notes.length > 0)
+        .map((track) => ({
+            id: track.id,
+            name: track.name,
+            sourceTrackIndex: track.source?.midiTrackIndex ?? 0,
+            channel: track.source?.channel ?? 0,
+            channelDisplay: (track.source?.channel ?? 0) + 1,
+            notes: track.midi.notes,
+            noteSegments: buildNoteSegments(track.midi.notes),
+            durationMs: track.midi.durationMs ?? 0,
+            noteCount: track.midi.noteCount ?? track.midi.notes.length
+        }));
+
+    loadedArrangement = arrangementTracks.length > 0
+        ? {
+            fileName: projectSequence?.fileName ?? 'Project Sequence',
+            ticksPerBeat: projectSequence?.ticksPerBeat ?? null,
+            tempoMap: projectSequence?.tempoMap ?? [],
+            timeSignatures: projectSequence?.timeSignatures ?? [],
+            durationMs: arrangementTracks.reduce((maximum, track) => Math.max(maximum, track.durationMs), 0),
+            tracks: arrangementTracks
+        }
+        : null;
+
+    notifySequenceTransportListeners();
     return getSequenceTransportState();
 }
 
@@ -475,11 +723,8 @@ export async function playLoadedSequence() {
     isSequencePlaying = true;
     startPlaybackProgressUpdates();
 
-    const remainingEvents = loadedArrangement.tracks.flatMap((track) =>
-        track.events
-            .filter((event) => event.timeMs >= startOffsetMs)
-            .map((event) => ({ ...event, trackId: track.id }))
-    );
+    const remainingEvents = buildPlaybackEventsFromNotes(loadedArrangement.tracks)
+        .filter((event) => event.timeMs >= startOffsetMs);
 
     playbackTimeouts = remainingEvents.map((event) => window.setTimeout(() => {
         if (event.type === 'noteOn') {

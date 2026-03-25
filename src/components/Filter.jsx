@@ -2,20 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { getModuleState, registerModule } from '../audio/audioEngine.js';
 
 function Filter({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isConnecting, audioContext, connections }) {
-    const [cutoffSlider, setCutoffSlider] = useState(0.5); // 0 to 1 slider position
-    const [resonance, setResonance] = useState(0.5); // 0 to 1
-    const [filterType, setFilterType] = useState('lowpass'); // 'lowpass' or 'highpass'
-
-    useEffect(() => {
-        const savedModule = getModuleState(module.id);
-        if (!savedModule?.params) {
-            return;
-        }
-
-        setCutoffSlider(savedModule.params.cutoffSlider ?? 0.5);
-        setResonance(savedModule.params.resonance ?? 0.5);
-        setFilterType(savedModule.params.filterType ?? 'lowpass');
-    }, [module.id]);
+    const savedParams = getModuleState(module.id)?.params ?? {};
+    const [cutoffSlider, setCutoffSlider] = useState(savedParams.cutoffSlider ?? 0.5); // 0 to 1 slider position
+    const [resonance, setResonance] = useState(savedParams.resonance ?? 0.5); // 0 to 1
+    const [filterType, setFilterType] = useState(savedParams.filterType ?? 'lowpass'); // 'lowpass' or 'highpass'
     
     // Convert slider position to exponential frequency (20Hz to 20kHz) - reversed direction
     const cutoff = 20 * Math.pow(1000, (1 - cutoffSlider)); // Exponential scaling, inverted

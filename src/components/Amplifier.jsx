@@ -24,7 +24,8 @@ function Amplifier({ onOutputClick, isConnecting, audioContext, setAudioContext,
         }
 
         if (isPoweredOn) {
-            initializeAudioEngine(audioContext);
+            initializeAudioEngine(audioContext).catch(() => {
+            });
             audioContext.resume();
         } else {
             audioContext.suspend();

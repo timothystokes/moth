@@ -34,22 +34,11 @@ import { getModuleState, registerModule } from '../audio/audioEngine.js';
  * depth is controlled purely by the modulator's amplitude — no time-drift artefacts.
  */
 function Oscillator({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isConnecting, audioContext, connections }) {
-    const [frequency, setFrequency] = useState(440); // Hz — default A4
-    const [amplitude, setAmplitude] = useState(0.5); // 0–1 (maps to 0–±10V peak)
-    const [shape, setShape] = useState(0.5);         // 0=square, 0.5=sine, 1=triangle
-    const [dutyCycle, setDutyCycle] = useState(0.5);  // 0–1; 0.5=equal halves, 0/1=full asymmetry
-
-    useEffect(() => {
-        const savedModule = getModuleState(module.id);
-        if (!savedModule?.params) {
-            return;
-        }
-
-        setFrequency(savedModule.params.frequency ?? 440);
-        setAmplitude(savedModule.params.amplitude ?? 0.5);
-        setShape(savedModule.params.shape ?? 0.5);
-        setDutyCycle(savedModule.params.dutyCycle ?? 0.5);
-    }, [module.id]);
+    const savedParams = getModuleState(module.id)?.params ?? {};
+    const [frequency, setFrequency] = useState(savedParams.frequency ?? 440); // Hz — default A4
+    const [amplitude, setAmplitude] = useState(savedParams.amplitude ?? 0.5); // 0–1 (maps to 0–±10V peak)
+    const [shape, setShape] = useState(savedParams.shape ?? 0.5);         // 0=square, 0.5=sine, 1=triangle
+    const [dutyCycle, setDutyCycle] = useState(savedParams.dutyCycle ?? 0.5);  // 0–1; 0.5=equal halves, 0/1=full asymmetry
 
     useEffect(() => {
         registerModule(module.id, {

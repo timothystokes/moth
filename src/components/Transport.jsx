@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 
 function formatDuration(milliseconds) {
     const totalSeconds = Math.max(0, Math.round(milliseconds / 1000));
@@ -12,7 +12,6 @@ function Transport({
     transportState,
     tracks,
     selectedTrackId,
-    onLoadFile,
     onPlay,
     onStop,
     onRewind,
@@ -22,34 +21,12 @@ function Transport({
     onRemoveTrack,
     isPendingPlay
 }) {
-    const inputRef = useRef(null);
     const [statusMessage, setStatusMessage] = useState('No sequence loaded');
-    const [isLoading, setIsLoading] = useState(false);
     const timelineDurationMs = Math.max(
         transportState?.durationMs ?? 0,
         ...tracks.map((track) => track.midi?.durationMs ?? 0),
         1
     );
-
-    const handleFileChange = async (event) => {
-        const file = event.target.files?.[0];
-
-        if (!file) {
-            return;
-        }
-
-        setIsLoading(true);
-
-        try {
-            const state = await onLoadFile(file);
-            setStatusMessage(`Loaded ${state.fileName} into ${state.trackCount} track lanes`);
-        } catch (error) {
-            setStatusMessage(error instanceof Error ? error.message : 'Failed to load MIDI file.');
-        } finally {
-            setIsLoading(false);
-            event.target.value = '';
-        }
-    };
 
     const handlePlay = async () => {
         try {
@@ -83,19 +60,8 @@ function Transport({
             flexShrink: 0,
             boxShadow: '0 -10px 24px rgba(0,0,0,0.3)'
         }}>
-            <input
-                ref={inputRef}
-                type="file"
-                accept=".mid,.midi,audio/midi,audio/x-midi"
-                onChange={handleFileChange}
-                style={{ display: 'none' }}
-            />
-
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px', width: '100%', minHeight: '40px' }}>
-                <button onClick={() => inputRef.current?.click()} style={primaryButtonStyle} disabled={isLoading}>
-                    {isLoading ? 'Loading...' : 'Upload'}
-                </button>
-                <button onClick={handlePlay} style={controlButtonStyle} disabled={!transportState?.hasSequence || isLoading || isPendingPlay}>
+                <button onClick={handlePlay} style={primaryButtonStyle} disabled={!transportState?.hasSequence || isPendingPlay}>
                     {isPendingPlay ? 'Starting...' : 'Play'}
                 </button>
                 <button onClick={handleStop} style={controlButtonStyle} disabled={!transportState?.hasSequence}>Stop</button>
