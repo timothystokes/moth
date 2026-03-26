@@ -1,5 +1,5 @@
 // Simple Round Robin Voice Allocator
-const MAX_VOICES = 8; // Maximum polyphony
+import { MAX_VOICES } from './synthConstants.js'; // Maximum polyphony
 let nextVoiceIndex = 0;
 
 const voices = [];

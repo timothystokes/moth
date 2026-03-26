@@ -526,16 +526,16 @@ class MothSynthProcessor extends AudioWorkletProcessor {
         targetVoice.cv = (noteNumber - 69) / 12;
 
         // Debug logging for voice allocation
-        if (typeof console !== 'undefined' && console.log) {
-            console.log('[MothSynth] allocateVoice', {
-                trackId,
-                voiceId: targetVoice.voiceId,
-                noteNumber,
-                cv: targetVoice.cv,
-                velocity: velocityV,
-                gate: gateV
-            });
-        }
+        // if (typeof console !== 'undefined' && console.log) {
+        //     console.log('[MothSynth] allocateVoice', {
+        //         trackId,
+        //         voiceId: targetVoice.voiceId,
+        //         noteNumber,
+        //         cv: targetVoice.cv,
+        //         velocity: velocityV,
+        //         gate: gateV
+        //     });
+        // }
 
         this.addVoiceMapping(trackState, noteNumber, targetVoice.voiceId);
     }
@@ -1055,7 +1055,7 @@ class MothSynthProcessor extends AudioWorkletProcessor {
             const snapshot = new Float32Array(360);
             for (let index = 0; index < snapshot.length; index++) {
                 const bufferIndex = (triggerIndex + index) % this.scopeBuffer.length;
-                snapshot[index] = Number.isFinite(this.scopeBuffer[bufferIndex]) ? this.scopeBuffer[bufferIndex] : 0;
+                snapshot[index] = Number.isFinite(this.scopeBuffer[bufferIndex]) ? this.scopeBuffer[bufferIndex] * 2 : 0;
             }
 
             this.port.postMessage({ type: 'scope-data', samples: snapshot }, [snapshot.buffer]);
@@ -1219,7 +1219,7 @@ class MothSynthProcessor extends AudioWorkletProcessor {
                 });
 
                 outputChannel[sampleIndex] = mixedSample;
-                this.scopeBuffer[this.scopeWriteIndex] = scopedSample;
+                this.scopeBuffer[this.scopeWriteIndex] = scopedSample * 5;
                 this.scopeWriteIndex = (this.scopeWriteIndex + 1) % this.scopeBuffer.length;
                 this.scopeSampleCounter += 1;
                 if (this.scopeSampleCounter >= 2048) {

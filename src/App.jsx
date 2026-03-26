@@ -1046,17 +1046,7 @@ function App() {
 }
 
 function Toolbar({ addModule, isPoweredOn, togglePower, hasSelectedTrack, audioError, voiceStatus, onImportMidi, onLoadProject, onSaveProject }) {
-    const capacityThreads = voiceStatus?.capacityVoices ?? 0;
-    const noteAffinedThreads = voiceStatus?.noteAffinedVoices ?? 0;
-    const releaseThreads = voiceStatus?.releaseVoices ?? 0;
-    const processingThreads = voiceStatus?.processingVoices ?? 0;
-    const activeTracks = voiceStatus?.activeTrackCount ?? 0;
-    const threadTitle = Array.isArray(voiceStatus?.perTrack) && voiceStatus.perTrack.length > 0
-        ? voiceStatus.perTrack
-            .filter((track) => track.processingVoices > 0 || track.capacityVoices > 0)
-            .map((track) => `${track.trackId}: ${track.capacityVoices} cap, ${track.noteAffinedVoices} affined, ${track.releaseVoices} release, ${track.processingVoices} processing`)
-            .join('\n')
-        : 'No voice lanes';
+
 
     return (
         <div style={{
@@ -1081,20 +1071,7 @@ function Toolbar({ addModule, isPoweredOn, togglePower, hasSelectedTrack, audioE
             <button onClick={() => addModule('mixer')} style={buttonStyle} disabled={!hasSelectedTrack}>+ Mixer</button>
             <button onClick={() => addModule('multi')} style={buttonStyle} disabled={!hasSelectedTrack}>+ Multi</button>
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
-                <div
-                    style={{
-                        padding: '6px 10px',
-                        border: '1px solid #4e4e4e',
-                        borderRadius: '4px',
-                        background: '#202020',
-                        color: capacityThreads > 0 ? '#d6f5d6' : '#9a9a9a',
-                        fontSize: '11px',
-                        whiteSpace: 'nowrap'
-                    }}
-                    title={threadTitle}
-                >
-                    LANES {capacityThreads} · AFFINED {noteAffinedThreads} · REL {releaseThreads} · PROC {processingThreads} · TRACKS {activeTracks}
-                </div>
+
                 {audioError && (
                     <div style={{
                         maxWidth: '420px',
