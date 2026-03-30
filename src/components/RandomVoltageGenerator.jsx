@@ -15,9 +15,7 @@ function RandomVoltageGenerator({ module, onDragStart, onDrag, onDragEnd, onOutp
     return (
         <div
             style={{
-                position: 'absolute',
-                left: module.x,
-                top: module.y,
+                position: 'relative',
                 width: '180px',
                 minHeight: '120px',
                 background: '#333',

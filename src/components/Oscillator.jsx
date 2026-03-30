@@ -55,9 +55,7 @@ function Oscillator({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isC
     return (
         <div
             style={{
-                position: 'absolute',
-                left: module.x,
-                top: module.y,
+                position: 'relative',
                 width: '180px',
                 minHeight: '180px',
                 background: '#333',

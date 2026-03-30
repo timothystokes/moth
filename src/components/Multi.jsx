@@ -9,9 +9,7 @@ function Multi({ module, onDragStart, onOutputClick, isConnecting, onRemove }) {
     return (
         <div
             style={{
-                position: 'absolute',
-                left: module.x,
-                top: module.y,
+                position: 'relative',
                 width: '150px',
                 minHeight: '120px',
                 background: '#333',

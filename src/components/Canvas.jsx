@@ -17,7 +17,8 @@ function Canvas({
     onMouseMove,
     onClick,
     audioContext,
-    moduleUiRevision
+    moduleUiRevision,
+    onRemove
 }) {
     // Helper to determine if a module is fixed (not removable)
     const isFixed = (module) => module.id === 'keyboard-singleton' || module.id === 'track-output-singleton';
@@ -32,7 +33,7 @@ function Canvas({
             isConnecting: connectingFrom?.moduleId === module.id,
             audioContext,
             connections,
-            onRemove: !isFixed ? () => window.removeModule(module.id) : undefined
+            onRemove: !isFixed ? () => onRemove(module.id) : undefined
         };
         switch (module.type) {
             case 'oscillator': return <Oscillator key={module.id} {...commonProps} />;

@@ -24,7 +24,8 @@ function Amplifier({ onOutputClick, isConnecting, audioContext, setAudioContext,
         }
 
         if (isPoweredOn) {
-            initializeAudioEngine(audioContext).catch(() => {
+            initializeAudioEngine(audioContext).catch((error) => {
+                console.error('Audio engine failed to initialize:', error);
             });
             audioContext.resume();
         } else {

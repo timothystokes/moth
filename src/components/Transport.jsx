@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { getPlaybackPositionMs, getIsPlaying } from '../audio/sequencer.js';
 
 function formatDuration(milliseconds) {
     const totalSeconds = Math.max(0, Math.round(milliseconds / 1000));
@@ -19,29 +20,33 @@ function Transport({
     onUpdateTrackMix,
     onCreateTrack,
     onRemoveTrack,
-    isPendingPlay
+    onRenameTrack,
+    isPendingPlay,
+    onSetTransportPosition
 }) {
     const [statusMessage, setStatusMessage] = useState('No sequence loaded');
+    const rafRef = useRef(null);
+
     const timelineDurationMs = Math.max(
         transportState?.durationMs ?? 0,
-        ...tracks.map((track) => track.midi?.durationMs ?? 0),
+        ...tracks.map((track) => track.durationMs ?? 0),
         1
     );
 
-    const handlePlay = async () => {
-        try {
-            await onPlay();
-            if (transportState?.hasSequence) {
-                setStatusMessage(`Playing ${transportState.fileName}`);
-            }
-        } catch (error) {
-            setStatusMessage(error instanceof Error ? error.message : 'Playback could not start.');
-        }
-    };
+    const isPlaying = transportState?.isPlaying;
 
-    const handleStop = () => {
-        onStop();
-        setStatusMessage('Stopped');
+    const handlePlayStop = async () => {
+        if (isPlaying) {
+            onStop();
+            setStatusMessage('Stopped');
+        } else {
+            try {
+                await onPlay();
+                setStatusMessage('Playing');
+            } catch (error) {
+                setStatusMessage(error instanceof Error ? error.message : 'Playback could not start.');
+            }
+        }
     };
 
     const handleRewind = () => {
@@ -49,37 +54,41 @@ function Transport({
         setStatusMessage('Rewound to start');
     };
 
+    const timelineRef = React.useRef(null);
+    const handleTimelineClick = (e) => {
+        if (!timelineRef.current) return;
+        const rect = timelineRef.current.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const percent = Math.max(0, Math.min(1, x / rect.width));
+        const ms = percent * timelineDurationMs;
+        if (typeof onSetTransportPosition === 'function') {
+            onSetTransportPosition(ms);
+        }
+    };
+
     return (
         <div style={{
-            height: '220px',
+            height: '320px',
             background: '#161616',
             borderTop: '2px solid #444',
             display: 'flex',
             flexDirection: 'column',
             padding: '12px 18px 14px',
             flexShrink: 0,
-            boxShadow: '0 -10px 24px rgba(0,0,0,0.3)'
+            boxShadow: '0 -10px 24px rgba(0,0,0,0.3)',
+            position: 'relative'
         }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px', width: '100%', minHeight: '40px' }}>
-                <button onClick={handlePlay} style={primaryButtonStyle} disabled={!transportState?.hasSequence || isPendingPlay}>
-                    {isPendingPlay ? 'Starting...' : 'Play'}
+                <button onClick={handlePlayStop} style={isPlaying ? stopButtonStyle : primaryButtonStyle} disabled={!transportState?.hasSequence || isPendingPlay}>
+                    {isPendingPlay ? 'Starting…' : isPlaying ? 'Stop' : 'Play'}
                 </button>
-                <button onClick={handleStop} style={controlButtonStyle} disabled={!transportState?.hasSequence}>Stop</button>
                 <button onClick={handleRewind} style={controlButtonStyle} disabled={!transportState?.hasSequence}>Rewind</button>
-                <button onClick={onCreateTrack} style={secondaryButtonStyle}>Create Track</button>
-                <button onClick={() => selectedTrackId && onRemoveTrack(selectedTrackId)} style={secondaryButtonStyle} disabled={!selectedTrackId}>Remove Track</button>
-
-                <div style={{ minWidth: '220px', display: 'flex', flexDirection: 'column', gap: '4px', marginLeft: '12px' }}>
-                    <div style={{ fontSize: '11px', letterSpacing: '0.08em', color: '#6f6f6f' }}>SEQUENCE</div>
-                    <div style={{ fontSize: '13px', color: '#d9d9d9', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {transportState?.fileName ?? 'Manual tracks'}
-                    </div>
-                </div>
+                <button onClick={onCreateTrack} style={secondaryButtonStyle}>New Track</button>
 
                 <div style={{ minWidth: '240px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <div style={{ fontSize: '11px', letterSpacing: '0.08em', color: '#6f6f6f' }}>STATUS</div>
-                    <div style={{ fontSize: '13px', color: transportState?.isPlaying ? '#9cff9c' : '#c8c8c8' }}>
-                        {transportState?.isPlaying ? `Playing ${transportState.fileName}` : statusMessage}
+                    <div style={{ fontSize: '13px', color: isPlaying ? '#9cff9c' : '#c8c8c8' }}>
+                        {isPlaying ? 'Playing' : statusMessage}
                     </div>
                 </div>
 
@@ -99,18 +108,25 @@ function Transport({
                 </div>
             </div>
 
-            <div style={{ flex: 1, width: '100%', overflow: 'auto', marginTop: '10px', border: '1px solid #2a2a2a', background: '#111' }}>
+            {/* Track List */}
+            <div
+                ref={timelineRef}
+                style={{ flex: 1, width: '100%', overflow: 'auto', marginTop: '2px', border: '1px solid #2a2a2a', background: '#111', position: 'relative' }}
+            >
                 {tracks.map((track) => (
                     <TrackRow
                         key={track.id}
                         track={track}
                         isSelected={track.id === selectedTrackId}
-                        isPlaying={transportState?.isPlaying}
-                        playbackPositionMs={transportState?.playbackPositionMs ?? 0}
+                        isPlaying={isPlaying}
+                        playbackPositionMs={0}
                         timelineDurationMs={timelineDurationMs}
                         onSelect={() => onSelectTrack(track.id)}
                         onToggleMute={() => onUpdateTrackMix(track.id, { mute: !track.mix.mute })}
                         onVolumeChange={(volume) => onUpdateTrackMix(track.id, { volume })}
+                        onSeek={(ms) => onSetTransportPosition(ms)}
+                        onRemove={() => onRemoveTrack(track.id)}
+                        onRename={(name) => onRenameTrack(track.id, name)}
                     />
                 ))}
             </div>
@@ -118,43 +134,130 @@ function Transport({
     );
 }
 
-function TrackRow({ track, isSelected, isPlaying, playbackPositionMs, timelineDurationMs, onSelect, onToggleMute, onVolumeChange }) {
-    const noteSegments = track.midi?.noteSegments ?? [];
+function TrackRow({ track, isSelected, isPlaying, timelineDurationMs, onSelect, onToggleMute, onVolumeChange, onSeek, onRemove, onRename }) {
+    const noteAreaRef = React.useRef(null);
+    const playheadRef = React.useRef(null);
+    const durationRef = React.useRef(timelineDurationMs);
+    const [editing, setEditing] = React.useState(false);
+    const [editValue, setEditValue] = React.useState('');
+    const inputRef = React.useRef(null);
+
+    // Keep durationRef current so the rAF closure always has the latest value.
+    React.useEffect(() => { durationRef.current = timelineDurationMs; }, [timelineDurationMs]);
+
+    // Direct DOM rAF — bypasses React state entirely for smooth 60fps playhead.
+    React.useEffect(() => {
+        let rafId;
+        const tick = () => {
+            if (playheadRef.current) {
+                const pos = getPlaybackPositionMs();
+                const dur = durationRef.current || 1;
+                const left = Math.min(100, Math.max(0, (pos / dur) * 100));
+                playheadRef.current.style.left = `${left}%`;
+                playheadRef.current.style.background = getIsPlaying() ? '#d7ffd7' : '#4a4a4a';
+            }
+            rafId = requestAnimationFrame(tick);
+        };
+        rafId = requestAnimationFrame(tick);
+        return () => cancelAnimationFrame(rafId);
+    }, []);
+
+    const noteSegments = Array.isArray(track?.noteSegments) ? track.noteSegments : [];
+    const trackName = typeof track?.name === 'string' ? track.name : 'Untitled';
+    const mix = track?.mix || { volume: 0.8, mute: false };
+
+    const handleNoteAreaClick = (e) => {
+        e.stopPropagation();
+        if (!noteAreaRef.current || !onSeek) return;
+        const rect = noteAreaRef.current.getBoundingClientRect();
+        const percent = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+        onSeek(percent * timelineDurationMs);
+    };
+
+    const handleRemove = (e) => {
+        e.stopPropagation();
+        if (window.confirm(`Remove track "${trackName}"?`)) {
+            onRemove();
+        }
+    };
+
+    const startEdit = (e) => {
+        e.stopPropagation();
+        setEditValue(trackName);
+        setEditing(true);
+        setTimeout(() => inputRef.current?.select(), 0);
+    };
+
+    const commitEdit = () => {
+        setEditing(false);
+        onRename(editValue);
+    };
+
+    const handleKeyDown = (e) => {
+        if (e.key === 'Enter') commitEdit();
+        if (e.key === 'Escape') setEditing(false);
+    };
 
     return (
         <div
-            onClick={onSelect}
             style={{
                 display: 'grid',
-                gridTemplateColumns: '200px 60px 120px 1fr',
+                gridTemplateColumns: '200px 60px 120px 28px 1fr',
                 alignItems: 'center',
                 minHeight: '40px',
                 borderBottom: '1px solid #1e1e1e',
-                background: isSelected ? '#1c241c' : '#111',
-                cursor: 'pointer'
+                background: isSelected ? '#1c241c' : '#111'
             }}
         >
-            <div style={{ padding: '0 10px', minWidth: 0 }}>
-                <div style={{ fontSize: '12px', color: '#e3e3e3', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {track.name}
-                </div>
-                <div style={{ fontSize: '10px', color: '#666' }}>
-                    {track.source.kind === 'midi-import'
-                        ? `TR ${track.source.midiTrackIndex + 1} · CH ${track.source.channel + 1}`
-                        : 'Manual'}
-                </div>
+            {/* Name — click to select, double-click to rename */}
+            <div
+                onClick={onSelect}
+                onDoubleClick={startEdit}
+                style={{ padding: '0 10px', minWidth: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', height: '100%' }}
+            >
+                {editing ? (
+                    <input
+                        ref={inputRef}
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        onBlur={commitEdit}
+                        onKeyDown={handleKeyDown}
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                            width: '100%',
+                            background: '#1a2a1a',
+                            border: '1px solid #4f9b54',
+                            borderRadius: '3px',
+                            color: '#eaffea',
+                            fontSize: '12px',
+                            padding: '2px 4px',
+                            fontFamily: 'inherit',
+                            outline: 'none'
+                        }}
+                        autoFocus
+                    />
+                ) : (
+                    <div style={{ minWidth: 0, width: '100%' }}>
+                        <div
+                            title="Double-click to rename"
+                            style={{ fontSize: '12px', color: '#e3e3e3', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                        >
+                            {trackName}
+                        </div>
+                        <div style={{ fontSize: '10px', color: '#666', marginTop: '1px' }}>
+                            {track?.notes?.length ?? 0} notes
+                        </div>
+                    </div>
+                )}
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'center' }}>
                 <button
-                    onClick={(event) => {
-                        event.stopPropagation();
-                        onToggleMute();
-                    }}
+                    onClick={(e) => { e.stopPropagation(); onToggleMute(); }}
                     style={{
                         ...muteButtonStyle,
-                        background: track.mix.mute ? '#732b2b' : '#2a2a2a',
-                        borderColor: track.mix.mute ? '#b74d4d' : '#555'
+                        background: mix.mute ? '#732b2b' : '#2a2a2a',
+                        borderColor: mix.mute ? '#b74d4d' : '#555'
                     }}
                 >
                     M
@@ -167,16 +270,49 @@ function TrackRow({ track, isSelected, isPlaying, playbackPositionMs, timelineDu
                     min="0"
                     max="1"
                     step="0.01"
-                    value={track.mix.volume}
-                    onClick={(event) => event.stopPropagation()}
-                    onChange={(event) => onVolumeChange(parseFloat(event.target.value))}
+                    value={mix.volume}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
                     style={{ width: '100%' }}
                 />
             </div>
 
-            <div style={{ position: 'relative', height: '40px', overflow: 'hidden' }}>
+            {/* Delete track */}
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+                <button
+                    onClick={handleRemove}
+                    title={`Remove "${trackName}"`}
+                    style={{
+                        width: '18px',
+                        height: '18px',
+                        padding: 0,
+                        background: 'transparent',
+                        border: '1px solid #444',
+                        borderRadius: '3px',
+                        color: '#888',
+                        fontSize: '13px',
+                        lineHeight: '1',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = '#c44'; e.currentTarget.style.color = '#f88'; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = '#444'; e.currentTarget.style.color = '#888'; }}
+                >
+                    ×
+                </button>
+            </div>
+
+            {/* Note/timeline area — clicking here seeks, does not select */}
+            <div
+                ref={noteAreaRef}
+                onClick={handleNoteAreaClick}
+                style={{ position: 'relative', height: '40px', overflow: 'hidden', cursor: 'crosshair' }}
+            >
                 <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0))' }} />
                 {noteSegments.map((segment, index) => {
+                    if (!segment || typeof segment.startMs !== 'number' || typeof segment.endMs !== 'number' || typeof segment.noteNumber !== 'number') return null;
                     const left = (segment.startMs / timelineDurationMs) * 100;
                     const width = Math.max(0.4, ((segment.endMs - segment.startMs) / timelineDurationMs) * 100);
                     const top = 4 + (1 - (segment.noteNumber - 21) / 87) * 28;
@@ -189,21 +325,23 @@ function TrackRow({ track, isSelected, isPlaying, playbackPositionMs, timelineDu
                                 width: `${width}%`,
                                 top: `${top}px`,
                                 height: '3px',
-                                background: track.mix.mute ? '#555' : '#6dbe6d',
+                                background: mix.mute ? '#555' : '#6dbe6d',
                                 borderRadius: '2px',
                                 opacity: 0.9
                             }}
                         />
                     );
                 })}
+                {/* Playhead — position driven by direct DOM rAF, not React state */}
                 <div
+                    ref={playheadRef}
                     style={{
                         position: 'absolute',
                         top: 0,
                         bottom: 0,
-                        left: `${(playbackPositionMs / timelineDurationMs) * 100}%`,
-                        width: '1px',
-                        background: isPlaying ? '#d7ffd7' : '#4a4a4a',
+                        left: '0%',
+                        width: '2px',
+                        background: '#4a4a4a',
                         opacity: 0.9
                     }}
                 />
@@ -218,6 +356,17 @@ const primaryButtonStyle = {
     border: '1px solid #4f9b54',
     borderRadius: '5px',
     color: '#eaffea',
+    cursor: 'pointer',
+    fontSize: '12px',
+    fontFamily: 'inherit'
+};
+
+const stopButtonStyle = {
+    padding: '10px 18px',
+    background: '#5d2929',
+    border: '1px solid #9b4f4f',
+    borderRadius: '5px',
+    color: '#ffeaea',
     cursor: 'pointer',
     fontSize: '12px',
     fontFamily: 'inherit'

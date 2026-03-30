@@ -1,20 +1,40 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { addVirtualNote, removeVirtualNote, initializeMIDI, onNoteOn, onNoteOff } from '../audio/midiManager.js';
+import {
+    triggerNoteOn,
+    triggerNoteOff,
+    initializeMidi,
+    onNoteOn,
+    onNoteOff,
+    getMidiInputs,
+    selectMidiInput,
+    setMidiChannel,
+    getMidiChannel,
+    subscribeMidiStateChange
+} from '../audio/sequencer.js';
 
 function Keyboard({ module, onOutputClick, isConnecting, isFixed, selectedTrackId, selectedTrackLabel }) {
     // Musical keyboard state - just for UI display now
     const [activeNote, setActiveNote] = useState(null); // { noteNumber, velocity }
     const [hoveredKey, setHoveredKey] = useState(null);
+    const [midiInputs, setMidiInputs] = useState([]);
+    const [selectedMidiInputId, setSelectedMidiInputId] = useState(null);
+    const [midiChannel, setMidiChannelState] = useState('all'); // 'all' or 0-15
     const activeNoteRef = useRef(null); // Track active note for mouse up handler
     const lastPressedCvRef = useRef(0);
     
     // Initialize MIDI on mount
     useEffect(() => {
-        initializeMIDI().then(success => {
-            if (success) {
-                console.log('MIDI initialized successfully');
-            }
+        initializeMidi().then(() => {
+            const inputs = getMidiInputs();
+            setMidiInputs(inputs);
+            if (inputs.length > 0) setSelectedMidiInputId(inputs[0].id);
         });
+
+        const unsubscribe = subscribeMidiStateChange((inputs) => {
+            setMidiInputs(inputs);
+        });
+
+        return () => unsubscribe();
     }, []);
 
     // Define keyboard layout: 88 keys (A0 to C8) - full piano range
@@ -88,12 +108,12 @@ function Keyboard({ module, onOutputClick, isConnecting, isFixed, selectedTrackI
             noteNumber: note.noteNumber
         };
         lastPressedCvRef.current = (note.noteNumber - 69) / 12;
-        addVirtualNote(selectedTrackId, note.noteNumber, 0.8);
+        triggerNoteOn(selectedTrackId, note.noteNumber, 0.8);
     };
     
     const handleMouseUp = () => {
         if (activeNoteRef.current) {
-            removeVirtualNote(activeNoteRef.current.trackId, activeNoteRef.current.noteNumber);
+            triggerNoteOff(activeNoteRef.current.trackId, activeNoteRef.current.noteNumber);
             activeNoteRef.current = null;
         }
         setActiveNote(null);
@@ -117,6 +137,18 @@ function Keyboard({ module, onOutputClick, isConnecting, isFixed, selectedTrackI
         return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
     }, []); // Empty deps - handleMouseUp is stable because it uses ref
     
+    const handleMidiInputChange = (e) => {
+        const id = e.target.value;
+        setSelectedMidiInputId(id);
+        if (id) selectMidiInput(id);
+    };
+
+    const handleMidiChannelChange = (e) => {
+        const val = e.target.value;
+        setMidiChannelState(val);
+        setMidiChannel(val === 'all' ? null : parseInt(val, 10));
+    };
+
     const keyHeight = 12; // Smaller height per key to fit 88 keys
     const whiteKeyWidth = 140; // Match panel width
     const blackKeyWidth = 90;
@@ -147,6 +179,36 @@ function Keyboard({ module, onOutputClick, isConnecting, isFixed, selectedTrackI
                 borderRadius: isFixed ? '0' : '2px 2px 0 0'
             }}>
                 {selectedTrackLabel ? `KEYBOARD · ${selectedTrackLabel}` : 'KEYBOARD'}
+            </div>
+
+            {/* MIDI Device + Channel selectors */}
+            <div style={{ padding: '8px 10px', background: '#252525', borderBottom: '1px solid #3a3a3a', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div>
+                    <label style={{ fontSize: '9px', color: '#777', display: 'block', marginBottom: '3px', letterSpacing: '0.05em' }}>MIDI IN</label>
+                    <select
+                        value={selectedMidiInputId || ''}
+                        onChange={handleMidiInputChange}
+                        style={{ width: '100%', background: '#1a1a1a', border: '1px solid #444', color: '#ccc', fontSize: '10px', padding: '3px 4px', borderRadius: '3px' }}
+                    >
+                        {midiInputs.length === 0 && <option value="">No MIDI devices</option>}
+                        {midiInputs.map(input => (
+                            <option key={input.id} value={input.id}>{input.name}</option>
+                        ))}
+                    </select>
+                </div>
+                <div>
+                    <label style={{ fontSize: '9px', color: '#777', display: 'block', marginBottom: '3px', letterSpacing: '0.05em' }}>CHANNEL</label>
+                    <select
+                        value={midiChannel}
+                        onChange={handleMidiChannelChange}
+                        style={{ width: '100%', background: '#1a1a1a', border: '1px solid #444', color: '#ccc', fontSize: '10px', padding: '3px 4px', borderRadius: '3px' }}
+                    >
+                        <option value="all">All</option>
+                        {Array.from({ length: 16 }, (_, i) => (
+                            <option key={i} value={i}>{i + 1}</option>
+                        ))}
+                    </select>
+                </div>
             </div>
 
             <div style={{ padding: '10px', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>

@@ -514,14 +514,28 @@ class MothSynthProcessor extends AudioWorkletProcessor {
         const targetVoice = trackState.keyboardLatchModeEnabled
             ? this.getKeyboardLatchVoice(trackState)
             : this.claimRoundRobinVoice(trackState);
-        const gateVoltage = Math.max(0, Math.min(GATE_HIGH_VOLTAGE, (Number.isFinite(velocity) ? velocity : 1) * GATE_HIGH_VOLTAGE));
+        // Scale velocity to 0..5V (assume input velocity is 0..1)
+        const velocityV = Math.max(0, Math.min(1, Number.isFinite(velocity) ? velocity : 1)) * GATE_HIGH_VOLTAGE;
+        const gateV = velocityV > 0 ? GATE_HIGH_VOLTAGE : 0;
 
         this.clearVoice(trackState, targetVoice);
         targetVoice.state = VOICE_ACTIVE;
         targetVoice.noteNumber = noteNumber;
-        targetVoice.velocity = velocity;
-        targetVoice.gate = gateVoltage;
+        targetVoice.velocity = velocityV; // 0..5V
+        targetVoice.gate = gateV;         // 0 or 5V
         targetVoice.cv = (noteNumber - 69) / 12;
+
+        // Debug logging for voice allocation
+        // if (typeof console !== 'undefined' && console.log) {
+        //     console.log('[MothSynth] allocateVoice', {
+        //         trackId,
+        //         voiceId: targetVoice.voiceId,
+        //         noteNumber,
+        //         cv: targetVoice.cv,
+        //         velocity: velocityV,
+        //         gate: gateV
+        //     });
+        // }
 
         this.addVoiceMapping(trackState, noteNumber, targetVoice.voiceId);
     }
@@ -709,6 +723,8 @@ class MothSynthProcessor extends AudioWorkletProcessor {
                 return (_timeMs, laneContext) => laneContext?.cv ?? 0;
             case 'keyboard-gate':
                 return (_timeMs, laneContext) => laneContext?.gate ?? 0;
+            case 'keyboard-velocity':
+                return (_timeMs, laneContext) => laneContext?.velocity ?? 0;
             default:
                 return () => 0;
         }
@@ -719,9 +735,17 @@ class MothSynthProcessor extends AudioWorkletProcessor {
         const ampRead = this.createInputReader(moduleId, 'amp-input', activeStack);
         const shapeRead = this.createInputReader(moduleId, 'shape-input', activeStack);
         const dutyRead = this.createInputReader(moduleId, 'duty-input', activeStack);
-        const runtimeMap = this.getRuntimeMap(this.oscillatorStates, moduleId);
+        // Store oscillator state per voiceId
+        const stateMap = new Map();
 
         return (timeMs, laneContext) => {
+            const voiceId = laneContext?.voiceId ?? 'global';
+            let oscState = stateMap.get(voiceId);
+            if (!oscState) {
+                oscState = { phase: 0, lastTime: null };
+                stateMap.set(voiceId, oscState);
+            }
+
             const frequency = params.frequency;
             const amplitude = params.amplitude;
             const shape = params.shape;
@@ -750,16 +774,14 @@ class MothSynthProcessor extends AudioWorkletProcessor {
                 finalDuty = Math.max(0.02, Math.min(0.98, dutyCycle + dutyRead(timeMs, laneContext) / 20));
             }
 
-            const voiceId = laneContext?.voiceId ?? 'default';
-            const voiceState = runtimeMap.get(voiceId) ?? { phase: 0, lastTime: null };
-
-            let accPhase = voiceState.phase;
-            if (voiceState.lastTime !== null && voiceState.lastTime !== timeMs) {
-                const dt = (timeMs - voiceState.lastTime) / 1000;
-                accPhase = (voiceState.phase + 2 * Math.PI * finalFreq * dt) % (2 * Math.PI);
+            let accPhase = oscState.phase;
+            if (oscState.lastTime !== null && oscState.lastTime !== timeMs) {
+                const dt = (timeMs - oscState.lastTime) / 1000;
+                accPhase = (oscState.phase + 2 * Math.PI * finalFreq * dt) % (2 * Math.PI);
             }
 
-            runtimeMap.set(voiceId, { phase: accPhase, lastTime: timeMs });
+            oscState.phase = accPhase;
+            oscState.lastTime = timeMs;
 
             const p = accPhase / (2 * Math.PI);
             const d = finalDuty;
@@ -787,7 +809,7 @@ class MothSynthProcessor extends AudioWorkletProcessor {
                 wave = sineWave * (1 - sineToTriangle) + triangleWave * sineToTriangle;
             }
 
-            return wave * finalAmp * 10;
+            return finalAmp * wave;
         };
     }
 
@@ -795,9 +817,17 @@ class MothSynthProcessor extends AudioWorkletProcessor {
         const audioRead = this.createInputReader(moduleId, 'audio-input', activeStack);
         const cutoffRead = this.createInputReader(moduleId, 'cutoff-input', activeStack);
         const resonanceRead = this.createInputReader(moduleId, 'resonance-input', activeStack);
-        const runtimeMap = this.getRuntimeMap(this.filterStates, moduleId);
+        // Store filter state per voice
+        const stateMap = new Map();
 
         return (timeMs, laneContext) => {
+            const voiceId = laneContext?.voiceId ?? 'global';
+            let filterState = stateMap.get(voiceId);
+            if (!filterState) {
+                filterState = { lowpass: 0, bandpass: 0 };
+                stateMap.set(voiceId, filterState);
+            }
+
             const cutoff = 20 * Math.pow(1000, 1 - params.cutoffSlider);
             const resonance = params.resonance;
             const filterType = params.filterType;
@@ -815,8 +845,6 @@ class MothSynthProcessor extends AudioWorkletProcessor {
                 finalResonance = Math.max(0, Math.min(0.99, finalResonance));
             }
 
-            const voiceId = laneContext?.voiceId ?? 'global';
-            const filterState = runtimeMap.get(voiceId) ?? { lowpass: 0, bandpass: 0 };
             const nyquist = sampleRate / 2;
             const safeCutoff = Math.min(finalCutoff, nyquist * 0.8);
             const f = Math.min(2 * Math.sin(Math.PI * safeCutoff / sampleRate), 1.9);
@@ -826,11 +854,13 @@ class MothSynthProcessor extends AudioWorkletProcessor {
             const bandpass = f * highpass + filterState.bandpass;
 
             if (!Number.isFinite(lowpass) || !Number.isFinite(bandpass)) {
-                runtimeMap.set(voiceId, { lowpass: 0, bandpass: 0 });
+                filterState.lowpass = 0;
+                filterState.bandpass = 0;
                 return 0;
             }
 
-            runtimeMap.set(voiceId, { lowpass, bandpass });
+            filterState.lowpass = lowpass;
+            filterState.bandpass = bandpass;
             return filterType === 'lowpass' ? lowpass : highpass;
         };
     }
@@ -841,9 +871,24 @@ class MothSynthProcessor extends AudioWorkletProcessor {
         const sustainRead = this.createInputReader(moduleId, 'sustain-input', activeStack);
         const releaseRead = this.createInputReader(moduleId, 'release-input', activeStack);
         const gateRead = this.createInputReader(moduleId, 'gate-input', activeStack);
-        const runtimeMap = this.getRuntimeMap(this.envelopeStates, moduleId);
+        // Store envelope state per voice
+        const stateMap = new Map();
 
         return (timeMs, laneContext) => {
+            const voiceId = laneContext?.voiceId ?? 'global';
+            let envState = stateMap.get(voiceId);
+            if (!envState) {
+                envState = {
+                    stage: 'idle',
+                    value: 0,
+                    lastTime: null,
+                    lastGate: 0,
+                    stageElapsed: 0,
+                    releaseStartValue: 0
+                };
+                stateMap.set(voiceId, envState);
+            }
+
             const attackMod = attackRead ? attackRead(timeMs, laneContext) : 0;
             const decayMod = decayRead ? decayRead(timeMs, laneContext) : 0;
             const sustainMod = sustainRead ? sustainRead(timeMs, laneContext) : 0;
@@ -854,94 +899,91 @@ class MothSynthProcessor extends AudioWorkletProcessor {
             const finalSustain = Math.max(0, Math.min(1, params.sustain + sustainMod / 20));
             const finalRelease = Math.max(TIME_MIN, Math.min(TIME_MAX, params.release * Math.pow(2, releaseMod / 10)));
 
-            const voiceId = laneContext?.voiceId ?? 'default';
-            const voiceState = runtimeMap.get(voiceId) ?? {
-                stage: 'idle',
-                value: 0,
-                lastTime: null,
-                lastGate: 0,
-                stageElapsed: 0,
-                releaseStartValue: 0
-            };
-
             const gate = gateRead ? gateRead(timeMs, laneContext) : 0;
             const gateOn = gate > 0;
-            const gateWasOn = voiceState.lastGate > 0;
+            const gateWasOn = envState.lastGate > 0;
 
             if (gateOn && !gateWasOn) {
-                voiceState.stage = 'attack';
-                voiceState.value = 0;
-                voiceState.stageElapsed = 0;
-                voiceState.releaseStartValue = 0;
-                voiceState.lastTime = timeMs;
+                envState.stage = 'attack';
+                envState.value = 0;
+                envState.stageElapsed = 0;
+                envState.releaseStartValue = 0;
+                envState.lastTime = timeMs;
             } else if (!gateOn && gateWasOn) {
-                voiceState.stage = 'release';
-                voiceState.stageElapsed = 0;
-                voiceState.releaseStartValue = voiceState.value;
-                voiceState.lastTime = timeMs;
+                envState.stage = 'release';
+                envState.stageElapsed = 0;
+                envState.releaseStartValue = envState.value;
+                envState.lastTime = timeMs;
             }
 
-            const dt = voiceState.lastTime !== null && voiceState.lastTime !== timeMs
-                ? Math.max(0, (timeMs - voiceState.lastTime) / 1000)
+            const dt = envState.lastTime !== null && envState.lastTime !== timeMs
+                ? Math.max(0, (timeMs - envState.lastTime) / 1000)
                 : 0;
-            voiceState.stageElapsed += dt;
+            envState.stageElapsed += dt;
 
-            switch (voiceState.stage) {
+            switch (envState.stage) {
                 case 'attack': {
-                    const progress = finalAttack <= TIME_MIN ? 1 : Math.min(1, voiceState.stageElapsed / finalAttack);
-                    voiceState.value = progress;
+                    const progress = finalAttack <= TIME_MIN ? 1 : Math.min(1, envState.stageElapsed / finalAttack);
+                    envState.value = progress;
                     if (progress >= 1) {
-                        voiceState.stage = 'decay';
-                        voiceState.stageElapsed = 0;
-                        voiceState.value = 1;
+                        envState.stage = 'decay';
+                        envState.stageElapsed = 0;
+                        envState.value = 1;
                     }
                     break;
                 }
                 case 'decay': {
-                    const progress = finalDecay <= TIME_MIN ? 1 : Math.min(1, voiceState.stageElapsed / finalDecay);
-                    voiceState.value = 1 + (finalSustain - 1) * progress;
+                    const progress = finalDecay <= TIME_MIN ? 1 : Math.min(1, envState.stageElapsed / finalDecay);
+                    envState.value = 1 + (finalSustain - 1) * progress;
                     if (progress >= 1) {
-                        voiceState.stage = gateOn ? 'sustain' : 'release';
-                        voiceState.stageElapsed = 0;
-                        voiceState.value = finalSustain;
+                        envState.stage = gateOn ? 'sustain' : 'release';
+                        envState.stageElapsed = 0;
+                        envState.value = finalSustain;
                         if (!gateOn) {
-                            voiceState.releaseStartValue = voiceState.value;
+                            envState.releaseStartValue = envState.value;
                         }
                     }
                     break;
                 }
                 case 'sustain':
-                    voiceState.value = finalSustain;
+                    envState.value = finalSustain;
                     break;
                 case 'release': {
-                    const progress = finalRelease <= TIME_MIN ? 1 : Math.min(1, voiceState.stageElapsed / finalRelease);
-                    voiceState.value = voiceState.releaseStartValue * (1 - progress);
-                    if (progress >= 1 || voiceState.value <= 0.00001) {
-                        voiceState.stage = 'idle';
-                        voiceState.stageElapsed = 0;
-                        voiceState.value = 0;
-                        voiceState.releaseStartValue = 0;
+                    const progress = finalRelease <= TIME_MIN ? 1 : Math.min(1, envState.stageElapsed / finalRelease);
+                    envState.value = envState.releaseStartValue * (1 - progress);
+                    if (progress >= 1 || envState.value <= 0.00001) {
+                        envState.stage = 'idle';
+                        envState.stageElapsed = 0;
+                        envState.value = 0;
+                        envState.releaseStartValue = 0;
                     }
                     break;
                 }
                 default:
-                    voiceState.stage = gateOn ? 'attack' : 'idle';
-                    voiceState.value = gateOn ? voiceState.value : 0;
+                    envState.stage = gateOn ? 'attack' : 'idle';
+                    envState.value = gateOn ? envState.value : 0;
                     break;
             }
 
-            voiceState.lastGate = gate;
-            voiceState.lastTime = timeMs;
-            runtimeMap.set(voiceId, voiceState);
-            return Math.max(0, Math.min(ENVELOPE_MAX_VOLTAGE, voiceState.value * ENVELOPE_MAX_VOLTAGE));
+            envState.lastGate = gate;
+            envState.lastTime = timeMs;
+            return Math.max(0, Math.min(ENVELOPE_MAX_VOLTAGE, envState.value * ENVELOPE_MAX_VOLTAGE));
         };
     }
 
     createRandomFactory(moduleId, params, activeStack) {
         const rateRead = this.createInputReader(moduleId, 'rate-input', activeStack);
+        // Store random state per voice
+        const stateMap = new Map();
 
         return (timeMs, laneContext) => {
-            const state = this.randomStates.get(moduleId) ?? { lastOutputTime: 0, currentValue: 0 };
+            const voiceId = laneContext?.voiceId ?? 'global';
+            let randState = stateMap.get(voiceId);
+            if (!randState) {
+                randState = { lastOutputTime: 0, currentValue: 0 };
+                stateMap.set(voiceId, randState);
+            }
+
             let finalRate = params.rate;
 
             if (rateRead) {
@@ -950,13 +992,12 @@ class MothSynthProcessor extends AudioWorkletProcessor {
             }
 
             const intervalMs = 1000 / finalRate;
-            if (timeMs - state.lastOutputTime >= intervalMs) {
-                state.currentValue = Math.random() * 20 - 10;
-                state.lastOutputTime = timeMs;
+            if (timeMs - randState.lastOutputTime >= intervalMs) {
+                randState.currentValue = Math.random() * 20 - 10;
+                randState.lastOutputTime = timeMs;
             }
 
-            this.randomStates.set(moduleId, state);
-            return state.currentValue;
+            return randState.currentValue;
         };
     }
 
@@ -1014,7 +1055,7 @@ class MothSynthProcessor extends AudioWorkletProcessor {
             const snapshot = new Float32Array(360);
             for (let index = 0; index < snapshot.length; index++) {
                 const bufferIndex = (triggerIndex + index) % this.scopeBuffer.length;
-                snapshot[index] = Number.isFinite(this.scopeBuffer[bufferIndex]) ? this.scopeBuffer[bufferIndex] : 0;
+                snapshot[index] = Number.isFinite(this.scopeBuffer[bufferIndex]) ? this.scopeBuffer[bufferIndex] * 2 : 0;
             }
 
             this.port.postMessage({ type: 'scope-data', samples: snapshot }, [snapshot.buffer]);
@@ -1178,7 +1219,7 @@ class MothSynthProcessor extends AudioWorkletProcessor {
                 });
 
                 outputChannel[sampleIndex] = mixedSample;
-                this.scopeBuffer[this.scopeWriteIndex] = scopedSample;
+                this.scopeBuffer[this.scopeWriteIndex] = scopedSample * 5;
                 this.scopeWriteIndex = (this.scopeWriteIndex + 1) % this.scopeBuffer.length;
                 this.scopeSampleCounter += 1;
                 if (this.scopeSampleCounter >= 2048) {

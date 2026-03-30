@@ -284,12 +284,6 @@ export function noteOff(trackId, noteNumber) {
     postToWorklet({ type: 'note-off', trackId, noteNumber });
 }
 
-export function setGateMonitoring() {
-}
-
-export function setKeyboardLatchMode() {
-}
-
 export function subscribeToScopeData(listener) {
     scopeListeners.add(listener);
     return () => {

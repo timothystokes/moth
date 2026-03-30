@@ -19,9 +19,7 @@ function Mixer({ module, onDragStart, onOutputClick, isConnecting, connections, 
     return (
         <div
             style={{
-                position: 'absolute',
-                left: module.x,
-                top: module.y,
+                position: 'relative',
                 width: '180px',
                 minHeight: '220px',
                 background: '#333',

@@ -67,9 +67,7 @@ function Envelope({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isCon
     return (
         <div
             style={{
-                position: 'absolute',
-                left: module.x,
-                top: module.y,
+                position: 'relative',
                 width: '180px',
                 minHeight: '245px',
                 background: '#333',

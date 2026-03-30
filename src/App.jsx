@@ -23,21 +23,21 @@ import {
 } from './audio/audioEngine.js';
 import {
     buildNoteSegments,
-    buildNotesFromEvents,
-    loadMIDIFile,
-    loadProjectSequence,
-    playLoadedSequence,
-    rewindLoadedSequence,
-    setSelectedTrack as setSelectedMidiTrack,
-    stopLoadedSequence,
-    subscribeToSequenceTransport
-} from './audio/midiManager.js';
+    buildNotesFromMidiEvents,
+    importMidiFile,
+    loadSession,
+    play,
+    rewind,
+    seekTo,
+    setActiveTrack,
+    stop,
+    subscribeToTransport
+} from './audio/sequencer.js';
 
 const toolbarHeight = 50;
 
 const initialTransportState = {
     hasSequence: false,
-    fileName: null,
     durationMs: 0,
     trackCount: 0,
     tracks: [],
@@ -45,8 +45,12 @@ const initialTransportState = {
     playbackPositionMs: 0
 };
 
+
+// Data model for song/sequence
+// Each track contains a flat notes[] array with absolute bar/beat-positioned notes.
+
 const initialProjectSequence = {
-    fileName: null,
+    bpm: 120,
     ticksPerBeat: null,
     tempoMap: [],
     timeSignatures: []
@@ -64,17 +68,14 @@ const initialVoiceStatus = {
 let manualTrackCounter = 1;
 let moduleCounter = 1;
 
+
 function createManualTrack(name = `Track ${manualTrackCounter++}`) {
     return {
         id: `track-manual-${Date.now()}-${manualTrackCounter}`,
         name,
-        source: { kind: 'manual' },
-        midi: {
-            notes: [],
-            noteSegments: [],
-            durationMs: 0,
-            noteCount: 0
-        },
+        notes: [],
+        noteSegments: [],
+        durationMs: 0,
         mix: {
             volume: 0.8,
             mute: false
@@ -84,25 +85,15 @@ function createManualTrack(name = `Track ${manualTrackCounter++}`) {
     };
 }
 
+
 function createImportedTrack(trackData) {
     return {
         id: trackData.id,
         name: trackData.name,
-        source: {
-            kind: 'midi-import',
-            midiTrackIndex: trackData.sourceTrackIndex,
-            channel: trackData.channel
-        },
-        midi: {
-            notes: trackData.notes ?? [],
-            noteSegments: trackData.noteSegments,
-            durationMs: trackData.durationMs,
-            noteCount: trackData.noteCount ?? (trackData.notes?.length ?? 0)
-        },
-        mix: {
-            volume: 0.8,
-            mute: false
-        },
+        notes: trackData.notes ?? [],
+        noteSegments: trackData.noteSegments ?? [],
+        durationMs: trackData.durationMs ?? 0,
+        mix: { volume: 0.8, mute: false },
         modules: [],
         connections: []
     };
@@ -124,6 +115,45 @@ function createProjectModuleStateLookup(moduleStates) {
     return lookup;
 }
 
+// Flatten legacy sequences+arrangement into a flat notes[] array.
+// Used when loading old project files that haven't been migrated yet.
+function migrateTrackToFlatNotes(track, timeSignatures = []) {
+    if (Array.isArray(track?.notes)) return track.notes;
+    const beatsPerBar = (Array.isArray(timeSignatures) && timeSignatures.length > 0)
+        ? (timeSignatures[0]?.numerator ?? 4) : 4;
+    const sequences = Array.isArray(track?.sequences) ? track.sequences : [];
+    const arrangement = Array.isArray(track?.arrangement) ? track.arrangement : [];
+    const notes = [];
+    for (const entry of arrangement) {
+        const seq = sequences.find(s => s.id === entry.sequenceId);
+        if (!seq || !Array.isArray(seq.events)) continue;
+        const seqLengthBeats = seq.events.reduce((max, ev) => {
+            const startBeat = (ev.bar != null && ev.beat != null)
+                ? (ev.bar - 1) * beatsPerBar + (ev.beat - 1) : 0;
+            return Math.max(max, startBeat + (ev.duration ?? ev.beats ?? 0.25));
+        }, 0);
+        const repeat = entry.repeat || 1;
+        for (let rep = 0; rep < repeat; rep++) {
+            const repOffset = entry.startBeat + rep * seqLengthBeats;
+            for (const ev of seq.events) {
+                if (!ev.note || ev.note === '-') continue;
+                const duration = ev.duration ?? ev.beats ?? 0.25;
+                const evBeat = (ev.bar != null && ev.beat != null)
+                    ? (ev.bar - 1) * beatsPerBar + (ev.beat - 1) : 0;
+                const absoluteBeat = repOffset + evBeat;
+                const newBar = Math.floor(absoluteBeat / beatsPerBar) + 1;
+                const newBeat = Math.round(((absoluteBeat % beatsPerBar) + 1) * 10000) / 10000;
+                notes.push({ note: ev.note, bar: newBar, beat: newBeat, duration, velocity: ev.velocity ?? 0.8 });
+            }
+        }
+    }
+    return notes.sort((a, b) => {
+        const aBeat = (a.bar - 1) * beatsPerBar + (a.beat - 1);
+        const bBeat = (b.bar - 1) * beatsPerBar + (b.beat - 1);
+        return aBeat - bBeat;
+    });
+}
+
 function normalizeTrackModuleId(trackId, moduleId, fallbackSuffix = 'module') {
     if (moduleId === 'keyboard-singleton' || moduleId === 'track-output-singleton') {
         return moduleId;
@@ -140,28 +170,15 @@ function normalizeTrackModuleId(trackId, moduleId, fallbackSuffix = 'module') {
     return `${trackId}:${moduleId}`;
 }
 
-function normalizeTrack(track, index, moduleStateLookup = new Map()) {
-    const midiEvents = Array.isArray(track?.midi?.events) ? track.midi.events : [];
-    const midiNotes = Array.isArray(track?.midi?.notes)
-        ? track.midi.notes
-        : buildNotesFromEvents(midiEvents);
-    const noteSegments = Array.isArray(track?.midi?.noteSegments)
-        ? track.midi.noteSegments
-        : buildNoteSegments(midiNotes);
-    const durationMs = Number.isFinite(track?.midi?.durationMs)
-        ? track.midi.durationMs
-        : (noteSegments.length > 0 ? noteSegments[noteSegments.length - 1].endMs : 0);
-    const noteCount = Number.isFinite(track?.midi?.noteCount)
-        ? track.midi.noteCount
-        : midiNotes.length;
-
-    const source = track?.source?.kind === 'midi-import'
-        ? {
-            kind: 'midi-import',
-            midiTrackIndex: Number.isFinite(track?.source?.midiTrackIndex) ? track.source.midiTrackIndex : 0,
-            channel: Number.isFinite(track?.source?.channel) ? track.source.channel : 0
-        }
-        : { kind: 'manual' };
+function normalizeTrack(track, index, moduleStateLookup = new Map(), timeSignatures = []) {
+    // Support both new format (notes[]) and old saved format (sequences+arrangement)
+    const notes = migrateTrackToFlatNotes(track, timeSignatures);
+    const noteSegments = Array.isArray(track?.noteSegments) ? track.noteSegments
+        : Array.isArray(track?.midi?.noteSegments) ? track.midi.noteSegments
+        : [];
+    const durationMs = Number.isFinite(track?.durationMs) ? track.durationMs
+        : Number.isFinite(track?.midi?.durationMs) ? track.midi.durationMs
+        : 0;
 
     const normalizedTrackId = typeof track?.id === 'string' && track.id ? track.id : `track-loaded-${Date.now()}-${index}`;
     const normalizedModules = Array.isArray(track?.modules)
@@ -219,13 +236,9 @@ function normalizeTrack(track, index, moduleStateLookup = new Map()) {
     return {
         id: normalizedTrackId,
         name: typeof track?.name === 'string' && track.name ? track.name : `Track ${index + 1}`,
-        source,
-        midi: {
-            notes: midiNotes,
-            noteSegments,
-            durationMs,
-            noteCount
-        },
+        notes,
+        noteSegments,
+        durationMs,
         mix: {
             volume: typeof track?.mix?.volume === 'number' ? Math.min(1, Math.max(0, track.mix.volume)) : 0.8,
             mute: Boolean(track?.mix?.mute)
@@ -253,14 +266,8 @@ function syncCountersFromTracks(projectTracks) {
 }
 
 function buildSerializedProjectTracks(projectTracks) {
-    return projectTracks.map((track) => ({
+    return projectTracks.map(({ sequences: _seq, arrangement: _arr, noteSegments: _ns, ...track }) => ({
         ...track,
-        midi: {
-            ...track.midi,
-            noteSegments: undefined,
-            events: undefined,
-            eventCount: undefined
-        },
         modules: track.modules.map((module) => {
             const moduleState = getModuleState(module.id);
             return {
@@ -355,7 +362,7 @@ function App() {
     }, [effectiveSelectedTrackId, selectedModules, selectedConnections]);
 
     useEffect(() => {
-        const unsubscribe = subscribeToSequenceTransport(setTransportState);
+        const unsubscribe = subscribeToTransport(setTransportState);
         return () => unsubscribe();
     }, []);
 
@@ -366,7 +373,7 @@ function App() {
             setAudioError(`${nextMessage}${phase}`);
             setVoiceStatus(initialVoiceStatus);
             setPendingTransportPlay(false);
-            stopLoadedSequence();
+            stop();
             setIsPoweredOn(false);
         });
 
@@ -403,7 +410,7 @@ function App() {
 
             if (diagnostic?.severity === 'fatal') {
                 setPendingTransportPlay(false);
-                stopLoadedSequence();
+                stop();
             }
         });
 
@@ -411,7 +418,7 @@ function App() {
     }, []);
 
     useEffect(() => {
-        setSelectedMidiTrack(effectiveSelectedTrackId);
+        setActiveTrack(effectiveSelectedTrackId);
         setScopeTrack(effectiveSelectedTrackId);
     }, [effectiveSelectedTrackId]);
 
@@ -451,7 +458,7 @@ function App() {
         }
 
         setPendingTransportPlay(false);
-        stopLoadedSequence();
+        stop();
     }, [isPoweredOn]);
 
     useEffect(() => {
@@ -464,7 +471,7 @@ function App() {
         const startPlayback = async () => {
             try {
                 await audioContext.resume();
-                await playLoadedSequence();
+                await play();
             } catch (error) {
                 console.error('Failed to start MIDI playback:', error);
             } finally {
@@ -542,11 +549,13 @@ function App() {
             return;
         }
 
-        const rect = event.currentTarget.getBoundingClientRect();
+        const canvasRect = canvasRef.current?.getBoundingClientRect();
+        if (!canvasRect) return;
+
         setDraggedModule(moduleId);
         setDragOffset({
-            x: event.clientX - rect.left,
-            y: event.clientY - rect.top
+            x: event.clientX - canvasRect.left - module.x,
+            y: event.clientY - canvasRect.top - module.y
         });
     };
 
@@ -659,17 +668,16 @@ function App() {
         if (!selectedTrack) {
             return;
         }
-
-        const newModule = {
-            id: `${selectedTrack.id}:module-${moduleCounter++}`,
-            type,
-            x: 100 + selectedTrack.modules.length * 40,
-            y: 100 + selectedTrack.modules.length * 24
-        };
-
-        updateTrack(selectedTrack.id, (track) => ({
+        const trackId = selectedTrack.id;
+        const moduleId = `${trackId}:module-${moduleCounter++}`;
+        updateTrack(trackId, (track) => ({
             ...track,
-            modules: [...track.modules, newModule]
+            modules: [...track.modules, {
+                id: moduleId,
+                type,
+                x: 100 + track.modules.length * 40,
+                y: 100 + track.modules.length * 24
+            }]
         }));
     };
 
@@ -697,24 +705,24 @@ function App() {
 
     const handleSequenceLoad = async (file) => {
         setPendingTransportPlay(false);
-        const importedSequence = await loadMIDIFile(file);
-        const importedTracks = importedSequence.tracks.map(createImportedTrack);
+        const importedSession = await importMidiFile(file);
+        const importedTracks = importedSession.tracks.map(createImportedTrack);
         syncCountersFromTracks(importedTracks);
         setProjectSequence({
-            fileName: importedSequence.fileName,
-            ticksPerBeat: importedSequence.ticksPerBeat ?? null,
-            tempoMap: importedSequence.tempoMap ?? [],
-            timeSignatures: importedSequence.timeSignatures ?? []
+            bpm: importedSession.bpm ?? 120,
+            ticksPerBeat: importedSession.ticksPerBeat ?? null,
+            tempoMap: importedSession.tempoMap ?? [],
+            timeSignatures: importedSession.timeSignatures ?? []
         });
-        loadProjectSequence({
-            fileName: importedSequence.fileName,
-            ticksPerBeat: importedSequence.ticksPerBeat ?? null,
-            tempoMap: importedSequence.tempoMap ?? [],
-            timeSignatures: importedSequence.timeSignatures ?? []
+        loadSession({
+            bpm: importedSession.bpm ?? 120,
+            ticksPerBeat: importedSession.ticksPerBeat ?? null,
+            tempoMap: importedSession.tempoMap ?? [],
+            timeSignatures: importedSession.timeSignatures ?? []
         }, importedTracks);
         setTracks(importedTracks);
         setSelectedTrackId(importedTracks[0]?.id ?? null);
-        return importedSequence;
+        return importedSession;
     };
 
     const handleProjectSave = () => {
@@ -738,7 +746,7 @@ function App() {
 
     const handleProjectLoad = async (file) => {
         setPendingTransportPlay(false);
-        stopLoadedSequence();
+        stop();
 
         const rawText = await file.text();
         const parsedProject = JSON.parse(rawText);
@@ -748,11 +756,13 @@ function App() {
         }
 
         const moduleStateLookup = createProjectModuleStateLookup(parsedProject.moduleStates);
-        const loadedTracks = parsedProject.tracks.map((track, index) => normalizeTrack(track, index, moduleStateLookup));
+        const timeSignatures = Array.isArray(parsedProject.sequence?.timeSignatures)
+            ? parsedProject.sequence.timeSignatures : [];
+        const loadedTracks = parsedProject.tracks.map((track, index) => normalizeTrack(track, index, moduleStateLookup, timeSignatures));
         syncCountersFromTracks(loadedTracks);
 
         const nextProjectSequence = {
-            fileName: parsedProject.sequence?.fileName ?? parsedProject.fileName ?? file.name.replace(/\.json$/i, ''),
+            bpm: parsedProject.sequence?.bpm ?? parsedProject.sequence?.tempoMap?.[0]?.bpm ?? 120,
             ticksPerBeat: parsedProject.sequence?.ticksPerBeat ?? null,
             tempoMap: Array.isArray(parsedProject.sequence?.tempoMap) ? parsedProject.sequence.tempoMap : [],
             timeSignatures: Array.isArray(parsedProject.sequence?.timeSignatures) ? parsedProject.sequence.timeSignatures : []
@@ -774,15 +784,20 @@ function App() {
             : loadedTracks[0]?.id ?? null;
 
         setProjectSequence(nextProjectSequence);
-        loadProjectSequence(nextProjectSequence, loadedTracks);
-        setTracks(loadedTracks);
+        const sessionState = loadSession(nextProjectSequence, loadedTracks);
+        // Sync computed noteSegments (from notes[]) back into React track state
+        const tracksWithSegments = loadedTracks.map(track => {
+            const sessionTrack = sessionState.tracks.find(t => t.id === track.id);
+            return sessionTrack ? { ...track, noteSegments: sessionTrack.noteSegments, durationMs: sessionTrack.durationMs } : track;
+        });
+        setTracks(tracksWithSegments);
         setSelectedTrackId(nextSelectedTrackId);
         setModuleUiRevision((current) => current + 1);
     };
 
     const handleTransportPlay = async () => {
         if (!transportState.hasSequence) {
-            throw new Error('Load a MIDI file before pressing play.');
+            throw new Error('No sequence loaded. Import a MIDI file or add sequences to tracks.');
         }
 
         if (!audioContext || !isPoweredOn) {
@@ -794,17 +809,17 @@ function App() {
         }
 
         await audioContext.resume();
-        await playLoadedSequence();
+        await play();
     };
 
     const handleTransportStop = () => {
         setPendingTransportPlay(false);
-        stopLoadedSequence();
+        stop();
     };
 
     const handleTransportRewind = () => {
         setPendingTransportPlay(false);
-        rewindLoadedSequence();
+        rewind();
     };
 
     const handleSelectTrack = (trackId) => {
@@ -829,16 +844,17 @@ function App() {
 
     const handleRemoveTrack = (trackId) => {
         const nextTracks = tracks.filter((track) => track.id !== trackId);
-        const removedTrack = tracks.find((track) => track.id === trackId);
         setTracks(nextTracks);
-
-        if (removedTrack?.midi?.noteCount > 0) {
-            loadProjectSequence(projectSequence, nextTracks);
-        }
-
+        loadSession(projectSequence, nextTracks);
         if (selectedTrackId === trackId) {
             setSelectedTrackId(nextTracks[0]?.id ?? null);
         }
+    };
+
+    const handleRenameTrack = (trackId, newName) => {
+        const trimmed = newName.trim();
+        if (!trimmed) return;
+        setTracks((prev) => prev.map((t) => t.id === trackId ? { ...t, name: trimmed } : t));
     };
 
     const handleMidiImportChange = async (event) => {
@@ -884,9 +900,6 @@ function App() {
             )
         }));
     };
-
-    // Expose removeModule for Canvas button
-    window.removeModule = removeModule;
 
     return (
         <div style={{ width: '100%', height: '100%', position: 'relative', display: 'flex', flexDirection: 'column', background: '#101010' }}>
@@ -1012,6 +1025,7 @@ function App() {
                         onClick={handleCanvasClick}
                         audioContext={audioContext}
                         moduleUiRevision={moduleUiRevision}
+                        onRemove={removeModule}
                     />
                 </div>
 
@@ -1039,7 +1053,9 @@ function App() {
                 onUpdateTrackMix={handleUpdateTrackMix}
                 onCreateTrack={handleCreateTrack}
                 onRemoveTrack={handleRemoveTrack}
+                onRenameTrack={handleRenameTrack}
                 isPendingPlay={pendingTransportPlay}
+                onSetTransportPosition={seekTo}
             />
         </div>
     );
@@ -1105,7 +1121,7 @@ function Toolbar({ addModule, isPoweredOn, togglePower, hasSelectedTrack, audioE
     );
 }
 
-function Canvas({ canvasRef, modules, connections, connectingFrom, onModuleDragStart, onOutputClick, onMouseMove, onClick, audioContext, moduleUiRevision }) {
+function Canvas({ canvasRef, modules, connections, connectingFrom, onModuleDragStart, onOutputClick, onMouseMove, onClick, audioContext, moduleUiRevision, onRemove }) {
     // Helper to determine if a module is fixed (not removable)
     const isFixed = (module) => module.id === 'keyboard-singleton' || module.id === 'track-output-singleton';
 
@@ -1123,31 +1139,32 @@ function Canvas({ canvasRef, modules, connections, connectingFrom, onModuleDragS
             }}
         >
             {modules.map((module) => {
-                const removeProp = !isFixed(module) ? { onRemove: () => window.removeModule(module.id) } : {};
+                const removeProp = !isFixed(module) ? { onRemove: () => onRemove(module.id) } : {};
+                let child = null;
                 if (module.type === 'oscillator') {
-                    return <Oscillator key={`${module.id}:${moduleUiRevision}`} module={module} onDragStart={onModuleDragStart} onOutputClick={onOutputClick} isConnecting={connectingFrom?.moduleId === module.id} audioContext={audioContext} connections={connections} {...removeProp} />;
+                    child = <Oscillator key={`${module.id}:${moduleUiRevision}`} module={module} onDragStart={onModuleDragStart} onOutputClick={onOutputClick} isConnecting={connectingFrom?.moduleId === module.id} audioContext={audioContext} connections={connections} {...removeProp} />;
+                } else if (module.type === 'filter') {
+                    child = <Filter key={`${module.id}:${moduleUiRevision}`} module={module} onDragStart={onModuleDragStart} onOutputClick={onOutputClick} isConnecting={connectingFrom?.moduleId === module.id} audioContext={audioContext} connections={connections} {...removeProp} />;
+                } else if (module.type === 'random') {
+                    child = <RandomVoltageGenerator key={`${module.id}:${moduleUiRevision}`} module={module} onDragStart={onModuleDragStart} onOutputClick={onOutputClick} isConnecting={connectingFrom?.moduleId === module.id} audioContext={audioContext} connections={connections} {...removeProp} />;
+                } else if (module.type === 'envelope') {
+                    child = <Envelope key={`${module.id}:${moduleUiRevision}`} module={module} onDragStart={onModuleDragStart} onOutputClick={onOutputClick} isConnecting={connectingFrom?.moduleId === module.id} audioContext={audioContext} connections={connections} {...removeProp} />;
+                } else if (module.type === 'mixer') {
+                    child = <Mixer key={`${module.id}:${moduleUiRevision}`} module={module} onDragStart={onModuleDragStart} onOutputClick={onOutputClick} isConnecting={connectingFrom?.moduleId === module.id} connections={connections} {...removeProp} />;
+                } else if (module.type === 'multi') {
+                    child = <Multi key={`${module.id}:${moduleUiRevision}`} module={module} onDragStart={onModuleDragStart} onOutputClick={onOutputClick} isConnecting={connectingFrom?.moduleId === module.id} {...removeProp} />;
                 }
-                if (module.type === 'filter') {
-                    return <Filter key={`${module.id}:${moduleUiRevision}`} module={module} onDragStart={onModuleDragStart} onOutputClick={onOutputClick} isConnecting={connectingFrom?.moduleId === module.id} audioContext={audioContext} connections={connections} {...removeProp} />;
-                }
-                if (module.type === 'random') {
-                    return <RandomVoltageGenerator key={`${module.id}:${moduleUiRevision}`} module={module} onDragStart={onModuleDragStart} onOutputClick={onOutputClick} isConnecting={connectingFrom?.moduleId === module.id} audioContext={audioContext} connections={connections} {...removeProp} />;
-                }
-                if (module.type === 'envelope') {
-                    return <Envelope key={`${module.id}:${moduleUiRevision}`} module={module} onDragStart={onModuleDragStart} onOutputClick={onOutputClick} isConnecting={connectingFrom?.moduleId === module.id} audioContext={audioContext} connections={connections} {...removeProp} />;
-                }
-                if (module.type === 'mixer') {
-                    return <Mixer key={`${module.id}:${moduleUiRevision}`} module={module} onDragStart={onModuleDragStart} onOutputClick={onOutputClick} isConnecting={connectingFrom?.moduleId === module.id} connections={connections} {...removeProp} />;
-                }
-                if (module.type === 'multi') {
-                    return <Multi key={`${module.id}:${moduleUiRevision}`} module={module} onDragStart={onModuleDragStart} onOutputClick={onOutputClick} isConnecting={connectingFrom?.moduleId === module.id} {...removeProp} />;
-                }
-                return null;
+                if (!child) return null;
+                return (
+                    <div key={module.id} style={{ position: 'absolute', left: module.x, top: module.y }}>
+                        {child}
+                    </div>
+                );
             })}
 
             {modules.length === 0 && (
                 <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4d4d4d', fontSize: '13px', letterSpacing: '0.04em' }}>
-                    Add modules and patch them to TO MIXER to make this track audible.
+                    Add modules and patch them TO MIXER to make this track audible.
                 </div>
             )}
         </div>
