@@ -884,7 +884,8 @@ class MothSynthProcessor extends AudioWorkletProcessor {
                     lastTime: null,
                     lastGate: 0,
                     stageElapsed: 0,
-                    releaseStartValue: 0
+                    releaseStartValue: 0,
+                    attackStartValue: 0
                 };
                 stateMap.set(voiceId, envState);
             }
@@ -905,7 +906,7 @@ class MothSynthProcessor extends AudioWorkletProcessor {
 
             if (gateOn && !gateWasOn) {
                 envState.stage = 'attack';
-                envState.value = 0;
+                envState.attackStartValue = envState.value; // start from current level, not 0
                 envState.stageElapsed = 0;
                 envState.releaseStartValue = 0;
                 envState.lastTime = timeMs;
@@ -924,7 +925,8 @@ class MothSynthProcessor extends AudioWorkletProcessor {
             switch (envState.stage) {
                 case 'attack': {
                     const progress = finalAttack <= TIME_MIN ? 1 : Math.min(1, envState.stageElapsed / finalAttack);
-                    envState.value = progress;
+                    const start = envState.attackStartValue ?? 0;
+                    envState.value = start + (1 - start) * progress;
                     if (progress >= 1) {
                         envState.stage = 'decay';
                         envState.stageElapsed = 0;
@@ -1107,8 +1109,6 @@ class MothSynthProcessor extends AudioWorkletProcessor {
                     let trackSample = 0;
 
                     if (requiresPerVoiceMix) {
-                        let contributingVoiceCount = 0;
-
                         for (const voice of trackState.voices) {
                             const laneContext = voice;
 
@@ -1128,15 +1128,7 @@ class MothSynthProcessor extends AudioWorkletProcessor {
                                 continue;
                             }
 
-                            if (Math.abs(voiceSignal) > 0.000001) {
-                                contributingVoiceCount += 1;
-                            }
-
                             trackSample += voiceSignal / 10;
-                        }
-
-                        if (contributingVoiceCount > 1) {
-                            trackSample /= Math.sqrt(contributingVoiceCount);
                         }
                     } else if (!requiresPerVoiceMix) {
                         trackSample = outputRead(sampleTimeMs, null) / 10;

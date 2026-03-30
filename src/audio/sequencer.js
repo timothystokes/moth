@@ -206,7 +206,9 @@ export function loadSession(sessionMeta, tracks) {
                 const noteNumber = noteNameToMidi(note.note);
                 if (noteNumber == null) return null;
                 const startBeat = barBeatToAbsoluteBeat(note.bar ?? 1, note.beat ?? 1, timeSignatures);
-                return { noteNumber, startMs: startBeat * msPerBeat, durationMs: (note.duration || QUANTIZE_RESOLUTION) * msPerBeat };
+                const startMs = startBeat * msPerBeat;
+                const endMs = startMs + (note.duration || QUANTIZE_RESOLUTION) * msPerBeat;
+                return { noteNumber, startMs, endMs };
             })
             .filter(Boolean)
             .sort((a, b) => a.startMs - b.startMs || a.noteNumber - b.noteNumber);
