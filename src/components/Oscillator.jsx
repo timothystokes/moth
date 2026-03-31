@@ -5,7 +5,7 @@ import { getModuleState, registerModule } from '../audio/audioEngine.js';
  * Oscillator module
  *
  * Controls:
- *   FREQ  — logarithmic 0.1 Hz–2000 Hz slider (good for LFO through audio range)
+ *   FREQ  — logarithmic 0.1 Hz–8000 Hz slider (good for LFO through audio range)
  *           Input socket: 1V/octave relative offset on top of the slider value.
  *           Keyboard pitch only affects the oscillator when patched into this
  *           socket. 0V maps to A4 = 440Hz, so the slider stays the base tuning
@@ -144,8 +144,8 @@ function Oscillator({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isC
                             min="0"
                             max="1"
                             step="0.001"
-                            value={Math.log(frequency / 0.1) / Math.log(2000 / 0.1)}
-                            onChange={(e) => setFrequency(0.1 * Math.pow(2000 / 0.1, parseFloat(e.target.value)))}
+                            value={Math.log(frequency / 0.1) / Math.log(8000 / 0.1)}
+                            onChange={(e) => setFrequency(0.1 * Math.pow(8000 / 0.1, parseFloat(e.target.value)))}
                             style={{
                                 width: '100%',
                                 cursor: 'pointer',

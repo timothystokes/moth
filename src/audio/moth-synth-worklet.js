@@ -599,6 +599,7 @@ class MothSynthProcessor extends AudioWorkletProcessor {
         switch (module.type) {
             case 'keyboard-cv':
             case 'keyboard-gate':
+            case 'keyboard-velocity':
                 isVoiceDependent = true;
                 break;
             case 'oscillator':
@@ -618,6 +619,10 @@ class MothSynthProcessor extends AudioWorkletProcessor {
                 break;
             case 'mixer':
                 isVoiceDependent = ['input-a', 'input-b', 'level-a-input', 'level-b-input']
+                    .some((inputName) => this.isInputVoiceDependent(moduleId, inputName, visited));
+                break;
+            case 'vca':
+                isVoiceDependent = ['audio-input', 'gain-input']
                     .some((inputName) => this.isInputVoiceDependent(moduleId, inputName, visited));
                 break;
             case 'multi':
@@ -715,6 +720,8 @@ class MothSynthProcessor extends AudioWorkletProcessor {
                 return this.createRandomFactory(moduleId, module.params, activeStack);
             case 'mixer':
                 return this.createMixerFactory(moduleId, module.params, activeStack);
+            case 'vca':
+                return this.createVCAFactory(moduleId, module.params, activeStack);
             case 'multi': {
                 const signalRead = this.createInputReader(moduleId, 'signal-input', activeStack);
                 return (timeMs, laneContext) => (signalRead ? signalRead(timeMs, laneContext) : 0);
@@ -990,7 +997,7 @@ class MothSynthProcessor extends AudioWorkletProcessor {
 
             if (rateRead) {
                 finalRate = params.rate * Math.pow(2, rateRead(timeMs, laneContext) / 10);
-                finalRate = Math.max(0.1, Math.min(2000, finalRate));
+                finalRate = Math.max(0.1, Math.min(8000, finalRate));
             }
 
             const intervalMs = 1000 / finalRate;
@@ -1024,6 +1031,21 @@ class MothSynthProcessor extends AudioWorkletProcessor {
             }
 
             return signalA * finalLevelA + signalB * finalLevelB;
+        };
+    }
+
+    createVCAFactory(moduleId, params, activeStack) {
+        const audioRead = this.createInputReader(moduleId, 'audio-input', activeStack);
+        const gainRead = this.createInputReader(moduleId, 'gain-input', activeStack);
+
+        return (timeMs, laneContext) => {
+            const input = audioRead ? audioRead(timeMs, laneContext) : 0;
+            let finalGain = params.gain ?? 1;
+            if (gainRead) {
+                finalGain = Math.max(0, Math.min(2, finalGain + gainRead(timeMs, laneContext) / 5));
+            }
+            const polarity = params.invert ? -1 : 1;
+            return input * finalGain * polarity;
         };
     }
 

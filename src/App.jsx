@@ -7,6 +7,7 @@ import RandomVoltageGenerator from './components/RandomVoltageGenerator.jsx';
 import Envelope from './components/Envelope.jsx';
 import Mixer from './components/Mixer.jsx';
 import Multi from './components/Multi.jsx';
+import VCA from './components/VCA.jsx';
 import Transport from './components/Transport.jsx';
 import {
     clearAllModules,
@@ -287,6 +288,10 @@ function resolveSourceModuleId(track, moduleId, outputId) {
         if (outputId === 'gate-out') {
             return `${track.id}:keyboard-gate`;
         }
+
+        if (outputId === 'velocity-out') {
+            return `${track.id}:keyboard-velocity`;
+        }
     }
 
     if (outputId === 'output-a' || outputId === 'output-b') {
@@ -428,6 +433,7 @@ function App() {
         tracks.forEach((track) => {
             registerModule(`${track.id}:keyboard-cv`, { type: 'keyboard-cv', params: {} });
             registerModule(`${track.id}:keyboard-gate`, { type: 'keyboard-gate', params: {} });
+            registerModule(`${track.id}:keyboard-velocity`, { type: 'keyboard-velocity', params: {} });
             registerModule(`${track.id}:track-output`, { type: 'track-output', params: {} });
             upsertTrack(track.id, {
                 volume: track.mix.volume,
@@ -1086,6 +1092,7 @@ function Toolbar({ addModule, isPoweredOn, togglePower, hasSelectedTrack, audioE
             <button onClick={() => addModule('random')} style={buttonStyle} disabled={!hasSelectedTrack}>+ Random</button>
             <button onClick={() => addModule('mixer')} style={buttonStyle} disabled={!hasSelectedTrack}>+ Mixer</button>
             <button onClick={() => addModule('multi')} style={buttonStyle} disabled={!hasSelectedTrack}>+ Multi</button>
+            <button onClick={() => addModule('vca')} style={buttonStyle} disabled={!hasSelectedTrack}>+ Amplifier</button>
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
 
                 {audioError && (
@@ -1153,6 +1160,8 @@ function Canvas({ canvasRef, modules, connections, connectingFrom, onModuleDragS
                     child = <Mixer key={`${module.id}:${moduleUiRevision}`} module={module} onDragStart={onModuleDragStart} onOutputClick={onOutputClick} isConnecting={connectingFrom?.moduleId === module.id} connections={connections} {...removeProp} />;
                 } else if (module.type === 'multi') {
                     child = <Multi key={`${module.id}:${moduleUiRevision}`} module={module} onDragStart={onModuleDragStart} onOutputClick={onOutputClick} isConnecting={connectingFrom?.moduleId === module.id} {...removeProp} />;
+                } else if (module.type === 'vca') {
+                    child = <VCA key={`${module.id}:${moduleUiRevision}`} module={module} onDragStart={onModuleDragStart} onOutputClick={onOutputClick} isConnecting={connectingFrom?.moduleId === module.id} connections={connections} {...removeProp} />;
                 }
                 if (!child) return null;
                 return (

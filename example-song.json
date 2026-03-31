@@ -30,7 +30,7 @@
           "bar": 1,
           "beat": 2,
           "duration": 0.75,
-          "velocity": 0.85
+          "velocity": 0.91
         },
         {
           "note": "F4",
@@ -44,21 +44,21 @@
           "bar": 1,
           "beat": 3.25,
           "duration": 0.25,
-          "velocity": 0.82
+          "velocity": 0.7
         },
         {
           "note": "As4",
           "bar": 1,
           "beat": 3.5,
           "duration": 0.5,
-          "velocity": 0.79
+          "velocity": 0.66
         },
         {
           "note": "F4",
           "bar": 1,
           "beat": 4.0,
           "duration": 0.5,
-          "velocity": 0.71
+          "velocity": 0.6
         },
         {
           "note": "Ds4",
@@ -2112,7 +2112,7 @@
           "velocity": 0.76
         },
         {
-          "note": "As5",
+          "note": "B5",
           "bar": 18,
           "beat": 3.5,
           "duration": 0.25,

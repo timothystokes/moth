@@ -105,8 +105,8 @@ function RandomVoltageGenerator({ module, onDragStart, onDrag, onDragEnd, onOutp
                             min="0"
                             max="1"
                             step="0.001"
-                            value={Math.log(rate / 0.1) / Math.log(2000 / 0.1)}
-                            onChange={(e) => setRate(0.1 * Math.pow(2000 / 0.1, parseFloat(e.target.value)))}
+                            value={Math.log(rate / 0.1) / Math.log(8000 / 0.1)}
+                            onChange={(e) => setRate(0.1 * Math.pow(8000 / 0.1, parseFloat(e.target.value)))}
                             style={{
                                 width: '100%',
                                 cursor: 'pointer',
