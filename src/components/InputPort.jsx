@@ -6,7 +6,7 @@ import Port from './Port.jsx';
  */
 export default function InputPort({ moduleId, portId, label, onOutputClick, isConnecting, title, style }) {
     return (
-        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '10px', ...style }}>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '6px', ...style }}>
             <Port
                 type="input"
                 moduleId={moduleId}
@@ -19,7 +19,7 @@ export default function InputPort({ moduleId, portId, label, onOutputClick, isCo
                 }}
             />
             {label && (
-                <span style={{ fontSize: '10px', color: '#aaa', marginLeft: '6px', userSelect: 'none' }}>
+                <span style={{ fontSize: '10px', color: '#bbb', marginLeft: '6px', userSelect: 'none' }}>
                     {label}
                 </span>
             )}

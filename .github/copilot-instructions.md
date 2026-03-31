@@ -99,7 +99,8 @@ TrackRow renders these as the mini piano-roll in the transport strip.
 - Inputs: `freq-input`, `amp-input`, `shape-input`, `duty-input`
 - Output: audio ±1V (amplitude × wave)
 - FREQ input: relative exponential pitch offset (V/octave around slider base)
-- AMP input: 0–5V range → VCA multiply; outside 0–5V → additive offset
+- AMP input: slider sets maximum gain (0–2.0 linear; 0dB at midpoint); input signal scales it: `finalAmp = amplitude × clamp(V/5, 0, 1)`. 5V = full slider level, 0V = silence.
+- AMP slider default: 1.0 (0dB). Two-segment log scale: left half −60dB→0dB, right half 0dB→+6dB.
 - Shape: 0 = square, 0.5 = sine, 1 = triangle
 - Duty: clamped 2–98%, applied on peak/trough-aligned phase
 - **Frequency range: 0.1–8000 Hz** (log slider — LFO range is ~first 15% of travel)
@@ -222,7 +223,9 @@ Key functions (all exported from `sequencer.js`):
 - Drag coordinates use `getBoundingClientRect()` on the canvas container
 
 ### Ports & Connections
-- Ports are 16px squares, protruding from module edges
+- Ports are 18px round circles, rendered in-flow within module bounds (not protruding)
+- Wire drag line is visible over all panels (onMouseMove on outer contentRef div, not just canvas)
+- Wire endpoints have green 4px circle endcaps
 - Inputs on the left (red border), outputs on the right (blue border), green while connecting
 - One connection per port; clicking a connected port removes it first
 - Clicking canvas background cancels in-progress connection
@@ -230,11 +233,27 @@ Key functions (all exported from `sequencer.js`):
 - Port positions calculated live via `getBoundingClientRect()`, normalized to the main content area
 
 ### Sliders
-- Unconnected: label shows current value as text
-- Connected: label shows parameter name only
+- Labels always show current value as text (e.g. "FREQ: 440Hz"), regardless of connection state
 - Sliders do not visually respond to CV — they are offsets/base values
 - Oscillator and Random frequency sliders: **logarithmic, 0.1–8000 Hz**
 
 ### Track Names
 - Track names are editable by clicking on them in the transport strip
+
+---
+
+## Shared UI Components
+
+All modules use these shared components from `src/components/`:
+
+| Component | Description |
+|---|---|
+| `ModuleShell` | Outer wrapper: background #3a3a3a, border 2px #666, radius 18px, header #2e2e2e, draggable header, optional × close button. Content padding: 10px 10px 6px. |
+| `Port` | 18px round socket. margin: 0 3px. Red border=input, blue=output, green=connecting. |
+| `InputPort` | Port left + label right. marginBottom 6px. |
+| `OutputPort` | Label left + port right (right-aligned). marginBottom 6px. Accepts `children` left of label. |
+| `InputSlider` | Label above, port+range input row, optional tick labels (left/mid/right) below. marginBottom 10px. Range input: marginLeft 6px, marginRight 3px. |
+| `SelectControl` | Label left + styled `<select>` right. Consistent height 22px, bg #2a2a2a, border #555, radius 4px. |
+
+Label colours: main labels #bbb, tick labels #aaa, module titles #ccc.
 

@@ -98,10 +98,6 @@ function Transport({
                         <span style={metaValueStyle}>{tracks.length}</span>
                     </div>
                     <div style={metaBlockStyle}>
-                        <span style={metaLabelStyle}>IMPORTED</span>
-                        <span style={metaValueStyle}>{transportState?.trackCount ?? 0}</span>
-                    </div>
-                    <div style={metaBlockStyle}>
                         <span style={metaLabelStyle}>LENGTH</span>
                         <span style={metaValueStyle}>{formatDuration(timelineDurationMs)}</span>
                     </div>

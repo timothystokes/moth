@@ -3,6 +3,8 @@ import { getModuleState, registerModule } from '../audio/audioEngine.js';
 import InputSlider from './InputSlider.jsx';
 import InputPort from './InputPort.jsx';
 import OutputPort from './OutputPort.jsx';
+import ModuleShell from './ModuleShell.jsx';
+import ToggleSwitch from './ToggleSwitch.jsx';
 
 function Filter({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isConnecting, audioContext, connections, onRemove }) {
     const savedParams = getModuleState(module.id)?.params ?? {};
@@ -25,93 +27,13 @@ function Filter({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isConne
     }, [module.id, cutoff, resonance, filterType]);
     
     return (
-        <div
-            style={{
-                position: 'relative',
-                width: '180px',
-                minHeight: '180px',
-                background: '#333',
-                border: '2px solid #555',
-                borderRadius: '4px',
-                padding: 0,
-                zIndex: 200,
-                transition: 'none',
-                boxShadow: '0 4px 8px rgba(0,0,0,0.3)'
-            }}
-        >
-            <div 
-                onMouseDown={(e) => {
-                    onDragStart(e, module.id);
-                }}
-                style={{ 
-                    fontSize: '12px', 
-                    fontWeight: 'bold', 
-                    padding: '10px',
-                    marginBottom: '10px', 
-                    color: '#888',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    cursor: 'move',
-                    background: '#2a2a2a',
-                    borderTopLeftRadius: '4px',
-                    borderTopRightRadius: '4px',
-                    userSelect: 'none',
-                    position: 'relative'
-                }}
-            >
-                FILTER
-                {onRemove && (
-                    <button
-                        style={{
-                            position: 'absolute',
-                            top: 4,
-                            right: 4,
-                            zIndex: 300,
-                            background: '#444',
-                            color: '#fff',
-                            border: 'none',
-                            borderRadius: '50%',
-                            width: 22,
-                            height: 22,
-                            fontWeight: 'bold',
-                            fontSize: 14,
-                            cursor: 'pointer',
-                            boxShadow: '0 1px 4px #000a',
-                            lineHeight: '22px',
-                            padding: 0
-                        }}
-                        title="Remove module"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onRemove();
-                        }}
-                    >
-                        ×
-                    </button>
-                )}
-            </div>
-            
-            <div style={{ padding: '10px' }}>
-                {/* Filter Type Switch */}
-                <div style={{ marginBottom: '15px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                    <button
-                        onClick={() => setFilterType(filterType === 'lowpass' ? 'highpass' : 'lowpass')}
-                        style={{
-                            padding: '5px 10px',
-                            background: filterType === 'lowpass' ? '#4a4' : '#a44',
-                            border: 'none',
-                            borderRadius: '3px',
-                            color: '#fff',
-                            fontSize: '10px',
-                            fontWeight: 'bold',
-                            cursor: 'pointer',
-                            width: '100%'
-                        }}
-                    >
-                        {filterType === 'lowpass' ? 'LOW-PASS' : 'HIGH-PASS'}
-                    </button>
-                </div>
+        <ModuleShell title="FILTER" module={module} onDragStart={onDragStart} onRemove={onRemove} minHeight="180px">
+                <ToggleSwitch
+                    label="TYPE"
+                    value={filterType === 'highpass'}
+                    onChange={(v) => setFilterType(v ? 'highpass' : 'lowpass')}
+                    labelOn="HIGH PASS" labelOff="LOW PASS"
+                />
                 
                 <InputSlider
                     moduleId={module.id} portId="cutoff-input"
@@ -133,14 +55,13 @@ function Filter({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isConne
                     labelLeft="FLAT" labelRight="MAX"
                 />
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <InputPort moduleId={module.id} portId="audio-input" label="IN"
                         onOutputClick={onOutputClick} isConnecting={isConnecting} style={{ marginBottom: 0 }} />
                     <OutputPort moduleId={module.id} portId="output" label="OUT"
                         onOutputClick={onOutputClick} isConnecting={isConnecting} style={{ marginBottom: 0 }} />
                 </div>
-            </div>
-        </div>
+        </ModuleShell>
     );
 }
 

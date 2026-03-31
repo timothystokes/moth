@@ -55,6 +55,12 @@ Web-based modular synthesiser built with React 18 and Vite. Runs entirely in the
 - Gain CV: `finalGain = clamp(gain + V/5, 0, 2)`
 - Polarity: `+` normal, `−` inverts (×−1)
 
+## Oscillator AMP Behaviour
+- Amplitude stored as linear gain (0–2.0); default 1.0 = 0dB
+- Slider: two-segment log scale — left half −60dB→0dB, right half 0dB→+6dB; 0dB at midpoint
+- AMP socket: input signal scales amplitude as max: `finalAmp = amplitude × clamp(V / GATE_HIGH_VOLTAGE, 0, 1)`
+  i.e. 5V input = full slider amplitude; 0V = silence; slider sets the ceiling
+
 ## Envelope Retrigger Behaviour
 - On new gate while releasing: attack ramps from current envelope value (not from 0)
 - This produces smooth legato — no click/drop on fast repeated notes
@@ -63,6 +69,14 @@ Web-based modular synthesiser built with React 18 and Vite. Runs entirely in the
 - Voices sum directly — no amplitude normalization
 - More simultaneous voices = proportionally louder
 - Releasing voices contribute their fading signal until their slot is reassigned
+
+## Shared UI Components (src/components/)
+- Port.jsx — 18px round socket circle (radial gradient). margin: 0 3px. Input=red border, Output=blue border.
+- InputPort.jsx — port circle left, label text right. marginBottom: 6px.
+- OutputPort.jsx — label text left, port circle right (right-aligned). marginBottom: 6px.
+- InputSlider.jsx — label above row, port+range input row, optional tick labels below. marginBottom: 10px. Range input has marginLeft: 6px, marginRight: 3px.
+- ModuleShell.jsx — outer wrapper for all modules. background: #3a3a3a, border: 2px solid #666, borderRadius: 18px, header background: #2e2e2e, header title color: #ccc. Content padding: 10px 10px 6px.
+- SelectControl.jsx — label left + styled select right. height 22px, border #555, radius 4px, bg #2a2a2a.
 
 ## Known Architecture Notes
 - `src/components/Canvas.jsx` exists but is NOT used — the active canvas is the inline `Canvas` function at the bottom of `App.jsx`

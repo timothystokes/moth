@@ -4,6 +4,8 @@ import {
     subscribeToScopeData
 } from '../audio/audioEngine.js';
 import InputPort from './InputPort.jsx';
+import ModuleShell from './ModuleShell.jsx';
+import { COLOR_SCREEN } from '../theme.js';
 
 function Amplifier({ onOutputClick, isConnecting, audioContext, setAudioContext, isFixed, isPoweredOn, selectedTrackLabel }) {
     const startTimeRef = useRef(null);
@@ -72,7 +74,7 @@ function Amplifier({ onOutputClick, isConnecting, audioContext, setAudioContext,
             const snapshot = scopeSnapshotRef.current;
             
             // Draw waveform directly without any additional shifting
-            ctx.strokeStyle = '#0f0';
+            ctx.strokeStyle = COLOR_SCREEN;
             ctx.lineWidth = 2;
             ctx.beginPath();
             
@@ -102,40 +104,7 @@ function Amplifier({ onOutputClick, isConnecting, audioContext, setAudioContext,
     }, [isPoweredOn]);
     
     return (
-        <div
-            style={{
-                position: isFixed ? 'relative' : 'absolute',
-                width: isFixed ? '100%' : '180px',
-                minHeight: '160px',
-                height: isFixed ? '100%' : 'auto',
-                background: '#333',
-                border: '2px solid #555',
-                borderRadius: isFixed ? 0 : '4px',
-                padding: 0,
-                zIndex: 10,
-                transition: 'none',
-                boxShadow: isFixed ? 'none' : '0 4px 8px rgba(0,0,0,0.3)'
-            }}
-        >
-            <div 
-                style={{ 
-                    fontSize: '12px', 
-                    fontWeight: 'bold', 
-                    padding: '10px',
-                    marginBottom: '10px', 
-                    color: '#888',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    cursor: 'default',
-                    background: '#2a2a2a',
-                    borderBottom: '1px solid #555',
-                    borderRadius: '2px 2px 0 0'
-            }}>
-                <span>TRACK OUT</span>
-            </div>
-            
-            <div style={{ padding: '10px' }}>
+        <ModuleShell title="TRACK OUT" isFixed>
                 {/* Oscilloscope */}
                 <div style={{ marginBottom: '15px' }}>
                     <label style={{ fontSize: '10px', color: '#aaa', display: 'block', marginBottom: '5px' }}>
@@ -157,8 +126,7 @@ function Amplifier({ onOutputClick, isConnecting, audioContext, setAudioContext,
                 
                 <InputPort moduleId="track-output-singleton" portId="audio-input" label="TO MIXER"
                     onOutputClick={onOutputClick} isConnecting={isConnecting} />
-            </div>
-        </div>
+        </ModuleShell>
     );
 }
 

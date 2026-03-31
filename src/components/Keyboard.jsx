@@ -12,6 +12,8 @@ import {
     subscribeMidiStateChange
 } from '../audio/sequencer.js';
 import OutputPort from './OutputPort.jsx';
+import ModuleShell from './ModuleShell.jsx';
+import SelectControl from './SelectControl.jsx';
 
 function Keyboard({ module, onOutputClick, isConnecting, isFixed, selectedTrackId, selectedTrackLabel }) {
     // Musical keyboard state - just for UI display now
@@ -157,76 +159,37 @@ function Keyboard({ module, onOutputClick, isConnecting, isFixed, selectedTrackI
     const containerHeight = notes.filter(n => !n.isBlack).length * keyHeight;
     
     return (
-        <div style={{
-            width: isFixed ? '100%' : '180px',
-            height: isFixed ? '100%' : 'auto',
-            background: '#333',
-            border: isFixed ? 'none' : '2px solid #555',
-            borderRadius: isFixed ? '0' : '4px',
-            padding: 0,
-            position: isFixed ? 'relative' : 'absolute',
-            boxShadow: isFixed ? 'none' : '0 4px 8px rgba(0,0,0,0.3)',
-            display: 'flex',
-            flexDirection: 'column'
-        }}>
-            {/* Header Banner */}
-            <div style={{
-                fontSize: '12px',
-                fontWeight: 'bold',
-                padding: '10px',
-                color: '#888',
-                background: '#2a2a2a',
-                borderBottom: '1px solid #555',
-                borderRadius: isFixed ? '0' : '2px 2px 0 0'
-            }}>
-                KEYBOARD
-            </div>
-
+        <ModuleShell title="KEYBOARD" isFixed>
             {/* MIDI Device + Channel selectors */}
-            <div style={{ padding: '8px 10px', background: '#252525', borderBottom: '1px solid #3a3a3a', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <div>
-                    <label style={{ fontSize: '9px', color: '#777', display: 'block', marginBottom: '3px', letterSpacing: '0.05em' }}>MIDI IN</label>
-                    <select
-                        value={selectedMidiInputId || ''}
-                        onChange={handleMidiInputChange}
-                        style={{ width: '100%', background: '#1a1a1a', border: '1px solid #444', color: '#ccc', fontSize: '10px', padding: '3px 4px', borderRadius: '3px' }}
-                    >
-                        {midiInputs.length === 0 && <option value="">No MIDI devices</option>}
-                        {midiInputs.map(input => (
-                            <option key={input.id} value={input.id}>{input.name}</option>
-                        ))}
-                    </select>
-                </div>
-                <div>
-                    <label style={{ fontSize: '9px', color: '#777', display: 'block', marginBottom: '3px', letterSpacing: '0.05em' }}>CHANNEL</label>
-                    <select
-                        value={midiChannel}
-                        onChange={handleMidiChannelChange}
-                        style={{ width: '100%', background: '#1a1a1a', border: '1px solid #444', color: '#ccc', fontSize: '10px', padding: '3px 4px', borderRadius: '3px' }}
-                    >
-                        <option value="all">All</option>
-                        {Array.from({ length: 16 }, (_, i) => (
-                            <option key={i} value={i}>{i + 1}</option>
-                        ))}
-                    </select>
-                </div>
-            </div>
-
-            <div style={{ padding: '10px', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
                 {/* Output port: CV OUT */}
-                <OutputPort moduleId={module.id} portId="cv-out" label="CV OUT"
+                <OutputPort moduleId={module.id} portId="cv-out" label="CV"
                     onOutputClick={onOutputClick} isConnecting={isConnecting}
                     title="CV Out (1V/octave)" />
 
                 {/* Output port: GATE OUT */}
-                <OutputPort moduleId={module.id} portId="gate-out" label="GATE OUT"
+                <OutputPort moduleId={module.id} portId="gate-out" label="GATE"
                     onOutputClick={onOutputClick} isConnecting={isConnecting}
                     title="Gate Out (+5V high, 0V low)" />
 
-                <OutputPort moduleId={module.id} portId="velocity-out" label="VELOCITY OUT"
+                <OutputPort moduleId={module.id} portId="velocity-out" label="VELOCITY"
                     onOutputClick={onOutputClick} isConnecting={isConnecting}
                     title="Velocity Out (0–5V)" />
                 
+
+                <SelectControl label="MIDI IN" value={selectedMidiInputId || ''} onChange={handleMidiInputChange}>
+                    {midiInputs.length === 0 && <option value="">No MIDI devices</option>}
+                    {midiInputs.map(input => (
+                        <option key={input.id} value={input.id}>{input.name}</option>
+                    ))}
+                </SelectControl>
+                <SelectControl label="CHANNEL" value={midiChannel} onChange={handleMidiChannelChange} style={{ marginBottom: 0 }}>
+                    <option value="all">All</option>
+                    {Array.from({ length: 16 }, (_, i) => (
+                        <option key={i} value={i}>{i + 1}</option>
+                    ))}
+                </SelectControl>
+                    <div style={{ height: '10px' }}></div>
                 {/* Keyboard display */}
                 <div style={{
                     flex: 1,
@@ -339,8 +302,8 @@ function Keyboard({ module, onOutputClick, isConnecting, isFixed, selectedTrackI
                     <div>---</div>
                 )}
             </div>
-        </div>
-        </div>
+            </div>
+        </ModuleShell>
     );
 }
 

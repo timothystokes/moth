@@ -1,6 +1,8 @@
+import { COLOR_INPUT_PORT, COLOR_OUTPUT_PORT } from '../theme.js';
+
 export default function Port({ type, onClick, isConnecting, moduleId, portId, title }) {
     const isInput = type === 'input';
-    const borderColor = isConnecting ? '#0f0' : (isInput ? '#c55' : '#55c');
+    const borderColor = isInput ? COLOR_INPUT_PORT : COLOR_OUTPUT_PORT;
 
     return (
         <div

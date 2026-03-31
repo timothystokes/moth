@@ -3,6 +3,8 @@ import { getModuleState, registerModule } from '../audio/audioEngine.js';
 import InputSlider from './InputSlider.jsx';
 import InputPort from './InputPort.jsx';
 import OutputPort from './OutputPort.jsx';
+import ModuleShell from './ModuleShell.jsx';
+import { COLOR_SCREEN, COLOR_SCREEN_DIM } from '../theme.js';
 
 const TIME_MIN = 0.001;
 const TIME_MAX = 10;
@@ -68,73 +70,7 @@ function Envelope({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isCon
     }, [module.id, attack, decay, sustain, release]);
 
     return (
-        <div
-            style={{
-                position: 'relative',
-                width: '180px',
-                minHeight: '245px',
-                background: '#333',
-                border: '2px solid #555',
-                borderRadius: '4px',
-                padding: 0,
-                zIndex: 200,
-                transition: 'none',
-                boxShadow: '0 4px 8px rgba(0,0,0,0.3)'
-            }}
-        >
-            <div
-                onMouseDown={(e) => {
-                    onDragStart(e, module.id);
-                }}
-                style={{
-                    fontSize: '12px',
-                    fontWeight: 'bold',
-                    padding: '10px',
-                    marginBottom: '10px',
-                    color: '#888',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    cursor: 'move',
-                    background: '#2a2a2a',
-                    borderBottom: '1px solid #555',
-                    borderRadius: '2px 2px 0 0',
-                    position: 'relative'
-                }}
-            >
-                <span>ENVELOPE</span>
-                {onRemove && (
-                    <button
-                        style={{
-                            position: 'absolute',
-                            top: 4,
-                            right: 4,
-                            zIndex: 300,
-                            background: '#444',
-                            color: '#fff',
-                            border: 'none',
-                            borderRadius: '50%',
-                            width: 22,
-                            height: 22,
-                            fontWeight: 'bold',
-                            fontSize: 14,
-                            cursor: 'pointer',
-                            boxShadow: '0 1px 4px #000a',
-                            lineHeight: '22px',
-                            padding: 0
-                        }}
-                        title="Remove module"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onRemove();
-                        }}
-                    >
-                        ×
-                    </button>
-                )}
-            </div>
-
-            <div style={{ padding: '10px' }}>
+        <ModuleShell title="ENVELOPE" module={module} onDragStart={onDragStart} onRemove={onRemove} minHeight="245px">
                 <div style={{ marginBottom: '15px' }}>
                     <div style={{
                         border: '1px solid #444',
@@ -151,14 +87,14 @@ function Envelope({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isCon
                                 y1={sustainGuideY}
                                 x2={previewWidth}
                                 y2={sustainGuideY}
-                                stroke="#7cff7c66"
+                                stroke={COLOR_SCREEN_DIM}
                                 strokeWidth="1"
                                 strokeDasharray="4 4"
                             />
                             <polyline
                                 points={previewPoints}
                                 fill="none"
-                                stroke="#0f0"
+                                stroke={COLOR_SCREEN}
                                 strokeWidth="2"
                                 strokeLinejoin="round"
                                 strokeLinecap="round"
@@ -213,8 +149,7 @@ function Envelope({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isCon
                     <OutputPort moduleId={module.id} portId="output" label="OUT"
                         onOutputClick={onOutputClick} isConnecting={isConnecting} style={{ marginBottom: 0 }} />
                 </div>
-            </div>
-        </div>
+        </ModuleShell>
     );
 }
 

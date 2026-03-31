@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { getModuleState, registerModule } from '../audio/audioEngine.js';
 import InputSlider from './InputSlider.jsx';
 import Port from './Port.jsx';
+import ModuleShell from './ModuleShell.jsx';
+import ToggleSwitch from './ToggleSwitch.jsx';
 
 /**
  * VCA (Voltage Controlled Amplifier) module
@@ -23,39 +25,14 @@ function VCA({ module, onDragStart, onOutputClick, isConnecting, connections, on
     }, [module.id, gain, invert]);
 
     return (
-        <div style={{
-            position: 'relative', width: '180px',
-            background: '#333', border: '2px solid #555',
-            borderRadius: '4px', padding: 0, zIndex: 200,
-            boxShadow: '0 4px 8px rgba(0,0,0,0.3)'
-        }}>
-            {/* Header */}
-            <div
-                onMouseDown={(e) => onDragStart(e, module.id)}
-                style={{
-                    fontSize: '12px', fontWeight: 'bold', padding: '10px',
-                    marginBottom: '10px', color: '#888',
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    cursor: 'move', background: '#2a2a2a',
-                    borderBottom: '1px solid #555', borderRadius: '2px 2px 0 0'
-                }}
-            >
-                <span>AMPLIFIER</span>
-                {onRemove && (
-                    <button
-                        style={{
-                            background: '#444', color: '#fff', border: 'none',
-                            borderRadius: '50%', width: 22, height: 22,
-                            fontWeight: 'bold', fontSize: 14, cursor: 'pointer',
-                            lineHeight: '22px', padding: 0
-                        }}
-                        title="Remove module"
-                        onClick={(e) => { e.stopPropagation(); onRemove(); }}
-                    >×</button>
-                )}
-            </div>
-
-            <div style={{ padding: '10px' }}>
+        <ModuleShell title="AMPLIFIER" module={module} onDragStart={onDragStart} onRemove={onRemove}>
+                            <ToggleSwitch
+                    label="POLARITY"
+                    value={!invert}
+                    onChange={(v) => setInvert(!v)}
+                    labelOn="NORMAL" labelOff="REVERSE"
+                />
+                
                 <InputSlider
                     moduleId={module.id} portId="gain-input"
                     label={`GAIN: ${gain.toFixed(2)}×`}
@@ -65,32 +42,6 @@ function VCA({ module, onDragStart, onOutputClick, isConnecting, connections, on
                     onChange={(e) => setGain(parseFloat(e.target.value))}
                     labelLeft="−∞" labelMid="0dB" labelRight="+6dB"
                 />
-
-                {/* Polarity toggle switch */}
-                <div style={{ marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ fontSize: '10px', color: '#aaa' }}>POLARITY</span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '4px' }}>
-                        <span style={{ fontSize: '11px', fontWeight: 'bold', color: invert ? '#d66' : '#555' }}>−</span>
-                        <div
-                            onClick={() => setInvert(v => !v)}
-                            style={{
-                                width: '34px', height: '18px', borderRadius: '9px',
-                                background: invert ? '#a33' : '#3a6',
-                                position: 'relative', cursor: 'pointer',
-                                transition: 'background 0.15s'
-                            }}
-                        >
-                            <div style={{
-                                position: 'absolute', top: '2px',
-                                left: invert ? '2px' : '16px',
-                                width: '14px', height: '14px',
-                                borderRadius: '50%', background: '#fff',
-                                transition: 'left 0.15s'
-                            }} />
-                        </div>
-                        <span style={{ fontSize: '11px', fontWeight: 'bold', color: invert ? '#555' : '#6d6' }}>+</span>
-                    </div>
-                </div>
 
                 {/* IN (left) and OUT (right) inline at the bottom */}
                 <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
@@ -107,8 +58,7 @@ function VCA({ module, onDragStart, onOutputClick, isConnecting, connections, on
                             isConnecting={isConnecting} />
                     </div>
                 </div>
-            </div>
-        </div>
+        </ModuleShell>
     );
 }
 

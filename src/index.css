@@ -1,0 +1,5 @@
+/* Zero out margin on the last child inside every module's content area
+   so ModuleShell's padding-bottom is the sole source of bottom spacing. */
+.module-body > *:last-child {
+    margin-bottom: 0 !important;
+}

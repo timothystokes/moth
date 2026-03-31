@@ -7,10 +7,10 @@ import Port from './Port.jsx';
  */
 export default function OutputPort({ moduleId, portId, label, onOutputClick, isConnecting, title, style, children }) {
     return (
-        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '10px', ...style }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '6px', ...style }}>
             {children}
             {label && (
-                <span style={{ fontSize: '10px', color: '#aaa', marginRight: '6px', userSelect: 'none' }}>
+                <span style={{ fontSize: '10px', color: '#bbb', marginRight: '6px', userSelect: 'none' }}>
                     {label}
                 </span>
             )}

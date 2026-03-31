@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { getModuleState, registerModule } from '../audio/audioEngine.js';
 import InputSlider from './InputSlider.jsx';
 import OutputPort from './OutputPort.jsx';
+import ModuleShell from './ModuleShell.jsx';
 
 /**
  * Oscillator module
@@ -70,71 +71,7 @@ function Oscillator({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isC
     const ampTodBLabel = (amp) => amp <= 0 ? '−∞' : `${(20 * Math.log10(amp)).toFixed(1)}dB`;
 
     return (
-        <div
-            style={{
-                position: 'relative',
-                width: '180px',
-                minHeight: '180px',
-                background: '#333',
-                border: '2px solid #555',
-                borderRadius: '4px',
-                padding: 0,
-                zIndex: 200,
-                transition: 'none',
-                boxShadow: '0 4px 8px rgba(0,0,0,0.3)'
-            }}
-        >
-            <div 
-                onMouseDown={(e) => {
-                    onDragStart(e, module.id);
-                }}
-                style={{ 
-                    fontSize: '12px', 
-                    fontWeight: 'bold', 
-                    padding: '10px',
-                    marginBottom: '10px', 
-                    color: '#888',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    cursor: 'move',
-                    background: '#2a2a2a',
-                    borderBottom: '1px solid #555',
-                    borderRadius: '2px 2px 0 0',
-                    position: 'relative'
-            }}>
-                <span>OSCILLATOR</span>
-                {onRemove && (
-                    <button
-                        style={{
-                            top: 4,
-                            right: 4,
-                            zIndex: 300,
-                            background: '#444', // more subtle than red
-                            color: '#fff',
-                            border: 'none',
-                            borderRadius: '50%',
-                            width: 22,
-                            height: 22,
-                            fontWeight: 'bold',
-                            fontSize: 14,
-                            cursor: 'pointer',
-                            boxShadow: '0 1px 4px #000a',
-                            lineHeight: '22px',
-                            padding: 0
-                        }}
-                        title="Remove module"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onRemove();
-                        }}
-                    >
-                        ×
-                    </button>
-                )}
-            </div>
-            
-            <div style={{ padding: '10px' }}>
+        <ModuleShell title="OSCILLATOR" module={module} onDragStart={onDragStart} onRemove={onRemove} minHeight="180px">
                 <InputSlider
                     moduleId={module.id} portId="freq-input"
                     label={`FREQ: ${frequency < 10 ? frequency.toFixed(2) : frequency < 100 ? frequency.toFixed(1) : frequency.toFixed(0)}Hz`}
@@ -177,8 +114,7 @@ function Oscillator({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isC
 
                 <OutputPort moduleId={module.id} portId="output" label="OUT"
                     onOutputClick={onOutputClick} isConnecting={isConnecting} />
-            </div>
-        </div>
+        </ModuleShell>
     );
 }
 

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { COLOR_WIRE, COLOR_WIRE_DIM, COLOR_SLIDER } from './theme.js';
 import Amplifier from './components/Amplifier.jsx';
 import Oscillator from './components/Oscillator.jsx';
 import Filter from './components/Filter.jsx';
@@ -996,7 +997,7 @@ function App() {
                             <g key={connection.id}>
                                 <path
                                     d={`M ${x1} ${y1} C ${x1 + 50} ${y1}, ${x2 - 50} ${y2}, ${x2} ${y2}`}
-                                    stroke="#00ff00"
+                                    stroke={COLOR_WIRE}
                                     strokeWidth="2"
                                     fill="none"
                                     style={{ pointerEvents: 'stroke', cursor: 'pointer' }}
@@ -1005,8 +1006,8 @@ function App() {
                                         removeConnection(connection.id);
                                     }}
                                 />
-                                <circle cx={x1} cy={y1} r="4" fill="#00ff00" style={{ pointerEvents: 'none' }} />
-                                <circle cx={x2} cy={y2} r="4" fill="#00ff00" style={{ pointerEvents: 'none' }} />
+                                <circle cx={x1} cy={y1} r="4" fill={COLOR_WIRE} style={{ pointerEvents: 'none' }} />
+                                <circle cx={x2} cy={y2} r="4" fill={COLOR_WIRE} style={{ pointerEvents: 'none' }} />
                             </g>
                         );
                     })}
@@ -1028,7 +1029,7 @@ function App() {
                         return (
                             <path
                                 d={`M ${x1} ${y1} L ${x2} ${y2}`}
-                                stroke="#00ff0066"
+                                stroke={COLOR_WIRE_DIM}
                                 strokeWidth="2"
                                 fill="none"
                                 strokeDasharray="5,5"
@@ -1056,14 +1057,14 @@ function App() {
                         {selectedTrack && (
                             <>
                                 <span style={{ color: '#444', fontSize: '11px' }}>·</span>
-                                <span style={{ color: '#555', fontSize: '10px', letterSpacing: '0.05em', flexShrink: 0 }}>VOICES</span>
+                                <span style={{ color: '#bbb', fontSize: '10px', letterSpacing: '0.05em', flexShrink: 0 }}>VOICES</span>
                                 <select
                                     value={selectedTrack.polyphony ?? 4}
                                     onChange={(e) => handleUpdatePolyphony(selectedTrack.id, Number(e.target.value))}
                                     style={{
-                                        background: '#2a2a2a', color: '#aaa',
-                                        border: '1px solid #3a3a3a', borderRadius: '3px',
-                                        fontSize: '10px', height: '20px', padding: '0 4px', cursor: 'pointer'
+                                        background: '#2a2a2a', color: '#ccc',
+                                        border: '1px solid #555', borderRadius: '4px',
+                                        fontSize: '10px', height: '22px', padding: '0 4px', cursor: 'pointer', outline: 'none',
                                     }}
                                 >
                                     {Array.from({ length: 16 }, (_, i) => i + 1).map(n => (
@@ -1073,15 +1074,15 @@ function App() {
                                 {(selectedTrack.polyphony ?? 4) === 1 && (
                                     <>
                                         <span style={{ color: '#444', fontSize: '11px' }}>·</span>
-                                        <span style={{ color: '#555', fontSize: '10px', letterSpacing: '0.05em', flexShrink: 0 }}>PORTA</span>
+                                        <span style={{ color: '#bbb', fontSize: '10px', letterSpacing: '0.05em', flexShrink: 0 }}>PORTA</span>
                                         <input
                                             type="range" min="0" max="2" step="0.01"
                                             value={selectedTrack.portamento ?? 0}
                                             onChange={(e) => handleUpdatePortamento(selectedTrack.id, parseFloat(e.target.value))}
-                                            style={{ width: '80px', cursor: 'pointer', accentColor: '#4a7' }}
+                                            style={{ width: '80px', cursor: 'pointer', accentColor: COLOR_SLIDER }}
                                             title={`Portamento: ${(selectedTrack.portamento ?? 0).toFixed(2)}s`}
                                         />
-                                        <span style={{ color: '#555', fontSize: '10px', minWidth: '28px' }}>
+                                        <span style={{ color: '#bbb', fontSize: '10px', minWidth: '28px' }}>
                                             {(selectedTrack.portamento ?? 0).toFixed(2)}s
                                         </span>
                                     </>

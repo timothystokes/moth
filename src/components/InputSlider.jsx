@@ -1,5 +1,7 @@
 import Port from './Port.jsx';
 
+import { COLOR_SLIDER } from '../theme.js';
+
 /**
  * InputSlider – a labelled slider row with an input CV socket.
  *
@@ -24,8 +26,8 @@ export default function InputSlider({
     const hasTickLabels = labelLeft != null || labelMid != null || labelRight != null;
 
     return (
-        <div style={{ marginBottom: '14px' }}>
-            <label style={{ fontSize: '10px', color: '#aaa', display: 'block', marginBottom: '4px', userSelect: 'none' }}>
+        <div style={{ marginBottom: '10px' }}>
+            <label style={{ fontSize: '10px', color: '#bbb', display: 'block', marginBottom: '4px', marginLeft: '3px', userSelect: 'none' }}>
                 {label}
             </label>
             <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -46,14 +48,14 @@ export default function InputSlider({
                     step={step}
                     value={value}
                     onChange={onChange}
-                    style={{ flex: 1, marginLeft: '6px', cursor: 'pointer', ...sliderStyle }}
+                    style={{ flex: 1, marginLeft: '6px', marginRight: '3px', cursor: 'pointer', accentColor: COLOR_SLIDER, ...sliderStyle }}
                 />
             </div>
             {hasTickLabels && (
                 <div style={{ position: 'relative', marginTop: '2px', paddingLeft: '30px', height: '12px' }}>
-                    {labelLeft  != null && <span style={{ fontSize: '8px', color: '#888', position: 'absolute', left: '30px' }}>{labelLeft}</span>}
-                    {labelMid   != null && <span style={{ fontSize: '8px', color: '#888', position: 'absolute', left: 'calc(50% + 15px)', transform: 'translateX(-50%)' }}>{labelMid}</span>}
-                    {labelRight != null && <span style={{ fontSize: '8px', color: '#888', position: 'absolute', right: '0' }}>{labelRight}</span>}
+                    {labelLeft  != null && <span style={{ fontSize: '8px', color: '#aaa', position: 'absolute', left: '30px' }}>{labelLeft}</span>}
+                    {labelMid   != null && <span style={{ fontSize: '8px', color: '#aaa', position: 'absolute', left: 'calc(50% + 15px)', transform: 'translateX(-50%)' }}>{labelMid}</span>}
+                    {labelRight != null && <span style={{ fontSize: '8px', color: '#aaa', position: 'absolute', right: '3px' }}>{labelRight}</span>}
                 </div>
             )}
         </div>
