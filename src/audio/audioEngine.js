@@ -284,11 +284,6 @@ export function noteOff(trackId, noteNumber) {
     postToWorklet({ type: 'note-off', trackId, noteNumber });
 }
 
-export function sendAftertouch(trackId, value) {
-    if (!trackId) return;
-    postToWorklet({ type: 'aftertouch', trackId, value });
-}
-
 export function subscribeToScopeData(listener) {
     scopeListeners.add(listener);
     return () => {

@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { registerModule } from '../audio/audioEngine.js';
-import Port from './Port.jsx';
+import InputPort from './InputPort.jsx';
+import OutputPort from './OutputPort.jsx';
 
 function Multi({ module, onDragStart, onOutputClick, isConnecting, onRemove }) {
     useEffect(() => {
@@ -75,67 +76,16 @@ function Multi({ module, onDragStart, onOutputClick, isConnecting, onRemove }) {
             </div>
 
             <div style={{ padding: '10px' }}>
-                <div style={{ position: 'relative', marginBottom: '18px' }}>
-                    <label style={{ fontSize: '10px', color: '#aaa', display: 'block', marginBottom: '5px' }}>
-                        IN
-                    </label>
-                    <div style={{ display: 'flex', alignItems: 'center', position: 'relative', minHeight: '16px' }}>
-                        <Port
-                            type="input"
-                            moduleId={module.id}
-                            portId="signal-input"
-                            onClick={(e) => {
-                                const rect = e.currentTarget.getBoundingClientRect();
-                                onOutputClick(module.id, 'signal-input', {
-                                    x: rect.left + rect.width / 2,
-                                    y: rect.top + rect.height / 2
-                                });
-                            }}
-                            isConnecting={isConnecting}
-                        />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+                    <InputPort moduleId={module.id} portId="signal-input" label="IN"
+                        onOutputClick={onOutputClick} isConnecting={isConnecting} style={{ marginBottom: 0 }} />
+                    <div>
+                        <OutputPort moduleId={module.id} portId="output-a" label="OUT A"
+                            onOutputClick={onOutputClick} isConnecting={isConnecting} style={{ marginBottom: '6px' }} />
+                        <OutputPort moduleId={module.id} portId="output-b" label="OUT B"
+                            onOutputClick={onOutputClick} isConnecting={isConnecting} style={{ marginBottom: 0 }} />
                     </div>
                 </div>
-
-                <OutputRow
-                    label="OUT A"
-                    moduleId={module.id}
-                    portId="output-a"
-                    onOutputClick={onOutputClick}
-                    isConnecting={isConnecting}
-                />
-
-                <OutputRow
-                    label="OUT B"
-                    moduleId={module.id}
-                    portId="output-b"
-                    onOutputClick={onOutputClick}
-                    isConnecting={isConnecting}
-                />
-            </div>
-        </div>
-    );
-}
-
-function OutputRow({ label, moduleId, portId, onOutputClick, isConnecting }) {
-    return (
-        <div style={{ position: 'relative', marginTop: '10px' }}>
-            <label style={{ fontSize: '10px', color: '#aaa', display: 'block', marginBottom: '5px', textAlign: 'right' }}>
-                {label}
-            </label>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', position: 'relative' }}>
-                <Port
-                    type="output"
-                    moduleId={moduleId}
-                    portId={portId}
-                    onClick={(e) => {
-                        const rect = e.currentTarget.getBoundingClientRect();
-                        onOutputClick(moduleId, portId, {
-                            x: rect.left + rect.width / 2,
-                            y: rect.top + rect.height / 2
-                        });
-                    }}
-                    isConnecting={isConnecting}
-                />
             </div>
         </div>
     );

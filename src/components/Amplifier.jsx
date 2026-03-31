@@ -3,7 +3,7 @@ import {
     initializeAudioEngine,
     subscribeToScopeData
 } from '../audio/audioEngine.js';
-import Port from './Port.jsx';
+import InputPort from './InputPort.jsx';
 
 function Amplifier({ onOutputClick, isConnecting, audioContext, setAudioContext, isFixed, isPoweredOn, selectedTrackLabel }) {
     const startTimeRef = useRef(null);
@@ -155,26 +155,8 @@ function Amplifier({ onOutputClick, isConnecting, audioContext, setAudioContext,
                     />
                 </div>
                 
-                <div style={{ position: 'relative', marginTop: '10px' }}>
-                    <label style={{ fontSize: '10px', color: '#aaa', display: 'block', marginBottom: '5px' }}>
-                        TO MIXER
-                    </label>
-                    <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                        <Port 
-                            type="input" 
-                            moduleId="track-output-singleton"
-                            portId="audio-input"
-                            onClick={(e) => {
-                                const rect = e.currentTarget.getBoundingClientRect();
-                                onOutputClick('track-output-singleton', 'audio-input', { 
-                                    x: rect.left + rect.width / 2, 
-                                    y: rect.top + rect.height / 2 
-                                });
-                            }} 
-                            isConnecting={isConnecting} 
-                        />
-                    </div>
-                </div>
+                <InputPort moduleId="track-output-singleton" portId="audio-input" label="TO MIXER"
+                    onOutputClick={onOutputClick} isConnecting={isConnecting} />
             </div>
         </div>
     );

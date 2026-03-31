@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { getModuleState, registerModule } from '../audio/audioEngine.js';
-import Port from './Port.jsx';
+import InputSlider from './InputSlider.jsx';
+import InputPort from './InputPort.jsx';
+import OutputPort from './OutputPort.jsx';
 
 function Filter({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isConnecting, audioContext, connections, onRemove }) {
     const savedParams = getModuleState(module.id)?.params ?? {};
@@ -111,122 +113,31 @@ function Filter({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isConne
                     </button>
                 </div>
                 
-                {/* Cutoff Control with Port */}
-                <div style={{ marginBottom: '15px', position: 'relative' }}>
-                    <label style={{ fontSize: '10px', color: '#aaa', display: 'block', marginBottom: '5px' }}>
-                        {connections?.some(c => c.to.moduleId === module.id && c.to.outputId === 'cutoff-input') 
-                            ? 'CUTOFF' 
-                            : `CUTOFF: ${cutoff.toFixed(0)}Hz`}
-                    </label>
-                    <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                        <Port 
-                            type="input" 
-                            moduleId={module.id}
-                            portId="cutoff-input"
-                            onClick={(e) => {
-                                const rect = e.currentTarget.getBoundingClientRect();
-                                onOutputClick(module.id, 'cutoff-input', { 
-                                    x: rect.left + rect.width / 2, 
-                                    y: rect.top + rect.height / 2 
-                                });
-                            }}
-                            isConnecting={isConnecting}
-                        />
-                        <input
-                            type="range"
-                            min="0"
-                            max="1"
-                            step="0.001"
-                            value={cutoffSlider}
-                            onChange={(e) => setCutoffSlider(parseFloat(e.target.value))}
-                            style={{
-                                width: '100%',
-                                cursor: 'pointer',
-                                marginLeft: '20px'
-                            }}
-                        />
-                    </div>
-                </div>
-                
-                {/* Resonance Control with Port */}
-                <div style={{ marginBottom: '15px', position: 'relative' }}>
-                    <label style={{ fontSize: '10px', color: '#aaa', display: 'block', marginBottom: '5px' }}>
-                        {connections?.some(c => c.to.moduleId === module.id && c.to.outputId === 'resonance-input') 
-                            ? 'RESONANCE' 
-                            : `RESONANCE: ${resonance.toFixed(2)}`}
-                    </label>
-                    <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                        <Port 
-                            type="input" 
-                            moduleId={module.id}
-                            portId="resonance-input"
-                            onClick={(e) => {
-                                const rect = e.currentTarget.getBoundingClientRect();
-                                onOutputClick(module.id, 'resonance-input', { 
-                                    x: rect.left + rect.width / 2, 
-                                    y: rect.top + rect.height / 2 
-                                });
-                            }}
-                            isConnecting={isConnecting}
-                        />
-                        <input
-                            type="range"
-                            min="0"
-                            max="0.99"
-                            step="0.01"
-                            value={resonance}
-                            onChange={(e) => setResonance(parseFloat(e.target.value))}
-                            style={{
-                                width: '100%',
-                                cursor: 'pointer',
-                                marginLeft: '20px'
-                            }}
-                        />
-                    </div>
-                </div>
-                
-                {/* Audio Input Port */}
-                <div style={{ position: 'relative', marginBottom: '15px' }}>
-                    <label style={{ fontSize: '10px', color: '#aaa', display: 'block', marginBottom: '5px' }}>
-                        IN
-                    </label>
-                    <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                        <Port 
-                            type="input" 
-                            moduleId={module.id}
-                            portId="audio-input"
-                            onClick={(e) => {
-                                const rect = e.currentTarget.getBoundingClientRect();
-                                onOutputClick(module.id, 'audio-input', { 
-                                    x: rect.left + rect.width / 2, 
-                                    y: rect.top + rect.height / 2 
-                                });
-                            }}
-                            isConnecting={isConnecting}
-                        />
-                    </div>
-                </div>
-                
-                {/* Output Port */}
-                <div style={{ position: 'relative', marginTop: '10px' }}>
-                    <label style={{ fontSize: '10px', color: '#aaa', display: 'block', marginBottom: '5px', textAlign: 'right' }}>
-                        OUT
-                    </label>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', position: 'relative' }}>
-                        <Port 
-                            type="output" 
-                            moduleId={module.id}
-                            portId="output"
-                            onClick={(e) => {
-                                const rect = e.currentTarget.getBoundingClientRect();
-                                onOutputClick(module.id, 'output', { 
-                                    x: rect.left + rect.width / 2, 
-                                    y: rect.top + rect.height / 2 
-                                });
-                            }}
-                            isConnecting={isConnecting}
-                        />
-                    </div>
+                <InputSlider
+                    moduleId={module.id} portId="cutoff-input"
+                    label={`CUTOFF: ${cutoff.toFixed(0)}Hz`}
+                    onOutputClick={onOutputClick} isConnecting={isConnecting}
+                    min="0" max="1" step="0.001"
+                    value={cutoffSlider}
+                    onChange={(e) => setCutoffSlider(parseFloat(e.target.value))}
+                    labelLeft="20kHz" labelRight="20Hz"
+                />
+
+                <InputSlider
+                    moduleId={module.id} portId="resonance-input"
+                    label={`RESONANCE: ${resonance.toFixed(2)}`}
+                    onOutputClick={onOutputClick} isConnecting={isConnecting}
+                    min="0" max="0.99" step="0.01"
+                    value={resonance}
+                    onChange={(e) => setResonance(parseFloat(e.target.value))}
+                    labelLeft="FLAT" labelRight="MAX"
+                />
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    <InputPort moduleId={module.id} portId="audio-input" label="IN"
+                        onOutputClick={onOutputClick} isConnecting={isConnecting} style={{ marginBottom: 0 }} />
+                    <OutputPort moduleId={module.id} portId="output" label="OUT"
+                        onOutputClick={onOutputClick} isConnecting={isConnecting} style={{ marginBottom: 0 }} />
                 </div>
             </div>
         </div>

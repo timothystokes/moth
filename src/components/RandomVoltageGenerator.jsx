@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getModuleState, registerModule } from '../audio/audioEngine.js';
-import Port from './Port.jsx';
+import InputSlider from './InputSlider.jsx';
+import OutputPort from './OutputPort.jsx';
 
 function RandomVoltageGenerator({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isConnecting, audioContext, connections, onRemove }) {
     const savedParams = getModuleState(module.id)?.params ?? {};
@@ -80,62 +81,18 @@ function RandomVoltageGenerator({ module, onDragStart, onDrag, onDragEnd, onOutp
             </div>
             
             <div style={{ padding: '10px' }}>
-                {/* Rate Control with Port */}
-                <div style={{ marginBottom: '15px', position: 'relative' }}>
-                    <label style={{ fontSize: '10px', color: '#aaa', display: 'block', marginBottom: '5px' }}>
-                        {connections?.some(c => c.to.moduleId === module.id && c.to.outputId === 'rate-input') 
-                            ? 'RATE' 
-                            : `RATE: ${rate < 10 ? rate.toFixed(2) : rate < 100 ? rate.toFixed(1) : rate.toFixed(0)}Hz`}
-                    </label>
-                    <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                        <Port 
-                            type="input" 
-                            moduleId={module.id}
-                            portId="rate-input"
-                            onClick={(e) => {
-                                const rect = e.currentTarget.getBoundingClientRect();
-                                onOutputClick(module.id, 'rate-input', { 
-                                    x: rect.left + rect.width / 2, 
-                                    y: rect.top + rect.height / 2 
-                                });
-                            }}
-                            isConnecting={isConnecting}
-                        />
-                        <input
-                            type="range"
-                            min="0"
-                            max="1"
-                            step="0.001"
-                            value={Math.log(rate / 0.1) / Math.log(8000 / 0.1)}
-                            onChange={(e) => setRate(0.1 * Math.pow(8000 / 0.1, parseFloat(e.target.value)))}
-                            style={{
-                                width: '100%',
-                                cursor: 'pointer',
-                                marginLeft: '20px'
-                            }}
-                        />
-                    </div>
-                </div>
-                
-                {/* Output Port */}
-                <div style={{ position: 'relative', marginTop: '10px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', position: 'relative' }}>
-                        <span style={{ fontSize: '9px', color: '#aaa', marginRight: '4px' }}>OUT</span>
-                        <Port 
-                            type="output" 
-                            moduleId={module.id}
-                            portId="output"
-                            onClick={(e) => {
-                                const rect = e.currentTarget.getBoundingClientRect();
-                                onOutputClick(module.id, 'output', { 
-                                    x: rect.left + rect.width / 2, 
-                                    y: rect.top + rect.height / 2 
-                                });
-                            }}
-                            isConnecting={isConnecting}
-                        />
-                    </div>
-                </div>
+                <InputSlider
+                    moduleId={module.id} portId="rate-input"
+                    label={`RATE: ${rate < 10 ? rate.toFixed(2) : rate < 100 ? rate.toFixed(1) : rate.toFixed(0)}Hz`}
+                    onOutputClick={onOutputClick} isConnecting={isConnecting}
+                    min="0" max="1" step="0.001"
+                    value={Math.log(rate / 0.1) / Math.log(8000 / 0.1)}
+                    onChange={(e) => setRate(0.1 * Math.pow(8000 / 0.1, parseFloat(e.target.value)))}
+                    labelLeft="0.1Hz" labelRight="8kHz"
+                />
+
+                <OutputPort moduleId={module.id} portId="output" label="OUT"
+                    onOutputClick={onOutputClick} isConnecting={isConnecting} />
             </div>
         </div>
     );

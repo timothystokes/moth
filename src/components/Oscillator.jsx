@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getModuleState, registerModule } from '../audio/audioEngine.js';
-import Port from './Port.jsx';
+import InputSlider from './InputSlider.jsx';
+import OutputPort from './OutputPort.jsx';
 
 /**
  * Oscillator module
@@ -11,7 +12,8 @@ import Port from './Port.jsx';
  *           Keyboard pitch only affects the oscillator when patched into this
  *           socket. 0V maps to A4 = 440Hz, so the slider stays the base tuning
  *           and incoming CV applies a relative offset around that reference.
- *   AMP   — output level 0–1 (maps to ±10V peak output)
+ *   AMP   — output level in linear gain (1.0 = 0dB, 2.0 = +6dB)
+ *           Slider: log scale, 0dB at midpoint, +6dB at max
  *           Input socket: gate / envelope signals in 0–5V act as VCA control;
  *           wider CV (±10V style) adds an offset.
  *   SHAPE — morphs SQR ← SIN → TRI
@@ -37,7 +39,7 @@ import Port from './Port.jsx';
 function Oscillator({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isConnecting, audioContext, connections, onRemove }) {
     const savedParams = getModuleState(module.id)?.params ?? {};
     const [frequency, setFrequency] = useState(savedParams.frequency ?? 440); // Hz — default A4
-    const [amplitude, setAmplitude] = useState(savedParams.amplitude ?? 0.5); // 0–1 (maps to 0–±10V peak)
+    const [amplitude, setAmplitude] = useState(savedParams.amplitude ?? 1.0); // linear gain (1.0 = 0dB)
     const [shape, setShape] = useState(savedParams.shape ?? 0.5);         // 0=square, 0.5=sine, 1=triangle
     const [dutyCycle, setDutyCycle] = useState(savedParams.dutyCycle ?? 0.5);  // 0–1; 0.5=equal halves, 0/1=full asymmetry
 
@@ -52,6 +54,20 @@ function Oscillator({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isC
             }
         });
     }, [module.id, frequency, amplitude, shape, dutyCycle]);
+
+    // Two-segment log scale: pos 0–0.5 → −60dB to 0dB, pos 0.5–1 → 0dB to +6dB
+    const ampToPos = (amp) => {
+        if (amp <= 0) return 0;
+        const dB = 20 * Math.log10(amp);
+        if (dB <= 0) return Math.max(0, (dB + 60) / 120);
+        return Math.min(1, dB / 12 + 0.5);
+    };
+    const posToAmp = (pos) => {
+        if (pos <= 0) return 0;
+        const dB = pos <= 0.5 ? -60 + pos * 120 : (pos - 0.5) * 12;
+        return Math.pow(10, dB / 20);
+    };
+    const ampTodBLabel = (amp) => amp <= 0 ? '−∞' : `${(20 * Math.log10(amp)).toFixed(1)}dB`;
 
     return (
         <div
@@ -119,172 +135,48 @@ function Oscillator({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isC
             </div>
             
             <div style={{ padding: '10px' }}>
-                {/* Frequency Control with Port */}
-                <div style={{ marginBottom: '15px', position: 'relative' }}>
-                    <label style={{ fontSize: '10px', color: '#aaa', display: 'block', marginBottom: '5px' }}>
-                        {connections?.some(c => c.to.moduleId === module.id && c.to.outputId === 'freq-input') 
-                            ? 'FREQ' 
-                            : `FREQ: ${frequency < 10 ? frequency.toFixed(2) : frequency < 100 ? frequency.toFixed(1) : frequency.toFixed(0)}Hz`}
-                    </label>
-                    <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                        <Port 
-                            type="input" 
-                            moduleId={module.id}
-                            portId="freq-input"
-                            onClick={(e) => {
-                                const rect = e.currentTarget.getBoundingClientRect();
-                                onOutputClick(module.id, 'freq-input', { 
-                                    x: rect.left + rect.width / 2, 
-                                    y: rect.top + rect.height / 2 
-                                });
-                            }}
-                            isConnecting={isConnecting}
-                        />
-                        <input
-                            type="range"
-                            min="0"
-                            max="1"
-                            step="0.001"
-                            value={Math.log(frequency / 0.1) / Math.log(8000 / 0.1)}
-                            onChange={(e) => setFrequency(0.1 * Math.pow(8000 / 0.1, parseFloat(e.target.value)))}
-                            style={{
-                                width: '100%',
-                                cursor: 'pointer',
-                                marginLeft: '20px'
-                            }}
-                        />
-                    </div>
-                </div>
-                
-                {/* Amplitude Control with Port */}
-                <div style={{ marginBottom: '15px', position: 'relative' }}>
-                    <label style={{ fontSize: '10px', color: '#aaa', display: 'block', marginBottom: '5px' }}>
-                        {connections?.some(c => c.to.moduleId === module.id && c.to.outputId === 'amp-input') 
-                            ? 'AMP' 
-                            : `AMP: ${amplitude.toFixed(2)}`}
-                    </label>
-                    <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                        <Port 
-                            type="input" 
-                            moduleId={module.id}
-                            portId="amp-input"
-                            onClick={(e) => {
-                                const rect = e.currentTarget.getBoundingClientRect();
-                                onOutputClick(module.id, 'amp-input', { 
-                                    x: rect.left + rect.width / 2, 
-                                    y: rect.top + rect.height / 2 
-                                });
-                            }}
-                            isConnecting={isConnecting}
-                        />
-                        <input
-                            type="range"
-                            min="0"
-                            max="1"
-                            step="0.01"
-                            value={amplitude}
-                            onChange={(e) => setAmplitude(parseFloat(e.target.value))}
-                            style={{
-                                width: '100%',
-                                cursor: 'pointer',
-                                marginLeft: '20px'
-                            }}
-                        />
-                    </div>
-                </div>
-                
-                {/* Shape Control with Port */}
-                <div style={{ marginBottom: '15px', position: 'relative' }}>
-                    <label style={{ fontSize: '10px', color: '#aaa', display: 'block', marginBottom: '5px' }}>
-                        {connections?.some(c => c.to.moduleId === module.id && c.to.outputId === 'shape-input') 
-                            ? 'SHAPE' 
-                            : `SHAPE: ${shape < 0.25 ? 'SQR' : shape < 0.75 ? 'SIN' : 'TRI'}`}
-                    </label>
-                    <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                        <Port 
-                            type="input" 
-                            moduleId={module.id}
-                            portId="shape-input"
-                            onClick={(e) => {
-                                const rect = e.currentTarget.getBoundingClientRect();
-                                onOutputClick(module.id, 'shape-input', { 
-                                    x: rect.left + rect.width / 2, 
-                                    y: rect.top + rect.height / 2 
-                                });
-                            }}
-                            isConnecting={isConnecting}
-                        />
-                        <div style={{ flex: 1, marginLeft: '20px' }}>
-                            <input
-                                type="range"
-                                min="0"
-                                max="1"
-                                step="0.01"
-                                value={shape}
-                                onChange={(e) => setShape(parseFloat(e.target.value))}
-                                style={{ width: '100%', cursor: 'pointer' }}
-                            />
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1px' }}>
-                                <span style={{ fontSize: '8px', color: '#555' }}>SQR</span>
-                                <span style={{ fontSize: '8px', color: '#555' }}>SIN</span>
-                                <span style={{ fontSize: '8px', color: '#555' }}>TRI</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                {/* Duty Cycle Control with Port */}
-                <div style={{ marginBottom: '15px', position: 'relative' }}>
-                    <label style={{ fontSize: '10px', color: '#aaa', display: 'block', marginBottom: '5px' }}>
-                        {connections?.some(c => c.to.moduleId === module.id && c.to.outputId === 'duty-input')
-                            ? 'DUTY'
-                            : `DUTY: ${(dutyCycle * 100).toFixed(0)}%`}
-                    </label>
-                    <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                        <Port
-                            type="input"
-                            moduleId={module.id}
-                            portId="duty-input"
-                            onClick={(e) => {
-                                const rect = e.currentTarget.getBoundingClientRect();
-                                onOutputClick(module.id, 'duty-input', {
-                                    x: rect.left + rect.width / 2,
-                                    y: rect.top + rect.height / 2
-                                });
-                            }}
-                            isConnecting={isConnecting}
-                        />
-                        <input
-                            type="range"
-                            min="0"
-                            max="1"
-                            step="0.01"
-                            value={dutyCycle}
-                            onChange={(e) => setDutyCycle(parseFloat(e.target.value))}
-                            style={{ width: '100%', cursor: 'pointer', marginLeft: '20px' }}
-                        />
-                    </div>
-                </div>
+                <InputSlider
+                    moduleId={module.id} portId="freq-input"
+                    label={`FREQ: ${frequency < 10 ? frequency.toFixed(2) : frequency < 100 ? frequency.toFixed(1) : frequency.toFixed(0)}Hz`}
+                    onOutputClick={onOutputClick} isConnecting={isConnecting}
+                    min="0" max="1" step="0.001"
+                    value={Math.log(frequency / 0.1) / Math.log(8000 / 0.1)}
+                    onChange={(e) => setFrequency(0.1 * Math.pow(8000 / 0.1, parseFloat(e.target.value)))}
+                    labelLeft="0.1Hz" labelRight="8kHz"
+                />
 
-                {/* Output Port */}
-                <div style={{ position: 'relative', marginTop: '10px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', position: 'relative' }}>
-                        <span style={{ fontSize: '9px', color: '#aaa', marginRight: '4px' }}>OUT</span>
-                        <Port 
-                            type="output" 
-                            moduleId={module.id}
-                            portId="output"
-                            onClick={(e) => {
-                                const rect = e.currentTarget.getBoundingClientRect();
-                                onOutputClick(module.id, 'output', { 
-                                    x: rect.left + rect.width / 2, 
-                                    y: rect.top + rect.height / 2 
-                                });
-                            }}
-                            isConnecting={isConnecting}
-                        />
-                    </div>
-                </div>
+                <InputSlider
+                    moduleId={module.id} portId="amp-input"
+                    label={`AMP: ${ampTodBLabel(amplitude)}`}
+                    onOutputClick={onOutputClick} isConnecting={isConnecting}
+                    min="0" max="1" step="0.001"
+                    value={ampToPos(amplitude)}
+                    onChange={(e) => setAmplitude(posToAmp(parseFloat(e.target.value)))}
+                    labelLeft="−∞" labelMid="0dB" labelRight="+6dB"
+                />
+
+                <InputSlider
+                    moduleId={module.id} portId="shape-input"
+                    label={`SHAPE: ${shape < 0.25 ? 'SQR' : shape < 0.75 ? 'SIN' : 'TRI'}`}
+                    onOutputClick={onOutputClick} isConnecting={isConnecting}
+                    min="0" max="1" step="0.01"
+                    value={shape}
+                    onChange={(e) => setShape(parseFloat(e.target.value))}
+                    labelLeft="SQR" labelMid="SIN" labelRight="TRI"
+                />
+
+                <InputSlider
+                    moduleId={module.id} portId="duty-input"
+                    label={`DUTY: ${(dutyCycle * 100).toFixed(0)}%`}
+                    onOutputClick={onOutputClick} isConnecting={isConnecting}
+                    min="0" max="1" step="0.01"
+                    value={dutyCycle}
+                    onChange={(e) => setDutyCycle(parseFloat(e.target.value))}
+                    labelLeft="0%" labelMid="50%" labelRight="100%"
+                />
+
+                <OutputPort moduleId={module.id} portId="output" label="OUT"
+                    onOutputClick={onOutputClick} isConnecting={isConnecting} />
             </div>
         </div>
     );

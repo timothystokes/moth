@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getModuleState, registerModule } from '../audio/audioEngine.js';
+import InputSlider from './InputSlider.jsx';
 import Port from './Port.jsx';
 
 /**
@@ -20,8 +21,6 @@ function VCA({ module, onDragStart, onOutputClick, isConnecting, connections, on
     useEffect(() => {
         registerModule(module.id, { type: 'vca', params: { gain, invert } });
     }, [module.id, gain, invert]);
-
-    const hasGainCV = connections?.some(c => c.to.moduleId === module.id && c.to.outputId === 'gain-input');
 
     return (
         <div style={{
@@ -57,27 +56,15 @@ function VCA({ module, onDragStart, onOutputClick, isConnecting, connections, on
             </div>
 
             <div style={{ padding: '10px' }}>
-                {/* Gain slider + CV input */}
-                <div style={{ marginBottom: '12px', position: 'relative' }}>
-                    <label style={{ fontSize: '10px', color: '#aaa', display: 'block', marginBottom: '4px' }}>
-                        {hasGainCV ? 'GAIN' : `GAIN: ${gain.toFixed(2)}×`}
-                    </label>
-                    <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                        <Port type="input" moduleId={module.id} portId="gain-input"
-                            onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); onOutputClick(module.id, 'gain-input', { x: r.left + r.width / 2, y: r.top + r.height / 2 }); }}
-                            isConnecting={isConnecting} />
-                        <input
-                            type="range" min="0" max="2" step="0.01" value={gain}
-                            onChange={(e) => setGain(parseFloat(e.target.value))}
-                            style={{ width: '100%', cursor: 'pointer', marginLeft: '20px' }}
-                        />
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1px', marginLeft: '20px' }}>
-                        <span style={{ fontSize: '8px', color: '#555' }}>0</span>
-                        <span style={{ fontSize: '8px', color: '#555' }}>1×</span>
-                        <span style={{ fontSize: '8px', color: '#555' }}>2×</span>
-                    </div>
-                </div>
+                <InputSlider
+                    moduleId={module.id} portId="gain-input"
+                    label={`GAIN: ${gain.toFixed(2)}×`}
+                    onOutputClick={onOutputClick} isConnecting={isConnecting}
+                    min="0" max="2" step="0.01"
+                    value={gain}
+                    onChange={(e) => setGain(parseFloat(e.target.value))}
+                    labelLeft="−∞" labelMid="0dB" labelRight="+6dB"
+                />
 
                 {/* Polarity toggle switch */}
                 <div style={{ marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>

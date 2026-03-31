@@ -331,14 +331,6 @@ class MothSynthProcessor extends AudioWorkletProcessor {
                 case 'note-off':
                     this.releaseVoice(message.trackId, message.noteNumber);
                     break;
-                case 'aftertouch': {
-                    const trackState = this.getTrackState(message.trackId);
-                    if (trackState) {
-                        const atV = Math.max(0, Math.min(1, message.value)) * GATE_HIGH_VOLTAGE;
-                        this.getActiveVoices(trackState).forEach(v => { v.velocity = atV; });
-                    }
-                    break;
-                }
                 case 'all-notes-off':
                     this.trackStates.forEach((trackState) => {
                         this.getActiveVoices(trackState).forEach((voice) => {
@@ -873,11 +865,8 @@ class MothSynthProcessor extends AudioWorkletProcessor {
 
             if (ampRead) {
                 const modVoltage = ampRead(timeMs, laneContext);
-                if (modVoltage >= 0 && modVoltage <= GATE_HIGH_VOLTAGE) {
-                    finalAmp = amplitude * (modVoltage / GATE_HIGH_VOLTAGE);
-                } else {
-                    finalAmp = Math.max(0, Math.min(1, amplitude + modVoltage / 20));
-                }
+                // Slider sets max amplitude; input signal (0–5V full scale) scales up to that max
+                finalAmp = amplitude * Math.max(0, Math.min(1, modVoltage / GATE_HIGH_VOLTAGE));
             }
 
             let finalShape = shape;

@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { registerModule } from '../audio/audioEngine.js';
-import Port from './Port.jsx';
+import InputPort from './InputPort.jsx';
+import OutputPort from './OutputPort.jsx';
 
 function Mixer({ module, onDragStart, onOutputClick, isConnecting, onRemove }) {
     useEffect(() => {
@@ -44,35 +45,15 @@ function Mixer({ module, onDragStart, onOutputClick, isConnecting, onRemove }) {
             </div>
 
             <div style={{ padding: '10px' }}>
-                {['A', 'B'].map((ch) => (
-                    <div key={ch} style={{ marginBottom: '14px', position: 'relative', minHeight: '16px' }}>
-                        <label style={{ fontSize: '10px', color: '#aaa', display: 'block', marginBottom: '4px', marginLeft: '20px' }}>
-                            IN {ch}
-                        </label>
-                        <Port
-                            type="input" moduleId={module.id}
-                            portId={ch === 'A' ? 'input-a' : 'input-b'}
-                            onClick={(e) => {
-                                const r = e.currentTarget.getBoundingClientRect();
-                                onOutputClick(module.id, ch === 'A' ? 'input-a' : 'input-b', { x: r.left + r.width / 2, y: r.top + r.height / 2 });
-                            }}
-                            isConnecting={isConnecting}
-                        />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+                    <div>
+                        <InputPort moduleId={module.id} portId="input-a" label="IN A"
+                            onOutputClick={onOutputClick} isConnecting={isConnecting} style={{ marginBottom: '6px' }} />
+                        <InputPort moduleId={module.id} portId="input-b" label="IN B"
+                            onOutputClick={onOutputClick} isConnecting={isConnecting} style={{ marginBottom: 0 }} />
                     </div>
-                ))}
-
-                <div style={{ position: 'relative', marginTop: '6px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
-                        <span style={{ fontSize: '9px', color: '#aaa', marginRight: '4px' }}>OUT</span>
-                        <Port
-                            type="output" moduleId={module.id} portId="output"
-                            onClick={(e) => {
-                                const r = e.currentTarget.getBoundingClientRect();
-                                onOutputClick(module.id, 'output', { x: r.left + r.width / 2, y: r.top + r.height / 2 });
-                            }}
-                            isConnecting={isConnecting}
-                        />
-                    </div>
+                    <OutputPort moduleId={module.id} portId="output" label="OUT"
+                        onOutputClick={onOutputClick} isConnecting={isConnecting} style={{ marginBottom: 0 }} />
                 </div>
             </div>
         </div>
