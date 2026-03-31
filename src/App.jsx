@@ -237,6 +237,8 @@ function normalizeTrack(track, index, moduleStateLookup = new Map(), timeSignatu
     return {
         id: normalizedTrackId,
         name: typeof track?.name === 'string' && track.name ? track.name : `Track ${index + 1}`,
+        polyphony: typeof track?.polyphony === 'number' ? Math.min(16, Math.max(1, Math.round(track.polyphony))) : 4,
+        portamento: typeof track?.portamento === 'number' ? Math.min(2, Math.max(0, track.portamento)) : 0,
         notes,
         noteSegments,
         durationMs,
@@ -438,6 +440,8 @@ function App() {
             upsertTrack(track.id, {
                 volume: track.mix.volume,
                 mute: track.mix.mute,
+                polyphony: track.polyphony ?? 4,
+                portamento: track.portamento ?? 0,
                 keyboardLatchModeEnabled: !track.connections.some(
                     (connection) => connection.from.moduleId === 'keyboard-singleton' && connection.from.outputId === 'gate-out'
                 )
@@ -863,6 +867,32 @@ function App() {
         setTracks((prev) => prev.map((t) => t.id === trackId ? { ...t, name: trimmed } : t));
     };
 
+    const handleUpdatePolyphony = (trackId, polyphony) => {
+        updateTrack(trackId, (track) => ({ ...track, polyphony }));
+        upsertTrack(trackId, {
+            volume: selectedTrack?.mix?.volume ?? 0.8,
+            mute: selectedTrack?.mix?.mute ?? false,
+            polyphony,
+            portamento: selectedTrack?.portamento ?? 0,
+            keyboardLatchModeEnabled: !selectedTrack?.connections?.some(
+                (c) => c.from.moduleId === 'keyboard-singleton' && c.from.outputId === 'gate-out'
+            )
+        });
+    };
+
+    const handleUpdatePortamento = (trackId, portamento) => {
+        updateTrack(trackId, (track) => ({ ...track, portamento }));
+        upsertTrack(trackId, {
+            volume: selectedTrack?.mix?.volume ?? 0.8,
+            mute: selectedTrack?.mix?.mute ?? false,
+            polyphony: selectedTrack?.polyphony ?? 4,
+            portamento,
+            keyboardLatchModeEnabled: !selectedTrack?.connections?.some(
+                (c) => c.from.moduleId === 'keyboard-singleton' && c.from.outputId === 'gate-out'
+            )
+        });
+    };
+
     const handleMidiImportChange = async (event) => {
         const file = event.target.files?.[0];
 
@@ -936,7 +966,7 @@ function App() {
                 onSaveProject={handleProjectSave}
             />
 
-            <div ref={contentRef} style={{ flex: 1, position: 'relative', display: 'flex', minHeight: 0 }}>
+            <div ref={contentRef} style={{ flex: 1, position: 'relative', display: 'flex', minHeight: 0 }} onMouseMove={handleCanvasMouseMove}>
                 <svg key={overlayRefreshTick} style={{
                     position: 'absolute',
                     top: 0,
@@ -975,6 +1005,8 @@ function App() {
                                         removeConnection(connection.id);
                                     }}
                                 />
+                                <circle cx={x1} cy={y1} r="4" fill="#00ff00" style={{ pointerEvents: 'none' }} />
+                                <circle cx={x2} cy={y2} r="4" fill="#00ff00" style={{ pointerEvents: 'none' }} />
                             </g>
                         );
                     })}
@@ -1017,8 +1049,45 @@ function App() {
                 </div>
 
                 <div style={{ flex: 1, position: 'relative', minWidth: 0 }}>
-                    <div style={{ height: '32px', borderBottom: '1px solid #2d2d2d', display: 'flex', alignItems: 'center', padding: '0 14px', color: '#8a8a8a', fontSize: '12px', letterSpacing: '0.06em' }}>
-                        {selectedTrack ? `SELECTED TRACK · ${selectedTrack.name}` : 'NO TRACK SELECTED'}
+                    <div style={{ height: '32px', borderBottom: '1px solid #2d2d2d', display: 'flex', alignItems: 'center', padding: '0 14px', gap: '12px', background: '#1a1a1a' }}>
+                        <span style={{ color: '#8a8a8a', fontSize: '11px', letterSpacing: '0.06em', flexShrink: 0 }}>
+                            {selectedTrack ? selectedTrack.name.toUpperCase() : 'NO TRACK SELECTED'}
+                        </span>
+                        {selectedTrack && (
+                            <>
+                                <span style={{ color: '#444', fontSize: '11px' }}>·</span>
+                                <span style={{ color: '#555', fontSize: '10px', letterSpacing: '0.05em', flexShrink: 0 }}>VOICES</span>
+                                <select
+                                    value={selectedTrack.polyphony ?? 4}
+                                    onChange={(e) => handleUpdatePolyphony(selectedTrack.id, Number(e.target.value))}
+                                    style={{
+                                        background: '#2a2a2a', color: '#aaa',
+                                        border: '1px solid #3a3a3a', borderRadius: '3px',
+                                        fontSize: '10px', height: '20px', padding: '0 4px', cursor: 'pointer'
+                                    }}
+                                >
+                                    {Array.from({ length: 16 }, (_, i) => i + 1).map(n => (
+                                        <option key={n} value={n}>{n}</option>
+                                    ))}
+                                </select>
+                                {(selectedTrack.polyphony ?? 4) === 1 && (
+                                    <>
+                                        <span style={{ color: '#444', fontSize: '11px' }}>·</span>
+                                        <span style={{ color: '#555', fontSize: '10px', letterSpacing: '0.05em', flexShrink: 0 }}>PORTA</span>
+                                        <input
+                                            type="range" min="0" max="2" step="0.01"
+                                            value={selectedTrack.portamento ?? 0}
+                                            onChange={(e) => handleUpdatePortamento(selectedTrack.id, parseFloat(e.target.value))}
+                                            style={{ width: '80px', cursor: 'pointer', accentColor: '#4a7' }}
+                                            title={`Portamento: ${(selectedTrack.portamento ?? 0).toFixed(2)}s`}
+                                        />
+                                        <span style={{ color: '#555', fontSize: '10px', minWidth: '28px' }}>
+                                            {(selectedTrack.portamento ?? 0).toFixed(2)}s
+                                        </span>
+                                    </>
+                                )}
+                            </>
+                        )}
                     </div>
                     <Canvas
                         canvasRef={canvasRef}
@@ -1082,6 +1151,7 @@ function Toolbar({ addModule, isPoweredOn, togglePower, hasSelectedTrack, audioE
             zIndex: 1000,
             flexShrink: 0
         }}>
+            <b>MOTH1</b>
             <button onClick={onImportMidi} style={buttonStyle}>Import MIDI</button>
             <button onClick={onLoadProject} style={buttonStyle}>LOAD</button>
             <button onClick={onSaveProject} style={buttonStyle}>SAVE</button>

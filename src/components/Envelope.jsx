@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { getModuleState, registerModule } from '../audio/audioEngine.js';
+import Port from './Port.jsx';
 
 const TIME_MIN = 0.001;
 const TIME_MAX = 10;
@@ -259,7 +260,7 @@ function Envelope({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isCon
                         </div>
 
                         <div style={{ position: 'relative', minWidth: '40px', minHeight: '16px', textAlign: 'right' }}>
-                            <span style={{ fontSize: '9px', color: '#aaa', marginRight: '16px' }}>OUT</span>
+                            <span style={{ fontSize: '9px', color: '#aaa', marginRight: '4px' }}>OUT</span>
                             <Port
                                 type="output"
                                 moduleId={module.id}
@@ -304,29 +305,6 @@ function ParameterRow({ label, moduleId, portId, isConnecting, onOutputClick, ch
                 {children}
             </div>
         </div>
-    );
-}
-
-function Port({ type, onClick, isConnecting, moduleId, portId }) {
-    const isInput = type === 'input';
-
-    return (
-        <div
-            onClick={onClick}
-            data-module-id={moduleId}
-            data-port-id={portId}
-            data-port-type={type}
-            style={{
-                width: '16px',
-                height: '16px',
-                background: '#222',
-                border: '2px solid ' + (isConnecting ? '#0f0' : (isInput ? '#f00' : '#00f')),
-                cursor: onClick ? 'pointer' : 'default',
-                position: 'absolute',
-                left: isInput ? '-18px' : 'auto',
-                right: !isInput ? '-18px' : 'auto'
-            }}
-        />
     );
 }
 

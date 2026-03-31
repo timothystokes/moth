@@ -5,12 +5,15 @@ import {
     initializeMidi,
     onNoteOn,
     onNoteOff,
+    onAftertouch,
+    setAftertouchEnabled,
     getMidiInputs,
     selectMidiInput,
     setMidiChannel,
     getMidiChannel,
     subscribeMidiStateChange
 } from '../audio/sequencer.js';
+import Port from './Port.jsx';
 
 function Keyboard({ module, onOutputClick, isConnecting, isFixed, selectedTrackId, selectedTrackLabel }) {
     // Musical keyboard state - just for UI display now
@@ -19,6 +22,8 @@ function Keyboard({ module, onOutputClick, isConnecting, isFixed, selectedTrackI
     const [midiInputs, setMidiInputs] = useState([]);
     const [selectedMidiInputId, setSelectedMidiInputId] = useState(null);
     const [midiChannel, setMidiChannelState] = useState('all'); // 'all' or 0-15
+    const [atEnabled, setAtEnabled] = useState(false);
+    const [aftertouchValue, setAftertouchValue] = useState(0);
     const activeNoteRef = useRef(null); // Track active note for mouse up handler
     const lastPressedCvRef = useRef(0);
     
@@ -90,6 +95,20 @@ function Keyboard({ module, onOutputClick, isConnecting, isFixed, selectedTrackI
             unsubscribeNoteOff();
         };
     }, [selectedTrackId]);
+
+    useEffect(() => {
+        const unsubscribe = onAftertouch(({ trackId, value }) => {
+            if (trackId !== selectedTrackId) return;
+            setAftertouchValue(value);
+        });
+        return unsubscribe;
+    }, [selectedTrackId]);
+
+    const handleAftertouchToggle = () => {
+        const next = !atEnabled;
+        setAtEnabled(next);
+        if (selectedTrackId) setAftertouchEnabled(selectedTrackId, next);
+    };
 
     useEffect(() => {
         setActiveNote(null);
@@ -178,7 +197,7 @@ function Keyboard({ module, onOutputClick, isConnecting, isFixed, selectedTrackI
                 borderBottom: '1px solid #555',
                 borderRadius: isFixed ? '0' : '2px 2px 0 0'
             }}>
-                {selectedTrackLabel ? `KEYBOARD · ${selectedTrackLabel}` : 'KEYBOARD'}
+                KEYBOARD
             </div>
 
             {/* MIDI Device + Channel selectors */}
@@ -217,23 +236,10 @@ function Keyboard({ module, onOutputClick, isConnecting, isFixed, selectedTrackI
                     <label style={{ fontSize: '10px', color: '#aaa', display: 'block', marginBottom: '5px' }}>
                         CV OUT
                     </label>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', position: 'relative' }}>
-                        <div
-                            data-module-id={module.id}
-                            data-port-id="cv-out"
-                            data-port-type="output"
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+                        <Port type="output" moduleId={module.id} portId="cv-out"
                             onClick={() => onOutputClick(module.id, 'cv-out')}
-                            style={{
-                                width: '16px',
-                                height: '16px',
-                                background: '#222',
-                                border: '2px solid ' + (isConnecting ? '#0f0' : '#00f'),
-                                cursor: 'pointer',
-                                position: 'absolute',
-                                right: '-18px'
-                            }}
-                            title="CV Out (1V/octave)"
-                        />
+                            isConnecting={isConnecting} title="CV Out (1V/octave)" />
                     </div>
                 </div>
 
@@ -242,48 +248,44 @@ function Keyboard({ module, onOutputClick, isConnecting, isFixed, selectedTrackI
                     <label style={{ fontSize: '10px', color: '#aaa', display: 'block', marginBottom: '5px' }}>
                         GATE OUT
                     </label>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', position: 'relative' }}>
-                        <div
-                            data-module-id={module.id}
-                            data-port-id="gate-out"
-                            data-port-type="output"
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+                        <Port type="output" moduleId={module.id} portId="gate-out"
                             onClick={() => onOutputClick(module.id, 'gate-out')}
-                            style={{
-                                width: '16px',
-                                height: '16px',
-                                background: '#222',
-                                border: '2px solid ' + (isConnecting ? '#0f0' : '#00f'),
-                                cursor: 'pointer',
-                                position: 'absolute',
-                                right: '-18px'
-                            }}
-                            title="Gate Out (+5V high, 0V low)"
-                        />
+                            isConnecting={isConnecting} title="Gate Out (+5V high, 0V low)" />
                     </div>
                 </div>
 
-                {/* Output port: VELOCITY OUT */}
+                {/* Output port: VELOCITY OUT + aftertouch switch */}
                 <div style={{ marginBottom: '15px' }}>
                     <label style={{ fontSize: '10px', color: '#aaa', display: 'block', marginBottom: '5px' }}>
-                        VELOCITY OUT
+                        VELOCITY OUT{atEnabled ? ` (AT: ${(aftertouchValue * 5).toFixed(2)}V)` : ''}
                     </label>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', position: 'relative' }}>
-                        <div
-                            data-module-id={module.id}
-                            data-port-id="velocity-out"
-                            data-port-type="output"
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative' }}>
+                        {/* Aftertouch enable switch */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <span style={{ fontSize: '9px', color: atEnabled ? '#6d6' : '#555' }}>AT</span>
+                            <div
+                                onClick={handleAftertouchToggle}
+                                title="Enable aftertouch → velocity"
+                                style={{
+                                    width: '28px', height: '14px', borderRadius: '7px',
+                                    background: atEnabled ? '#3a6' : '#444',
+                                    position: 'relative', cursor: 'pointer',
+                                    transition: 'background 0.15s'
+                                }}
+                            >
+                                <div style={{
+                                    position: 'absolute', top: '2px',
+                                    left: atEnabled ? '14px' : '2px',
+                                    width: '10px', height: '10px',
+                                    borderRadius: '50%', background: '#fff',
+                                    transition: 'left 0.15s'
+                                }} />
+                            </div>
+                        </div>
+                        <Port type="output" moduleId={module.id} portId="velocity-out"
                             onClick={() => onOutputClick(module.id, 'velocity-out')}
-                            style={{
-                                width: '16px',
-                                height: '16px',
-                                background: '#222',
-                                border: '2px solid ' + (isConnecting ? '#0f0' : '#00f'),
-                                cursor: 'pointer',
-                                position: 'absolute',
-                                right: '-18px'
-                            }}
-                            title="Velocity Out (0–5V)"
-                        />
+                            isConnecting={isConnecting} title="Velocity Out (0–5V)" />
                     </div>
                 </div>
                 

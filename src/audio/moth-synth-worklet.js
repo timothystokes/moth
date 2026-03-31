@@ -16,19 +16,26 @@ function createVoice(trackId, index) {
         noteNumber: null,
         velocity: 0,
         gate: 0,
-        cv: 0
+        cv: 0,
+        cvStart: 0,
+        cvGlideStartMs: null,
+        portamentoTime: 0
     };
 }
 
 function createTrackState(trackId, track = {}) {
+    const polyphony = Math.min(16, Math.max(1, track.polyphony ?? MAX_VOICES));
     return {
         trackId,
         volume: track.volume ?? 0.8,
         mute: Boolean(track.mute),
         keyboardLatchModeEnabled: Boolean(track.keyboardLatchModeEnabled),
+        portamentoTime: track.portamento ?? 0,
+        noteStack: [],      // mono mode: held notes in press order (most recent last)
+        lastMonoCv: 0,      // last CV target, persists after voice goes free
         nextVoiceIndex: 0,
         noteToVoiceMap: new Map(),
-        voices: Array.from({ length: MAX_VOICES }, (_, index) => createVoice(trackId, index))
+        voices: Array.from({ length: polyphony }, (_, index) => createVoice(trackId, index))
     };
 }
 
@@ -324,6 +331,14 @@ class MothSynthProcessor extends AudioWorkletProcessor {
                 case 'note-off':
                     this.releaseVoice(message.trackId, message.noteNumber);
                     break;
+                case 'aftertouch': {
+                    const trackState = this.getTrackState(message.trackId);
+                    if (trackState) {
+                        const atV = Math.max(0, Math.min(1, message.value)) * GATE_HIGH_VOLTAGE;
+                        this.getActiveVoices(trackState).forEach(v => { v.velocity = atV; });
+                    }
+                    break;
+                }
                 case 'all-notes-off':
                     this.trackStates.forEach((trackState) => {
                         this.getActiveVoices(trackState).forEach((voice) => {
@@ -361,6 +376,30 @@ class MothSynthProcessor extends AudioWorkletProcessor {
         existing.volume = track.volume ?? existing.volume;
         existing.mute = Boolean(track.mute);
         existing.keyboardLatchModeEnabled = Boolean(track.keyboardLatchModeEnabled);
+
+        const desiredPoly = Math.min(16, Math.max(1, track.polyphony ?? existing.voices.length));
+        if (existing.voices.length !== desiredPoly) {
+            existing.noteStack = [];
+            // Release any voices being removed
+            for (let i = desiredPoly; i < existing.voices.length; i++) {
+                const v = existing.voices[i];
+                if (v.state !== VOICE_FREE) {
+                    this.removeVoiceMapping(existing, v.noteNumber, v.voiceId);
+                    v.gate = 0;
+                    v.state = VOICE_RELEASE;
+                }
+            }
+            // Resize: trim or extend with fresh voices
+            existing.voices = [
+                ...existing.voices.slice(0, desiredPoly),
+                ...Array.from({ length: Math.max(0, desiredPoly - existing.voices.length) },
+                    (_, i) => createVoice(trackId, existing.voices.length + i))
+            ];
+            existing.nextVoiceIndex = existing.nextVoiceIndex % desiredPoly;
+        }
+
+        existing.portamentoTime = track.portamento ?? existing.portamentoTime ?? 0;
+
         this.trackStates.set(trackId, existing);
         this.updateKeyboardLatchVoice(existing);
     }
@@ -497,60 +536,123 @@ class MothSynthProcessor extends AudioWorkletProcessor {
         voice.velocity = 0;
         voice.gate = 0;
         voice.cv = 0;
+        voice.cvStart = 0;
+        voice.cvGlideStartMs = null;
+        voice.portamentoTime = 0;
     }
 
     claimRoundRobinVoice(trackState) {
-        const voice = trackState.voices[trackState.nextVoiceIndex];
-        trackState.nextVoiceIndex = (trackState.nextVoiceIndex + 1) % MAX_VOICES;
+        const count = trackState.voices.length;
+        const voice = trackState.voices[trackState.nextVoiceIndex % count];
+        trackState.nextVoiceIndex = (trackState.nextVoiceIndex + 1) % count;
         return voice;
+    }
+
+    getGlidedCv(voice) {
+        const { cv, cvStart, cvGlideStartMs, portamentoTime } = voice;
+        if (!portamentoTime || cvGlideStartMs === null) return cv;
+        const elapsed = Math.max(0, (this.currentTimeMs - cvGlideStartMs) / 1000);
+        if (elapsed >= portamentoTime) return cv;
+        return cvStart + (cv - cvStart) * (elapsed / portamentoTime);
+    }
+
+    // Set up a CV glide on a voice toward targetCv, starting from the voice's current
+    // interpolated position (or lastMonoCv if the voice is free/silent).
+    setupGlide(voice, targetCv, trackState) {
+        const portamentoTime = trackState.portamentoTime ?? 0;
+        const fromCv = (voice.state !== VOICE_FREE)
+            ? this.getGlidedCv(voice)
+            : trackState.lastMonoCv;
+
+        trackState.lastMonoCv = targetCv;
+        voice.cv = targetCv;
+
+        if (portamentoTime > 0) {
+            voice.cvStart = fromCv;
+            voice.cvGlideStartMs = this.currentTimeMs;
+            voice.portamentoTime = portamentoTime;
+        } else {
+            voice.cvStart = targetCv;
+            voice.cvGlideStartMs = null;
+            voice.portamentoTime = 0;
+        }
     }
 
     allocateVoice(trackId, noteNumber, velocity) {
         const trackState = this.getTrackState(trackId);
-        if (!trackState) {
+        if (!trackState) return;
+
+        const velocityV = Math.max(0, Math.min(1, Number.isFinite(velocity) ? velocity : 1)) * GATE_HIGH_VOLTAGE;
+        const gateV = velocityV > 0 ? GATE_HIGH_VOLTAGE : 0;
+        const targetCv = (noteNumber - 69) / 12;
+
+        // Mono mode: note stacking + optional portamento
+        if (trackState.voices.length === 1 && !trackState.keyboardLatchModeEnabled) {
+            const voice = trackState.voices[0];
+
+            // Maintain note stack — remove then re-add so it's always at the top
+            trackState.noteStack = trackState.noteStack.filter(n => n !== noteNumber);
+            trackState.noteStack.push(noteNumber);
+
+            // Re-map to new note number
+            this.removeVoiceMapping(trackState, voice.noteNumber, voice.voiceId);
+            this.addVoiceMapping(trackState, noteNumber, voice.voiceId);
+            voice.noteNumber = noteNumber;
+            voice.velocity = velocityV;
+
+            this.setupGlide(voice, targetCv, trackState);
+
+            // Trigger gate/envelope unless playing legato (key still held = VOICE_ACTIVE)
+            if (voice.state !== VOICE_ACTIVE) {
+                voice.gate = gateV;
+                voice.state = VOICE_ACTIVE;
+            }
             return;
         }
 
+        // Poly mode: normal round-robin allocation
         const targetVoice = trackState.keyboardLatchModeEnabled
             ? this.getKeyboardLatchVoice(trackState)
             : this.claimRoundRobinVoice(trackState);
-        // Scale velocity to 0..5V (assume input velocity is 0..1)
-        const velocityV = Math.max(0, Math.min(1, Number.isFinite(velocity) ? velocity : 1)) * GATE_HIGH_VOLTAGE;
-        const gateV = velocityV > 0 ? GATE_HIGH_VOLTAGE : 0;
 
         this.clearVoice(trackState, targetVoice);
         targetVoice.state = VOICE_ACTIVE;
         targetVoice.noteNumber = noteNumber;
-        targetVoice.velocity = velocityV; // 0..5V
-        targetVoice.gate = gateV;         // 0 or 5V
-        targetVoice.cv = (noteNumber - 69) / 12;
-
-        // Debug logging for voice allocation
-        // if (typeof console !== 'undefined' && console.log) {
-        //     console.log('[MothSynth] allocateVoice', {
-        //         trackId,
-        //         voiceId: targetVoice.voiceId,
-        //         noteNumber,
-        //         cv: targetVoice.cv,
-        //         velocity: velocityV,
-        //         gate: gateV
-        //     });
-        // }
-
+        targetVoice.velocity = velocityV;
+        targetVoice.gate = gateV;
+        targetVoice.cv = targetCv;
         this.addVoiceMapping(trackState, noteNumber, targetVoice.voiceId);
     }
 
     releaseVoice(trackId, noteNumber) {
         const trackState = this.getTrackState(trackId);
-        if (!trackState) {
+        if (!trackState) return;
+
+        // Mono mode: pop from stack, return to previous held key if any
+        if (trackState.voices.length === 1 && !trackState.keyboardLatchModeEnabled) {
+            const voice = trackState.voices[0];
+            trackState.noteStack = trackState.noteStack.filter(n => n !== noteNumber);
+            this.removeVoiceMapping(trackState, noteNumber, voice.voiceId);
+
+            if (trackState.noteStack.length > 0) {
+                // Return to the most recently held key — no gate change
+                const prevNote = trackState.noteStack[trackState.noteStack.length - 1];
+                this.addVoiceMapping(trackState, prevNote, voice.voiceId);
+                voice.noteNumber = prevNote;
+                this.setupGlide(voice, (prevNote - 69) / 12, trackState);
+            } else {
+                // All keys released — gate off, let envelope release
+                trackState.lastMonoCv = this.getGlidedCv(voice);
+                voice.gate = 0;
+                voice.state = VOICE_RELEASE;
+            }
             return;
         }
 
+        // Poly mode: normal release
         const voiceIds = trackState.noteToVoiceMap.get(noteNumber);
         const voiceId = voiceIds?.[voiceIds.length - 1];
-        if (!voiceId) {
-            return;
-        }
+        if (!voiceId) return;
 
         const voice = trackState.voices.find((candidate) => candidate.voiceId === voiceId);
         if (!voice || voice.state === VOICE_FREE) {
@@ -618,7 +720,7 @@ class MothSynthProcessor extends AudioWorkletProcessor {
                 isVoiceDependent = this.isInputVoiceDependent(moduleId, 'rate-input', visited);
                 break;
             case 'mixer':
-                isVoiceDependent = ['input-a', 'input-b', 'level-a-input', 'level-b-input']
+                isVoiceDependent = ['input-a', 'input-b']
                     .some((inputName) => this.isInputVoiceDependent(moduleId, inputName, visited));
                 break;
             case 'vca':
@@ -727,7 +829,14 @@ class MothSynthProcessor extends AudioWorkletProcessor {
                 return (timeMs, laneContext) => (signalRead ? signalRead(timeMs, laneContext) : 0);
             }
             case 'keyboard-cv':
-                return (_timeMs, laneContext) => laneContext?.cv ?? 0;
+                return (timeMs, laneContext) => {
+                    if (!laneContext) return 0;
+                    const { cv, cvStart, cvGlideStartMs, portamentoTime } = laneContext;
+                    if (!portamentoTime || cvGlideStartMs === null) return cv ?? 0;
+                    const elapsed = Math.max(0, (timeMs - cvGlideStartMs) / 1000);
+                    if (elapsed >= portamentoTime) return cv ?? 0;
+                    return (cvStart ?? cv ?? 0) + ((cv ?? 0) - (cvStart ?? cv ?? 0)) * (elapsed / portamentoTime);
+                };
             case 'keyboard-gate':
                 return (_timeMs, laneContext) => laneContext?.gate ?? 0;
             case 'keyboard-velocity':
@@ -1013,24 +1122,11 @@ class MothSynthProcessor extends AudioWorkletProcessor {
     createMixerFactory(moduleId, params, activeStack) {
         const inputARead = this.createInputReader(moduleId, 'input-a', activeStack);
         const inputBRead = this.createInputReader(moduleId, 'input-b', activeStack);
-        const levelARead = this.createInputReader(moduleId, 'level-a-input', activeStack);
-        const levelBRead = this.createInputReader(moduleId, 'level-b-input', activeStack);
 
         return (timeMs, laneContext) => {
             const signalA = inputARead ? inputARead(timeMs, laneContext) : 0;
             const signalB = inputBRead ? inputBRead(timeMs, laneContext) : 0;
-            let finalLevelA = params.levelA;
-            let finalLevelB = params.levelB;
-
-            if (levelARead) {
-                finalLevelA = Math.max(0, Math.min(1, params.levelA + levelARead(timeMs, laneContext) / 20));
-            }
-
-            if (levelBRead) {
-                finalLevelB = Math.max(0, Math.min(1, params.levelB + levelBRead(timeMs, laneContext) / 20));
-            }
-
-            return signalA * finalLevelA + signalB * finalLevelB;
+            return signalA * 0.5 + signalB * 0.5;
         };
     }
 

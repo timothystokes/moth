@@ -3,6 +3,7 @@ import {
     initializeAudioEngine,
     subscribeToScopeData
 } from '../audio/audioEngine.js';
+import Port from './Port.jsx';
 
 function Amplifier({ onOutputClick, isConnecting, audioContext, setAudioContext, isFixed, isPoweredOn, selectedTrackLabel }) {
     const startTimeRef = useRef(null);
@@ -131,7 +132,7 @@ function Amplifier({ onOutputClick, isConnecting, audioContext, setAudioContext,
                     borderBottom: '1px solid #555',
                     borderRadius: '2px 2px 0 0'
             }}>
-                <span>{selectedTrackLabel ? `TRACK OUT · ${selectedTrackLabel}` : 'TRACK OUT'}</span>
+                <span>TRACK OUT</span>
             </div>
             
             <div style={{ padding: '10px' }}>
@@ -176,29 +177,6 @@ function Amplifier({ onOutputClick, isConnecting, audioContext, setAudioContext,
                 </div>
             </div>
         </div>
-    );
-}
-
-function Port({ type, onClick, isConnecting, moduleId, portId }) {
-    const isInput = type === 'input';
-    
-    return (
-        <div 
-            onClick={onClick}
-            data-module-id={moduleId}
-            data-port-id={portId}
-            data-port-type={type}
-            style={{
-                width: '16px',
-                height: '16px',
-                background: '#222',
-                border: '2px solid ' + (isConnecting ? '#0f0' : (isInput ? '#f00' : '#00f')),
-                cursor: onClick ? 'pointer' : 'default',
-                position: 'absolute',
-                left: isInput ? '-18px' : 'auto',
-                right: !isInput ? '-18px' : 'auto'
-            }}
-        />
     );
 }
 

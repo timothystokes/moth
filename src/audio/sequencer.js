@@ -2,7 +2,7 @@
 // Pure utilities live in noteUtils.js, trackMigration.js, and midiConvert.js.
 // This file owns all mutable state and re-exports the full public API.
 
-import { noteOn, noteOff } from './audioEngine.js';
+import { noteOn, noteOff, sendAftertouch } from './audioEngine.js';
 import {
     QUANTIZE_RESOLUTION,
     barBeatToAbsoluteBeat,
@@ -31,8 +31,13 @@ export { buildNotesFromMidiEvents, buildNoteSegments, convertMidiToSession } fro
 
 const noteOnListeners = [];
 const noteOffListeners = [];
+const aftertouchListeners = [];
 const transportListeners = new Set();
 const midiStateChangeListeners = new Set();
+const aftertouchEnabledTracks = new Set();
+// sustainPedalOn: trackId → boolean; pendingPedalReleases: trackId → Set<noteNumber>
+const sustainPedalState = new Map(); // trackId → boolean
+const pendingPedalReleases = new Map(); // trackId → Set<noteNumber>
 
 let midiAccess = null;
 let selectedInputId = null;
@@ -136,10 +141,41 @@ function handleNoteOn(trackId, noteNumber, velocity, timestamp) {
     noteOnListeners.forEach(l => l({ trackId, noteNumber, velocity, noteOnTime: timestamp }));
 }
 
+function handleAftertouch(trackId, value) {
+    if (!trackId) return;
+    aftertouchListeners.forEach(l => l({ trackId, value }));
+    if (aftertouchEnabledTracks.has(trackId)) {
+        sendAftertouch(trackId, value);
+    }
+}
+
 function handleNoteOff(trackId, noteNumber, timestamp) {
     if (!trackId) return;
     noteOff(trackId, noteNumber);
     noteOffListeners.forEach(l => l({ trackId, noteNumber, timestamp }));
+}
+
+function handleMidiNoteOff(trackId, noteNumber, timestamp) {
+    if (!trackId) return;
+    if (sustainPedalState.get(trackId)) {
+        // Buffer the release until the pedal lifts
+        if (!pendingPedalReleases.has(trackId)) pendingPedalReleases.set(trackId, new Set());
+        pendingPedalReleases.get(trackId).add(noteNumber);
+        return;
+    }
+    handleNoteOff(trackId, noteNumber, timestamp);
+}
+
+function handleSustainPedal(trackId, on) {
+    sustainPedalState.set(trackId, on);
+    if (!on) {
+        // Fire all buffered note-offs
+        const pending = pendingPedalReleases.get(trackId);
+        if (pending) {
+            pending.forEach(noteNumber => handleNoteOff(trackId, noteNumber, performance.now()));
+            pending.clear();
+        }
+    }
 }
 
 function handleMidiStateChange(event) {
@@ -155,11 +191,25 @@ function handleMidiMessage(event) {
     if (midiChannelFilter !== null && channel !== midiChannelFilter) return;
     switch (command) {
         case 0x9:
-            if (velocity > 0) handleNoteOn(activeTrackId, note, velocity / 127, event.timeStamp);
-            else handleNoteOff(activeTrackId, note, event.timeStamp);
+            if (velocity > 0) {
+                // If this note has a pending pedal release, cancel it (note is being retriggered)
+                pendingPedalReleases.get(activeTrackId)?.delete(note);
+                handleNoteOn(activeTrackId, note, velocity / 127, event.timeStamp);
+            } else {
+                handleMidiNoteOff(activeTrackId, note, event.timeStamp);
+            }
             break;
         case 0x8:
-            handleNoteOff(activeTrackId, note, event.timeStamp);
+            handleMidiNoteOff(activeTrackId, note, event.timeStamp);
+            break;
+        case 0xA: // Polyphonic aftertouch
+            handleAftertouch(activeTrackId, note / 127);
+            break;
+        case 0xD: // Channel aftertouch (note byte is the pressure value)
+            handleAftertouch(activeTrackId, note / 127);
+            break;
+        case 0xB: // Control change
+            if (note === 64) handleSustainPedal(activeTrackId, velocity >= 64);
             break;
     }
 }
@@ -387,6 +437,16 @@ export function onNoteOn(callback) {
 export function onNoteOff(callback) {
     noteOffListeners.push(callback);
     return () => { const i = noteOffListeners.indexOf(callback); if (i > -1) noteOffListeners.splice(i, 1); };
+}
+
+export function onAftertouch(callback) {
+    aftertouchListeners.push(callback);
+    return () => { const i = aftertouchListeners.indexOf(callback); if (i > -1) aftertouchListeners.splice(i, 1); };
+}
+
+export function setAftertouchEnabled(trackId, enabled) {
+    if (enabled) aftertouchEnabledTracks.add(trackId);
+    else aftertouchEnabledTracks.delete(trackId);
 }
 
 export function clearAllNotes() { noteOff(null, -1); }

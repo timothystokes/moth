@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getModuleState, registerModule } from '../audio/audioEngine.js';
+import Port from './Port.jsx';
 
 function Filter({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isConnecting, audioContext, connections, onRemove }) {
     const savedParams = getModuleState(module.id)?.params ?? {};
@@ -229,29 +230,6 @@ function Filter({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isConne
                 </div>
             </div>
         </div>
-    );
-}
-
-function Port({ type, onClick, isConnecting, moduleId, portId }) {
-    const isInput = type === 'input';
-    
-    return (
-        <div 
-            onClick={onClick}
-            data-module-id={moduleId}
-            data-port-id={portId}
-            data-port-type={type}
-            style={{
-                width: '16px',
-                height: '16px',
-                background: '#222',
-                border: '2px solid ' + (isConnecting ? '#0f0' : (isInput ? '#f00' : '#00f')),
-                cursor: onClick ? 'pointer' : 'default',
-                position: 'absolute',
-                left: isInput ? '-18px' : 'auto',
-                right: !isInput ? '-18px' : 'auto'
-            }}
-        />
     );
 }
 

@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { getModuleState, registerModule } from '../audio/audioEngine.js';
+import Port from './Port.jsx';
 
 /**
  * VCA (Voltage Controlled Amplifier) module
  *
- *   IN     — audio/CV input socket
- *   GAIN   — 0–2× slider. CV input adds offset: +5V → +1× gain, −5V → −1×.
- *   INVERT — polarity switch: + (normal) or − (multiply output by −1)
- *   OUT    — amplified output
+ *   GAIN   — 0–2× slider. CV input adds offset: +5V → +1× gain.
+ *   POLARITY — toggle switch: − (left) or + (right, default)
+ *   IN/OUT — audio input and output inline at the bottom
  *
  * Output = input × finalGain × polarity
- * where finalGain = clamp(gain + gainCV/5, 0, 2)
+ * finalGain = clamp(gain + gainCV/5, 0, 2)
  */
 function VCA({ module, onDragStart, onOutputClick, isConnecting, connections, onRemove }) {
     const saved = getModuleState(module.id)?.params ?? {};
@@ -18,26 +18,19 @@ function VCA({ module, onDragStart, onOutputClick, isConnecting, connections, on
     const [invert, setInvert] = useState(saved.invert ?? false);
 
     useEffect(() => {
-        registerModule(module.id, {
-            type: 'vca',
-            params: { gain, invert }
-        });
+        registerModule(module.id, { type: 'vca', params: { gain, invert } });
     }, [module.id, gain, invert]);
 
     const hasGainCV = connections?.some(c => c.to.moduleId === module.id && c.to.outputId === 'gain-input');
 
     return (
         <div style={{
-            position: 'relative',
-            width: '180px',
-            background: '#333',
-            border: '2px solid #555',
-            borderRadius: '4px',
-            padding: 0,
-            zIndex: 200,
+            position: 'relative', width: '180px',
+            background: '#333', border: '2px solid #555',
+            borderRadius: '4px', padding: 0, zIndex: 200,
             boxShadow: '0 4px 8px rgba(0,0,0,0.3)'
         }}>
-            {/* Header / drag handle */}
+            {/* Header */}
             <div
                 onMouseDown={(e) => onDragStart(e, module.id)}
                 style={{
@@ -64,16 +57,6 @@ function VCA({ module, onDragStart, onOutputClick, isConnecting, connections, on
             </div>
 
             <div style={{ padding: '10px' }}>
-                {/* Audio input */}
-                <div style={{ marginBottom: '12px', position: 'relative' }}>
-                    <label style={{ fontSize: '10px', color: '#aaa', display: 'block', marginBottom: '4px' }}>IN</label>
-                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                        <Port type="input" moduleId={module.id} portId="audio-input"
-                            onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); onOutputClick(module.id, 'audio-input', { x: r.left + r.width / 2, y: r.top + r.height / 2 }); }}
-                            isConnecting={isConnecting} />
-                    </div>
-                </div>
-
                 {/* Gain slider + CV input */}
                 <div style={{ marginBottom: '12px', position: 'relative' }}>
                     <label style={{ fontSize: '10px', color: '#aaa', display: 'block', marginBottom: '4px' }}>
@@ -84,8 +67,7 @@ function VCA({ module, onDragStart, onOutputClick, isConnecting, connections, on
                             onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); onOutputClick(module.id, 'gain-input', { x: r.left + r.width / 2, y: r.top + r.height / 2 }); }}
                             isConnecting={isConnecting} />
                         <input
-                            type="range" min="0" max="2" step="0.01"
-                            value={gain}
+                            type="range" min="0" max="2" step="0.01" value={gain}
                             onChange={(e) => setGain(parseFloat(e.target.value))}
                             style={{ width: '100%', cursor: 'pointer', marginLeft: '20px' }}
                         />
@@ -97,24 +79,42 @@ function VCA({ module, onDragStart, onOutputClick, isConnecting, connections, on
                     </div>
                 </div>
 
-                {/* Polarity switch */}
-                <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <label style={{ fontSize: '10px', color: '#aaa' }}>POLARITY</label>
-                    <button
-                        onClick={() => setInvert(v => !v)}
-                        style={{
-                            background: invert ? '#a33' : '#3a6',
-                            color: '#fff', border: 'none', borderRadius: '3px',
-                            padding: '2px 10px', fontSize: '13px', fontWeight: 'bold',
-                            cursor: 'pointer', minWidth: '34px'
-                        }}
-                    >{invert ? '−' : '+'}</button>
+                {/* Polarity toggle switch */}
+                <div style={{ marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ fontSize: '10px', color: '#aaa' }}>POLARITY</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '4px' }}>
+                        <span style={{ fontSize: '11px', fontWeight: 'bold', color: invert ? '#d66' : '#555' }}>−</span>
+                        <div
+                            onClick={() => setInvert(v => !v)}
+                            style={{
+                                width: '34px', height: '18px', borderRadius: '9px',
+                                background: invert ? '#a33' : '#3a6',
+                                position: 'relative', cursor: 'pointer',
+                                transition: 'background 0.15s'
+                            }}
+                        >
+                            <div style={{
+                                position: 'absolute', top: '2px',
+                                left: invert ? '2px' : '16px',
+                                width: '14px', height: '14px',
+                                borderRadius: '50%', background: '#fff',
+                                transition: 'left 0.15s'
+                            }} />
+                        </div>
+                        <span style={{ fontSize: '11px', fontWeight: 'bold', color: invert ? '#555' : '#6d6' }}>+</span>
+                    </div>
                 </div>
 
-                {/* Output */}
-                <div style={{ marginTop: '10px', position: 'relative' }}>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
-                        <span style={{ fontSize: '9px', color: '#aaa', marginRight: '16px' }}>OUT</span>
+                {/* IN (left) and OUT (right) inline at the bottom */}
+                <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
+                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                        <Port type="input" moduleId={module.id} portId="audio-input"
+                            onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); onOutputClick(module.id, 'audio-input', { x: r.left + r.width / 2, y: r.top + r.height / 2 }); }}
+                            isConnecting={isConnecting} />
+                        <span style={{ fontSize: '9px', color: '#aaa', marginLeft: '6px' }}>IN</span>
+                    </div>
+                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                        <span style={{ fontSize: '9px', color: '#aaa', marginRight: '6px' }}>OUT</span>
                         <Port type="output" moduleId={module.id} portId="output"
                             onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); onOutputClick(module.id, 'output', { x: r.left + r.width / 2, y: r.top + r.height / 2 }); }}
                             isConnecting={isConnecting} />
@@ -122,26 +122,6 @@ function VCA({ module, onDragStart, onOutputClick, isConnecting, connections, on
                 </div>
             </div>
         </div>
-    );
-}
-
-function Port({ type, onClick, isConnecting, moduleId, portId }) {
-    const isInput = type === 'input';
-    return (
-        <div
-            onClick={onClick}
-            data-module-id={moduleId}
-            data-port-id={portId}
-            data-port-type={type}
-            style={{
-                width: '16px', height: '16px', background: '#222',
-                border: '2px solid ' + (isConnecting ? '#0f0' : (isInput ? '#f00' : '#00f')),
-                cursor: onClick ? 'pointer' : 'default',
-                position: 'absolute',
-                left: isInput ? '-18px' : 'auto',
-                right: !isInput ? '-18px' : 'auto'
-            }}
-        />
     );
 }
 
