@@ -15,7 +15,7 @@ import OutputPort from './OutputPort.jsx';
 import ModuleShell from './ModuleShell.jsx';
 import SelectControl from './SelectControl.jsx';
 
-function Keyboard({ module, onOutputClick, isConnecting, isFixed, selectedTrackId, selectedTrackLabel }) {
+function Keyboard({ module, onOutputClick, isConnecting, isFixed, selectedTrackId, selectedTrackLabel, scrollContainerRef, onKeyboardScroll }) {
     // Musical keyboard state - just for UI display now
     const [activeNote, setActiveNote] = useState(null); // { noteNumber, velocity }
     const [hoveredKey, setHoveredKey] = useState(null);
@@ -153,29 +153,43 @@ function Keyboard({ module, onOutputClick, isConnecting, isFixed, selectedTrackI
     };
 
     const keyHeight = 12; // Smaller height per key to fit 88 keys
-    const whiteKeyWidth = 140; // Match panel width
-    const blackKeyWidth = 90;
+    const whiteKeyWidth = 125; // Fit panel width (165px panel - 20px padding - 2px border - 8px scrollbar)
+    const blackKeyWidth = Math.round(whiteKeyWidth * 0.65);
     
     const containerHeight = notes.filter(n => !n.isBlack).length * keyHeight;
     
     return (
-        <ModuleShell title="KEYBOARD" isFixed>
-            {/* MIDI Device + Channel selectors */}
+        <ModuleShell isFixed>
             <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-                {/* Output port: CV OUT */}
-                <OutputPort moduleId={module.id} portId="cv-out" label="CV"
-                    onOutputClick={onOutputClick} isConnecting={isConnecting}
-                    title="CV Out (1V/octave)" />
-
-                {/* Output port: GATE OUT */}
-                <OutputPort moduleId={module.id} portId="gate-out" label="GATE"
-                    onOutputClick={onOutputClick} isConnecting={isConnecting}
-                    title="Gate Out (+5V high, 0V low)" />
-
-                <OutputPort moduleId={module.id} portId="velocity-out" label="VELOCITY"
-                    onOutputClick={onOutputClick} isConnecting={isConnecting}
-                    title="Velocity Out (0–5V)" />
-                
+                {/* Ports + active note side by side */}
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
+                    {/* Active note display */}
+                    <div style={{ paddingTop: '4px', lineHeight: '1.5' }}>
+                        {activeNote ? (
+                            <>
+                                <div style={{ color: '#0f0', fontWeight: 'bold', fontSize: '13px' }}>
+                                    {notes.find(n => n.noteNumber === activeNote.noteNumber)?.noteName}
+                                </div>
+                                <div style={{ fontSize: '9px', color: '#666' }}>
+                                    {((activeNote.noteNumber - 36) / 12).toFixed(2)}V
+                                </div>
+                            </>
+                        ) : (
+                            <div style={{ color: '#444', fontSize: '11px' }}>---</div>
+                        )}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', marginLeft: 'auto' }}>
+                        <OutputPort moduleId={module.id} portId="cv-out" label="CV"
+                            onOutputClick={onOutputClick} isConnecting={isConnecting}
+                            title="CV Out (1V/octave)" />
+                        <OutputPort moduleId={module.id} portId="gate-out" label="GATE"
+                            onOutputClick={onOutputClick} isConnecting={isConnecting}
+                            title="Gate Out (+5V high, 0V low)" />
+                        <OutputPort moduleId={module.id} portId="velocity-out" label="VELOCITY"
+                            onOutputClick={onOutputClick} isConnecting={isConnecting}
+                            title="Velocity Out (0–5V)" />
+                    </div>
+                </div>
 
                 <SelectControl label="MIDI IN" value={selectedMidiInputId || ''} onChange={handleMidiInputChange}>
                     {midiInputs.length === 0 && <option value="">No MIDI devices</option>}
@@ -191,7 +205,10 @@ function Keyboard({ module, onOutputClick, isConnecting, isFixed, selectedTrackI
                 </SelectControl>
                     <div style={{ height: '10px' }}></div>
                 {/* Keyboard display */}
-                <div style={{
+                <div
+                    ref={scrollContainerRef}
+                    onScroll={onKeyboardScroll}
+                    style={{
                     flex: 1,
                     position: 'relative',
                     overflow: 'auto',
@@ -203,6 +220,7 @@ function Keyboard({ module, onOutputClick, isConnecting, isFixed, selectedTrackI
                     <div style={{
                     position: 'relative',
                     height: `${containerHeight}px`,
+                    width: `${whiteKeyWidth}px`,
                     userSelect: 'none'
                 }}>
                     {/* Draw white keys first */}
@@ -227,7 +245,8 @@ function Keyboard({ module, onOutputClick, isConnecting, isFixed, selectedTrackI
                                     cursor: 'pointer',
                                     display: 'flex',
                                     alignItems: 'center',
-                                    paddingLeft: '5px',
+                                    justifyContent: 'flex-end',
+                                    paddingRight: '4px',
                                     fontSize: '10px',
                                     fontWeight: 'bold',
                                     color: isActive ? '#fff' : '#000',
@@ -265,7 +284,8 @@ function Keyboard({ module, onOutputClick, isConnecting, isFixed, selectedTrackI
                                     cursor: 'pointer',
                                     display: 'flex',
                                     alignItems: 'center',
-                                    paddingLeft: '5px',
+                                    justifyContent: 'flex-end',
+                                    paddingRight: '4px',
                                     fontSize: '9px',
                                     fontWeight: 'bold',
                                     color: isActive ? '#000' : '#fff',
@@ -280,28 +300,6 @@ function Keyboard({ module, onOutputClick, isConnecting, isFixed, selectedTrackI
                 </div>
             </div>
             
-            {/* Active note display */}
-            <div style={{
-                marginTop: '10px',
-                fontSize: '11px',
-                color: '#888',
-                textAlign: 'center',
-                minHeight: '35px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '3px'
-            }}>
-                {activeNote ? (
-                    <>
-                        <div style={{ color: '#0f0' }}>{notes.find(n => n.noteNumber === activeNote.noteNumber)?.noteName}</div>
-                        <div style={{ fontSize: '9px', color: '#666' }}>
-                            {((activeNote.noteNumber - 36) / 12).toFixed(2)}V
-                        </div>
-                    </>
-                ) : (
-                    <div>---</div>
-                )}
-            </div>
             </div>
         </ModuleShell>
     );

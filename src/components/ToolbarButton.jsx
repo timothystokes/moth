@@ -15,7 +15,11 @@ export default function ToolbarButton({ children, variant, active, style, disabl
     const lit      = (isPower || isActive) && active;
 
     const base = {
-        padding: '8px 14px',
+        padding: '4px 10px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        lineHeight: 1,
         background: lit     ? '#00cc00'
                   : hovered ? '#1a3a1a'
                   : '#444',
@@ -26,7 +30,7 @@ export default function ToolbarButton({ children, variant, active, style, disabl
         color: lit ? '#000' : '#fff',
         fontWeight: (isPower || isActive) ? 'bold' : 'normal',
         cursor: disabled ? 'default' : 'pointer',
-        fontSize: '12px',
+        fontSize: '16px',
         opacity: disabled ? 0.4 : 1,
         transition: 'background 0.1s, border-color 0.1s',
         fontFamily: 'inherit',

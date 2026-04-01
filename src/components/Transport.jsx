@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getPlaybackPositionMs, getIsPlaying } from '../audio/sequencer.js';
 import ToolbarButton from './ToolbarButton.jsx';
+import SmallButton from './SmallButton.jsx';
 
 function formatDuration(milliseconds) {
     const totalSeconds = Math.max(0, Math.round(milliseconds / 1000));
@@ -26,8 +27,12 @@ function Transport({
     onSetTransportPosition,
     isRecording,
     onRecord,
+    bpm,
+    onBpmChange,
 }) {
     const [statusMessage, setStatusMessage] = useState('No sequence loaded');
+    const [editingBpm, setEditingBpm] = useState(false);
+    const [bpmInput, setBpmInput] = useState('');
     const rafRef = useRef(null);
 
     const timelineDurationMs = Math.max(
@@ -55,6 +60,12 @@ function Transport({
     const handleRewind = () => {
         onRewind();
         setStatusMessage('Rewound to start');
+    };
+
+    const commitBpm = (raw) => {
+        const val = parseInt(raw, 10);
+        if (!isNaN(val) && val >= 20 && val <= 300) onBpmChange(val);
+        setEditingBpm(false);
     };
 
     const timelineRef = React.useRef(null);
@@ -95,9 +106,9 @@ function Transport({
                     onClick={onRecord}
                     style={isRecording ? { background: '#cc0000', border: '2px solid #ff4444', color: '#fff' } : {}}
                 >
-                    ⏺
+                    {isRecording ? '■' : '⏺'}
                 </ToolbarButton>
-                <ToolbarButton onClick={onCreateTrack}>＋ Track</ToolbarButton>
+                <ToolbarButton onClick={onCreateTrack}>＋</ToolbarButton>
 
                 <div style={{ minWidth: '240px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <div style={{ fontSize: '11px', letterSpacing: '0.08em', color: '#6f6f6f' }}>STATUS</div>
@@ -107,6 +118,37 @@ function Transport({
                 </div>
 
                 <div style={{ marginLeft: 'auto', display: 'flex', gap: '22px', alignItems: 'center' }}>
+                    <div style={metaBlockStyle}>
+                        <span style={metaLabelStyle}>BPM</span>
+                        {editingBpm ? (
+                            <input
+                                autoFocus
+                                type="number"
+                                min="20" max="300"
+                                value={bpmInput}
+                                onChange={e => setBpmInput(e.target.value)}
+                                onBlur={() => commitBpm(bpmInput)}
+                                onKeyDown={e => {
+                                    if (e.key === 'Enter') commitBpm(bpmInput);
+                                    if (e.key === 'Escape') setEditingBpm(false);
+                                }}
+                                style={{
+                                    width: '48px', background: '#1a2a1a', color: '#9cff9c',
+                                    border: '1px solid #4f9b54', borderRadius: '3px',
+                                    fontSize: '14px', fontFamily: 'inherit',
+                                    padding: '1px 4px', outline: 'none', textAlign: 'right',
+                                }}
+                            />
+                        ) : (
+                            <span
+                                style={{ ...metaValueStyle, cursor: 'pointer', borderBottom: '1px dashed #555' }}
+                                title="Click to edit tempo"
+                                onClick={() => { setBpmInput(String(bpm ?? 120)); setEditingBpm(true); }}
+                            >
+                                {bpm ?? 120}
+                            </span>
+                        )}
+                    </div>
                     <div style={metaBlockStyle}>
                         <span style={metaLabelStyle}>TRACKS</span>
                         <span style={metaValueStyle}>{tracks.length}</span>
@@ -212,9 +254,9 @@ function TrackRow({ track, isSelected, isPlaying, timelineDurationMs, onSelect, 
         <div
             style={{
                 display: 'grid',
-                gridTemplateColumns: '200px 60px 120px 28px 1fr',
+                gridTemplateColumns: '200px 36px 110px 28px 1fr',
                 alignItems: 'center',
-                minHeight: '40px',
+                minHeight: '36px',
                 borderBottom: '1px solid #1e1e1e',
                 background: isSelected ? '#1c241c' : '#111'
             }}
@@ -261,20 +303,23 @@ function TrackRow({ track, isSelected, isPlaying, timelineDurationMs, onSelect, 
                 )}
             </div>
 
+            {/* Mute */}
             <div style={{ display: 'flex', justifyContent: 'center' }}>
-                <button
+                <SmallButton
                     onClick={(e) => { e.stopPropagation(); onToggleMute(); }}
-                    style={{
-                        ...muteButtonStyle,
-                        background: mix.mute ? '#732b2b' : '#2a2a2a',
-                        borderColor: mix.mute ? '#b74d4d' : '#555'
-                    }}
+                    active={mix.mute}
+                    activeBackground="#732b2b"
+                    activeBorder="#b74d4d"
+                    activeColor="#f2f2f2"
+                    hoverBorder="#888"
+                    title={mix.mute ? 'Unmute' : 'Mute'}
                 >
                     M
-                </button>
+                </SmallButton>
             </div>
 
-            <div style={{ padding: '0 12px' }}>
+            {/* Volume */}
+            <div style={{ padding: '0 8px' }}>
                 <input
                     type="range"
                     min="0"
@@ -289,29 +334,14 @@ function TrackRow({ track, isSelected, isPlaying, timelineDurationMs, onSelect, 
 
             {/* Delete track */}
             <div style={{ display: 'flex', justifyContent: 'center' }}>
-                <button
+                <SmallButton
                     onClick={handleRemove}
                     title={`Remove "${trackName}"`}
-                    style={{
-                        width: '18px',
-                        height: '18px',
-                        padding: 0,
-                        background: 'transparent',
-                        border: '1px solid #444',
-                        borderRadius: '3px',
-                        color: '#888',
-                        fontSize: '13px',
-                        lineHeight: '1',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor = '#c44'; e.currentTarget.style.color = '#f88'; }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = '#444'; e.currentTarget.style.color = '#888'; }}
+                    hoverBorder="#c44"
+                    hoverColor="#f88"
                 >
                     ×
-                </button>
+                </SmallButton>
             </div>
 
             {/* Note/timeline area — clicking here seeks, does not select */}
@@ -359,17 +389,6 @@ function TrackRow({ track, isSelected, isPlaying, timelineDurationMs, onSelect, 
         </div>
     );
 }
-
-const muteButtonStyle = {
-    width: '32px',
-    height: '24px',
-    borderRadius: '4px',
-    border: '1px solid #555',
-    color: '#f2f2f2',
-    cursor: 'pointer',
-    fontSize: '11px',
-    fontFamily: 'inherit'
-};
 
 const metaBlockStyle = {
     display: 'flex',

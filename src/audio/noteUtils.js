@@ -16,32 +16,33 @@ export function getBeatsPerBar(timeSignatures) {
     return sig?.numerator ?? 4;
 }
 
-// Convert a 0-based absolute beat offset to a 1-indexed { bar, beat }.
+// Convert a 0-based absolute beat offset to { bar (1-indexed), beat (0-indexed within bar) }.
 export function absoluteBeatToBarBeat(absoluteBeat, timeSignatures) {
     const beatsPerBar = getBeatsPerBar(timeSignatures);
     const bar = Math.floor(absoluteBeat / beatsPerBar) + 1;
-    const beat = (absoluteBeat % beatsPerBar) + 1;
+    const beat = absoluteBeat % beatsPerBar;
     return { bar, beat: Math.round(beat * 10000) / 10000 };
 }
 
-// Convert a 1-indexed { bar, beat } back to a 0-based absolute beat offset.
+// Convert { bar (1-indexed), beat (0-indexed within bar) } to a 0-based absolute beat offset.
 export function barBeatToAbsoluteBeat(bar, beat, timeSignatures) {
     const beatsPerBar = getBeatsPerBar(timeSignatures);
-    return (bar - 1) * beatsPerBar + (beat - 1);
+    return (bar - 1) * beatsPerBar + beat;
 }
 
-// A4 = MIDI 69.
+// A4 = MIDI 69. Returns note names in the format "C4", "C4s", "D4", "D4s" etc.
 export function midiToNoteName(n) {
     const octave = Math.floor(n / 12) - 1;
-    return CHROMATIC_SCALE[n % 12] + octave;
+    const note = CHROMATIC_SCALE[n % 12];
+    return note.length === 2 ? note[0] + octave + 's' : note + octave;
 }
 
-// Returns the MIDI note number for a note name string ("Cs4" → 61), or null if invalid.
+// Returns the MIDI note number for a note name string ("C4s" → 61, "F4" → 65), or null if invalid.
 export function noteNameToMidi(name) {
     if (!name || name === '-') return null;
-    const match = name.match(/^([A-G]s?)(-?\d+)$/);
+    const match = name.match(/^([A-G])(-?\d+)(s?)$/);
     if (!match) return null;
-    const noteIndex = CHROMATIC_SCALE.indexOf(match[1]);
+    const noteIndex = CHROMATIC_SCALE.indexOf(match[3] === 's' ? match[1] + 's' : match[1]);
     if (noteIndex < 0) return null;
     return (parseInt(match[2], 10) + 1) * 12 + noteIndex;
 }

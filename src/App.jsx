@@ -13,6 +13,7 @@ import VCA from './components/VCA.jsx';
 import Delay from './components/Delay.jsx';
 import MFX from './components/MFX.jsx';
 import Transport from './components/Transport.jsx';
+import PianoRoll from './components/PianoRoll.jsx';
 import {
     clearAllModules,
     connectModules,
@@ -31,6 +32,7 @@ import {
     buildNotesFromMidiEvents,
     importMidiFile,
     loadSession,
+    updateSession,
     play,
     rewind,
     seekTo,
@@ -138,7 +140,7 @@ function migrateTrackToFlatNotes(track, timeSignatures = []) {
         if (!seq || !Array.isArray(seq.events)) continue;
         const seqLengthBeats = seq.events.reduce((max, ev) => {
             const startBeat = (ev.bar != null && ev.beat != null)
-                ? (ev.bar - 1) * beatsPerBar + (ev.beat - 1) : 0;
+                ? (ev.bar - 1) * beatsPerBar + ev.beat : 0;
             return Math.max(max, startBeat + (ev.duration ?? ev.beats ?? 0.25));
         }, 0);
         const repeat = entry.repeat || 1;
@@ -148,17 +150,17 @@ function migrateTrackToFlatNotes(track, timeSignatures = []) {
                 if (!ev.note || ev.note === '-') continue;
                 const duration = ev.duration ?? ev.beats ?? 0.25;
                 const evBeat = (ev.bar != null && ev.beat != null)
-                    ? (ev.bar - 1) * beatsPerBar + (ev.beat - 1) : 0;
+                    ? (ev.bar - 1) * beatsPerBar + ev.beat : 0;
                 const absoluteBeat = repOffset + evBeat;
                 const newBar = Math.floor(absoluteBeat / beatsPerBar) + 1;
-                const newBeat = Math.round(((absoluteBeat % beatsPerBar) + 1) * 10000) / 10000;
+                const newBeat = Math.round((absoluteBeat % beatsPerBar) * 10000) / 10000;
                 notes.push({ note: ev.note, bar: newBar, beat: newBeat, duration, velocity: ev.velocity ?? 0.8 });
             }
         }
     }
     return notes.sort((a, b) => {
-        const aBeat = (a.bar - 1) * beatsPerBar + (a.beat - 1);
-        const bBeat = (b.bar - 1) * beatsPerBar + (b.beat - 1);
+        const aBeat = (a.bar - 1) * beatsPerBar + a.beat;
+        const bBeat = (b.bar - 1) * beatsPerBar + b.beat;
         return aBeat - bBeat;
     });
 }
@@ -355,6 +357,11 @@ function App() {
     const midiImportInputRef = useRef(null);
     const projectLoadInputRef = useRef(null);
     const previousTrackIdsRef = useRef(new Set());
+    const keyboardScrollRef = useRef(null);
+    const pianoRollScrollRef = useRef(null);
+    const syncScrollLockRef = useRef(false);
+
+    const [viewMode, setViewMode] = useState('voice'); // 'voice' | 'notes'
 
     const selectedTrack = tracks.find((track) => track.id === selectedTrackId) ?? tracks[0] ?? null;
     const effectiveSelectedTrackId = selectedTrack?.id ?? null;
@@ -863,15 +870,22 @@ function App() {
             return { note: midiToNoteName(noteNumber), bar, beat, duration, velocity };
         });
 
-        updateTrack(selectedTrackId, (track) => {
-            // Remove existing notes that overlap the recorded range
+        const nextTracks = tracks.map((track) => {
+            if (track.id !== selectedTrackId) return track;
             const existing = (track.notes ?? []).filter(n => {
-                const noteBeat = (n.bar - 1) * 4 + (n.beat - 1); // rough absolute beat
+                const noteBeat = (n.bar - 1) * 4 + n.beat;
                 const noteMs = noteBeat * msPerBeat;
                 return noteMs < recorded.startMs || noteMs >= recorded.endMs;
             });
             return { ...track, notes: [...existing, ...newNotes] };
         });
+
+        const sessionState = updateSession(projectSequence, nextTracks);
+        const synced = nextTracks.map(track => {
+            const st = sessionState.tracks.find(t => t.id === track.id);
+            return st ? { ...track, noteSegments: st.noteSegments, durationMs: st.durationMs } : track;
+        });
+        setTracks(synced);
     };
 
     const handleToggleRecord = () => {
@@ -929,6 +943,37 @@ function App() {
                 (c) => c.from.moduleId === 'keyboard-singleton' && c.from.outputId === 'gate-out'
             )
         });
+    };
+
+    const handleNotesChange = (newNotes) => {
+        if (!selectedTrack) return;
+        const nextTracks = tracks.map((t) =>
+            t.id === selectedTrack.id ? { ...t, notes: newNotes } : t
+        );
+        const sessionState = updateSession(projectSequence, nextTracks);
+        const synced = nextTracks.map(track => {
+            const st = sessionState.tracks.find(t => t.id === track.id);
+            return st ? { ...track, noteSegments: st.noteSegments, durationMs: st.durationMs } : track;
+        });
+        setTracks(synced);
+    };
+
+    const handleKeyboardScroll = (e) => {
+        if (syncScrollLockRef.current) return;
+        const pr = pianoRollScrollRef.current;
+        if (!pr) return;
+        syncScrollLockRef.current = true;
+        pr.scrollTop = e.target.scrollTop;
+        syncScrollLockRef.current = false;
+    };
+
+    const handlePianoRollScroll = (e) => {
+        if (syncScrollLockRef.current) return;
+        const kb = keyboardScrollRef.current;
+        if (!kb) return;
+        syncScrollLockRef.current = true;
+        kb.scrollTop = e.target.scrollTop;
+        syncScrollLockRef.current = false;
     };
 
     const handleUpdatePortamento = (trackId, portamento) => {
@@ -1015,9 +1060,11 @@ function App() {
                 onImportMidi={() => midiImportInputRef.current?.click()}
                 onLoadProject={() => projectLoadInputRef.current?.click()}
                 onSaveProject={handleProjectSave}
+                viewMode={viewMode}
             />
 
-            <div ref={contentRef} style={{ flex: 1, position: 'relative', display: 'flex', minHeight: 0 }} onMouseMove={handleCanvasMouseMove}>
+            <div ref={contentRef} style={{ flex: 1, position: 'relative', display: 'flex', flexDirection: 'column', minHeight: 0 }} onMouseMove={handleCanvasMouseMove}>
+                {/* Wire overlay — absolutely covers full contentRef so getBoundingClientRect coords match */}
                 <svg key={overlayRefreshTick} style={{
                     position: 'absolute',
                     top: 0,
@@ -1088,84 +1135,122 @@ function App() {
                     })()}
                 </svg>
 
-                <div style={{ width: '200px', height: '100%', background: '#1a1a1a', borderRight: '2px solid #444', flexShrink: 0 }}>
-                    <Keyboard
-                        module={{ id: 'keyboard-singleton' }}
-                        onOutputClick={handleOutputClick}
-                        isConnecting={connectingFrom?.moduleId === 'keyboard-singleton'}
-                        isFixed={true}
-                        selectedTrackId={effectiveSelectedTrackId}
-                        selectedTrackLabel={selectedTrack?.name ?? null}
-                    />
+                {/* Full-width track title bar */}
+                <div style={{ height: '30px', borderBottom: '1px solid #2d2d2d', display: 'flex', alignItems: 'center', padding: '0 10px', gap: '8px', background: '#1a1a1a', flexShrink: 0, zIndex: 1 }}>
+                    {/* Mode toggle buttons */}
+                    {(['voice', 'notes']).map((mode) => (
+                        <button
+                            key={mode}
+                            onClick={() => setViewMode(mode)}
+                            style={{
+                                padding: '2px 10px',
+                                fontSize: '10px',
+                                fontWeight: 600,
+                                letterSpacing: '0.06em',
+                                textTransform: 'uppercase',
+                                border: `1px solid ${viewMode === mode ? '#5a9a5a' : '#444'}`,
+                                borderRadius: '10px',
+                                background: viewMode === mode ? '#2a4a2a' : 'transparent',
+                                color: viewMode === mode ? '#8adb8a' : '#666',
+                                cursor: 'pointer',
+                                lineHeight: 1.4,
+                                flexShrink: 0,
+                            }}
+                        >
+                            {mode}
+                        </button>
+                    ))}
+                    <div style={{ width: '1px', alignSelf: 'stretch', background: '#333', margin: '4px 2px' }} />
+                    <span style={{ color: '#555', fontSize: '11px', letterSpacing: '0.06em', flexShrink: 0 }}>TRACK:</span>
+                    <span style={{ color: '#8a8a8a', fontSize: '11px', letterSpacing: '0.06em', flexShrink: 0 }}>
+                        {selectedTrack ? selectedTrack.name : 'none'}
+                    </span>
+                    {selectedTrack && (
+                        <>
+                            <div style={{ width: '1px', alignSelf: 'stretch', background: '#333', margin: '4px 4px' }} />
+                            <span style={{ color: '#555', fontSize: '10px', letterSpacing: '0.05em', flexShrink: 0 }}>VOICES</span>
+                            <select
+                                value={selectedTrack.polyphony ?? 4}
+                                onChange={(e) => handleUpdatePolyphony(selectedTrack.id, Number(e.target.value))}
+                                style={{ width: '36px', background: '#1e1e1e', color: '#aaa', border: '1px solid #444', borderRadius: '3px', fontSize: '11px', height: '20px', padding: '0 2px', cursor: 'pointer', outline: 'none' }}
+                                title="Voices (polyphony)"
+                            >
+                                {Array.from({ length: 16 }, (_, i) => i + 1).map(n => (
+                                    <option key={n} value={n}>{n}</option>
+                                ))}
+                            </select>
+                        </>
+                    )}
+                    {selectedTrack && (selectedTrack.polyphony ?? 4) === 1 && (
+                        <>
+                            <span style={{ color: '#555', fontSize: '10px', letterSpacing: '0.05em', flexShrink: 0 }}>PORTA</span>
+                            <input
+                                type="range" min="0" max="2" step="0.01"
+                                value={selectedTrack.portamento ?? 0}
+                                onChange={(e) => handleUpdatePortamento(selectedTrack.id, parseFloat(e.target.value))}
+                                style={{ width: '80px', cursor: 'pointer', accentColor: COLOR_SLIDER }}
+                                title={`Portamento: ${(selectedTrack.portamento ?? 0).toFixed(2)}s`}
+                            />
+                            <span style={{ color: '#bbb', fontSize: '10px', minWidth: '28px' }}>
+                                {(selectedTrack.portamento ?? 0).toFixed(2)}s
+                            </span>
+                        </>
+                    )}
                 </div>
 
-                <div style={{ flex: 1, position: 'relative', minWidth: 0 }}>
-                    <div style={{ height: '32px', borderBottom: '1px solid #2d2d2d', display: 'flex', alignItems: 'center', padding: '0 14px', gap: '12px', background: '#1a1a1a' }}>
-                        <span style={{ color: '#8a8a8a', fontSize: '11px', letterSpacing: '0.06em', flexShrink: 0 }}>
-                            {selectedTrack ? selectedTrack.name.toUpperCase() : 'NO TRACK SELECTED'}
-                        </span>
-                        {selectedTrack && (
-                            <>
-                                <span style={{ color: '#444', fontSize: '11px' }}>·</span>
-                                <span style={{ color: '#bbb', fontSize: '10px', letterSpacing: '0.05em', flexShrink: 0 }}>VOICES</span>
-                                <select
-                                    value={selectedTrack.polyphony ?? 4}
-                                    onChange={(e) => handleUpdatePolyphony(selectedTrack.id, Number(e.target.value))}
-                                    style={{
-                                        background: '#2a2a2a', color: '#ccc',
-                                        border: '1px solid #555', borderRadius: '4px',
-                                        fontSize: '10px', height: '22px', padding: '0 4px', cursor: 'pointer', outline: 'none',
-                                    }}
-                                >
-                                    {Array.from({ length: 16 }, (_, i) => i + 1).map(n => (
-                                        <option key={n} value={n}>{n}</option>
-                                    ))}
-                                </select>
-                                {(selectedTrack.polyphony ?? 4) === 1 && (
-                                    <>
-                                        <span style={{ color: '#444', fontSize: '11px' }}>·</span>
-                                        <span style={{ color: '#bbb', fontSize: '10px', letterSpacing: '0.05em', flexShrink: 0 }}>PORTA</span>
-                                        <input
-                                            type="range" min="0" max="2" step="0.01"
-                                            value={selectedTrack.portamento ?? 0}
-                                            onChange={(e) => handleUpdatePortamento(selectedTrack.id, parseFloat(e.target.value))}
-                                            style={{ width: '80px', cursor: 'pointer', accentColor: COLOR_SLIDER }}
-                                            title={`Portamento: ${(selectedTrack.portamento ?? 0).toFixed(2)}s`}
-                                        />
-                                        <span style={{ color: '#bbb', fontSize: '10px', minWidth: '28px' }}>
-                                            {(selectedTrack.portamento ?? 0).toFixed(2)}s
-                                        </span>
-                                    </>
-                                )}
-                            </>
+                {/* Main row: keyboard | canvas/piano-roll | amplifier */}
+                <div style={{ flex: 1, position: 'relative', display: 'flex', minHeight: 0 }}>
+                    <div style={{ width: '165px', height: '100%', background: '#1a1a1a', borderRight: '2px solid #444', flexShrink: 0 }}>
+                        <Keyboard
+                            module={{ id: 'keyboard-singleton' }}
+                            onOutputClick={handleOutputClick}
+                            isConnecting={connectingFrom?.moduleId === 'keyboard-singleton'}
+                            isFixed={true}
+                            selectedTrackId={effectiveSelectedTrackId}
+                            selectedTrackLabel={selectedTrack?.name ?? null}
+                            scrollContainerRef={keyboardScrollRef}
+                            onKeyboardScroll={handleKeyboardScroll}
+                        />
+                    </div>
+
+                    <div style={{ flex: 1, position: 'relative', minWidth: 0, display: 'flex' }}>
+                        {viewMode === 'notes' ? (
+                            <PianoRoll
+                                track={selectedTrack}
+                                timeSignatures={projectSequence.timeSignatures}
+                                onNotesChange={handleNotesChange}
+                                scrollRef={pianoRollScrollRef}
+                                onScroll={handlePianoRollScroll}
+                            />
+                        ) : (
+                            <Canvas
+                                canvasRef={canvasRef}
+                                modules={selectedModules}
+                                connections={selectedConnections}
+                                connectingFrom={connectingFrom}
+                                onModuleDragStart={handleModuleDragStart}
+                                onOutputClick={handleOutputClick}
+                                onMouseMove={handleCanvasMouseMove}
+                                onClick={handleCanvasClick}
+                                audioContext={audioContext}
+                                moduleUiRevision={moduleUiRevision}
+                                onRemove={removeModule}
+                            />
                         )}
                     </div>
-                    <Canvas
-                        canvasRef={canvasRef}
-                        modules={selectedModules}
-                        connections={selectedConnections}
-                        connectingFrom={connectingFrom}
-                        onModuleDragStart={handleModuleDragStart}
-                        onOutputClick={handleOutputClick}
-                        onMouseMove={handleCanvasMouseMove}
-                        onClick={handleCanvasClick}
-                        audioContext={audioContext}
-                        moduleUiRevision={moduleUiRevision}
-                        onRemove={removeModule}
-                    />
-                </div>
 
-                <div style={{ width: '220px', height: '100%', background: '#1a1a1a', borderLeft: '2px solid #444', flexShrink: 0 }}>
-                    <Amplifier
-                        onOutputClick={handleOutputClick}
-                        isConnecting={connectingFrom?.moduleId === 'track-output-singleton'}
-                        audioContext={audioContext}
-                        setAudioContext={setAudioContext}
-                        isFixed={true}
-                        isPoweredOn={isPoweredOn}
-                        selectedTrackLabel={selectedTrack?.name ?? null}
-                    />
-                </div>
+                    <div style={{ width: '220px', height: '100%', background: '#1a1a1a', borderLeft: '2px solid #444', flexShrink: 0 }}>
+                        <Amplifier
+                            onOutputClick={handleOutputClick}
+                            isConnecting={connectingFrom?.moduleId === 'track-output-singleton'}
+                            audioContext={audioContext}
+                            setAudioContext={setAudioContext}
+                            isFixed={true}
+                            isPoweredOn={isPoweredOn}
+                            selectedTrackLabel={selectedTrack?.name ?? null}
+                        />
+                    </div>
+                </div>{/* end main row */}
             </div>
 
             <Transport
@@ -1184,12 +1269,18 @@ function App() {
                 onSetTransportPosition={seekTo}
                 isRecording={isRecording}
                 onRecord={handleToggleRecord}
+                bpm={projectSequence.bpm ?? 120}
+                onBpmChange={(newBpm) => {
+                    const updated = { ...projectSequence, bpm: newBpm };
+                    setProjectSequence(updated);
+                    updateSession(updated, tracks);
+                }}
             />
         </div>
     );
 }
 
-function Toolbar({ addModule, isPoweredOn, togglePower, hasSelectedTrack, audioError, voiceStatus, onImportMidi, onLoadProject, onSaveProject }) {
+function Toolbar({ addModule, isPoweredOn, togglePower, hasSelectedTrack, audioError, voiceStatus, onImportMidi, onLoadProject, onSaveProject, viewMode }) {
 
 
     return (
@@ -1208,15 +1299,19 @@ function Toolbar({ addModule, isPoweredOn, togglePower, hasSelectedTrack, audioE
             <ToolbarButton onClick={onLoadProject}>LOAD</ToolbarButton>
             <ToolbarButton onClick={onSaveProject}>SAVE</ToolbarButton>
             <ToolbarButton onClick={onImportMidi}>IMPORT</ToolbarButton>
-            <div style={{ width: '1px', alignSelf: 'stretch', background: '#505050', margin: '6px 4px' }} />
-            <ToolbarButton onClick={() => addModule('oscillator')} disabled={!hasSelectedTrack}>+ VCO</ToolbarButton>
-            <ToolbarButton onClick={() => addModule('filter')} disabled={!hasSelectedTrack}>+ VCF</ToolbarButton>
-            <ToolbarButton onClick={() => addModule('envelope')} disabled={!hasSelectedTrack}>+ ENV</ToolbarButton>
-            <ToolbarButton onClick={() => addModule('random')} disabled={!hasSelectedTrack}>+ RND</ToolbarButton>
-            <ToolbarButton onClick={() => addModule('mixer')} disabled={!hasSelectedTrack}>+ MIX</ToolbarButton>
-            <ToolbarButton onClick={() => addModule('multi')} disabled={!hasSelectedTrack}>+ MUL</ToolbarButton>
-            <ToolbarButton onClick={() => addModule('vca')} disabled={!hasSelectedTrack}>+ VCA</ToolbarButton>
-            <ToolbarButton onClick={() => addModule('mfx')} disabled={!hasSelectedTrack}>+ MFX</ToolbarButton>
+            {viewMode !== 'notes' && (
+                <>
+                    <div style={{ width: '1px', alignSelf: 'stretch', background: '#505050', margin: '6px 4px' }} />
+                    <ToolbarButton onClick={() => addModule('oscillator')} disabled={!hasSelectedTrack}>+ VCO</ToolbarButton>
+                    <ToolbarButton onClick={() => addModule('filter')} disabled={!hasSelectedTrack}>+ VCF</ToolbarButton>
+                    <ToolbarButton onClick={() => addModule('envelope')} disabled={!hasSelectedTrack}>+ ENV</ToolbarButton>
+                    <ToolbarButton onClick={() => addModule('random')} disabled={!hasSelectedTrack}>+ RND</ToolbarButton>
+                    <ToolbarButton onClick={() => addModule('mixer')} disabled={!hasSelectedTrack}>+ MIX</ToolbarButton>
+                    <ToolbarButton onClick={() => addModule('multi')} disabled={!hasSelectedTrack}>+ MUL</ToolbarButton>
+                    <ToolbarButton onClick={() => addModule('vca')} disabled={!hasSelectedTrack}>+ VCA</ToolbarButton>
+                    <ToolbarButton onClick={() => addModule('mfx')} disabled={!hasSelectedTrack}>+ MFX</ToolbarButton>
+                </>
+            )}
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
 
                 {audioError && (

@@ -104,7 +104,7 @@ function Amplifier({ onOutputClick, isConnecting, audioContext, setAudioContext,
     }, [isPoweredOn]);
     
     return (
-        <ModuleShell title="TRACK OUT" isFixed>
+        <ModuleShell isFixed>
                 {/* Oscilloscope */}
                 <div style={{ marginBottom: '15px' }}>
                     <label style={{ fontSize: '10px', color: '#aaa', display: 'block', marginBottom: '5px' }}>

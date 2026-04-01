@@ -53,9 +53,16 @@ let playbackAnimationFrameId = null;
 // ── Recording state ───────────────────────────────────────────────────────────
 let isRecording = false;
 let recordingStartPositionMs = 0;
+let recordingWallStartMs = 0;   // wall-clock at recording start (for timing when not playing)
 let recordingEndPositionMs = 0;
 let activeRecordingNotes = new Map(); // noteNumber → { startPositionMs, velocity }
 let capturedNotes = [];              // completed notes: { noteNumber, velocity, startMs, durationMs }
+
+function getRecordingPositionMs() {
+    if (isPlaying) return getCurrentPlaybackPositionMs();
+    // Advance from the playhead position using wall-clock time so notes get proper timing
+    return recordingStartPositionMs + (performance.now() - recordingWallStartMs);
+}
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
@@ -147,7 +154,7 @@ function handleNoteOn(trackId, noteNumber, velocity, timestamp) {
     if (isRecording && trackId === activeTrackId) {
         activeRecordingNotes.set(noteNumber, {
             velocity,
-            startPositionMs: getCurrentPlaybackPositionMs()
+            startPositionMs: getRecordingPositionMs()
         });
     }
 }
@@ -233,6 +240,7 @@ export function getIsRecording() { return isRecording; }
 export function startRecording() {
     isRecording = true;
     recordingStartPositionMs = getCurrentPlaybackPositionMs();
+    recordingWallStartMs = performance.now();
     recordingEndPositionMs = recordingStartPositionMs;
     activeRecordingNotes.clear();
     capturedNotes = [];
@@ -245,8 +253,8 @@ export function startRecording() {
 export function stopRecording() {
     if (!isRecording) return null;
     isRecording = false;
-    // Close any still-held notes
-    const endPositionMs = getCurrentPlaybackPositionMs();
+    // Close any still-held notes using wall-clock time to match how note-ons were timestamped
+    const endPositionMs = getRecordingPositionMs();
     activeRecordingNotes.forEach((data, noteNumber) => {
         capturedNotes.push({
             noteNumber,
@@ -290,7 +298,7 @@ export function loadSession(sessionMeta, tracks) {
         const durationMs = Number.isFinite(track.durationMs) && track.durationMs > 0
             ? track.durationMs
             : notes.reduce((max, note) => {
-                const startBeat = barBeatToAbsoluteBeat(note.bar ?? 1, note.beat ?? 1, timeSignatures);
+                const startBeat = barBeatToAbsoluteBeat(note.bar ?? 1, note.beat ?? 0, timeSignatures);
                 return Math.max(max, (startBeat + (note.duration || QUANTIZE_RESOLUTION)) * msPerBeat);
             }, 0);
 
@@ -301,7 +309,7 @@ export function loadSession(sessionMeta, tracks) {
             .map(note => {
                 const noteNumber = noteNameToMidi(note.note);
                 if (noteNumber == null) return null;
-                const startBeat = barBeatToAbsoluteBeat(note.bar ?? 1, note.beat ?? 1, timeSignatures);
+                const startBeat = barBeatToAbsoluteBeat(note.bar ?? 1, note.beat ?? 0, timeSignatures);
                 const startMs = startBeat * msPerBeat;
                 const endMs = startMs + (note.duration || QUANTIZE_RESOLUTION) * msPerBeat;
                 return { noteNumber, startMs, endMs };
@@ -320,6 +328,71 @@ export function loadSession(sessionMeta, tracks) {
         durationMs: sessionTracks.reduce((max, t) => Math.max(max, t.durationMs), 0),
         tracks: sessionTracks
     };
+
+    notifyTransportListeners();
+    return getTransportState();
+}
+
+/**
+ * Updates the loaded session's tracks/meta without stopping or resetting playback.
+ * If playing, cancels existing scheduled events and reschedules from the current position.
+ * Use this instead of loadSession for live edits (recording, piano roll, BPM changes).
+ */
+export function updateSession(sessionMeta, tracks) {
+    const bpm = sessionMeta?.bpm ?? sessionMeta?.tempoMap?.[0]?.bpm ?? 120;
+    const msPerBeat = 60000 / bpm;
+    const timeSignatures = sessionMeta?.timeSignatures ?? [];
+
+    const validTracks = (tracks ?? []).filter(track =>
+        (Array.isArray(track?.notes) && track.notes.length > 0) ||
+        (Array.isArray(track?.sequences) && track.sequences.length > 0 &&
+         Array.isArray(track?.arrangement) && track.arrangement.length > 0)
+    );
+
+    if (!validTracks.length) {
+        loadedSession = null;
+        notifyTransportListeners();
+        return getTransportState();
+    }
+
+    const sessionTracks = validTracks.map(track => {
+        const notes = flattenTrackToNotes(track, timeSignatures);
+        const durationMs = Number.isFinite(track.durationMs) && track.durationMs > 0
+            ? track.durationMs
+            : notes.reduce((max, note) => {
+                const startBeat = barBeatToAbsoluteBeat(note.bar ?? 1, note.beat ?? 0, timeSignatures);
+                return Math.max(max, (startBeat + (note.duration || QUANTIZE_RESOLUTION)) * msPerBeat);
+            }, 0);
+        const noteSegments = notes
+            .filter(n => n.note && n.note !== '-')
+            .map(note => {
+                const noteNumber = noteNameToMidi(note.note);
+                if (noteNumber == null) return null;
+                const startBeat = barBeatToAbsoluteBeat(note.bar ?? 1, note.beat ?? 0, timeSignatures);
+                const startMs = startBeat * msPerBeat;
+                const endMs = startMs + (note.duration || QUANTIZE_RESOLUTION) * msPerBeat;
+                return { noteNumber, startMs, endMs };
+            })
+            .filter(Boolean)
+            .sort((a, b) => a.startMs - b.startMs || a.noteNumber - b.noteNumber);
+        return { id: track.id, name: track.name, notes, noteSegments, durationMs, mix: track.mix ?? { volume: 0.8, mute: false } };
+    });
+
+    loadedSession = {
+        bpm,
+        ticksPerBeat: sessionMeta?.ticksPerBeat ?? null,
+        tempoMap: sessionMeta?.tempoMap ?? [],
+        timeSignatures,
+        durationMs: sessionTracks.reduce((max, t) => Math.max(max, t.durationMs), 0),
+        tracks: sessionTracks
+    };
+
+    if (isPlaying) {
+        // Snapshot the current playback position and reschedule remaining events
+        playbackPositionMs = getCurrentPlaybackPositionMs();
+        playbackStartTimestampMs = performance.now();
+        scheduleEvents(playbackPositionMs);
+    }
 
     notifyTransportListeners();
     return getTransportState();
@@ -345,6 +418,15 @@ export async function play() {
     isPlaying = true;
     startPlaybackProgressUpdates();
 
+    scheduleEvents(startOffsetMs);
+
+    notifyTransportListeners();
+    return getTransportState();
+}
+
+function scheduleEvents(startOffsetMs) {
+    clearScheduledPlayback();
+
     const msPerBeat = 60000 / (loadedSession.bpm ?? 120);
     const timeSignatures = loadedSession.timeSignatures ?? [];
     const events = [];
@@ -354,7 +436,7 @@ export async function play() {
             if (!note.note || note.note === '-') continue;
             const noteNumber = noteNameToMidi(note.note);
             if (noteNumber == null) continue;
-            const absoluteBeat = barBeatToAbsoluteBeat(note.bar ?? 1, note.beat ?? 1, timeSignatures);
+            const absoluteBeat = barBeatToAbsoluteBeat(note.bar ?? 1, note.beat ?? 0, timeSignatures);
             const timeMs = absoluteBeat * msPerBeat;
             const noteDurationMs = (note.duration || QUANTIZE_RESOLUTION) * msPerBeat;
             events.push({ type: 'noteOn', trackId: track.id, noteNumber, velocity: note.velocity || 0.8, timeMs });
@@ -364,6 +446,7 @@ export async function play() {
 
     events.sort((a, b) => a.timeMs - b.timeMs || getEventPriority(a) - getEventPriority(b));
     const remaining = events.filter(e => e.timeMs >= startOffsetMs);
+    const nowWall = performance.now();
 
     playbackTimeouts = remaining.map(event =>
         window.setTimeout(() => {
@@ -374,7 +457,7 @@ export async function play() {
                 registerNoteOff(event.trackId, event.noteNumber);
                 handleNoteOff(event.trackId, event.noteNumber, performance.now());
             }
-        }, Math.max(0, event.timeMs - startOffsetMs))
+        }, Math.max(0, (event.timeMs - startOffsetMs) - (performance.now() - nowWall)))
     );
 
     const totalDurationMs = events.length > 0 ? Math.max(...events.map(e => e.timeMs)) : 0;
@@ -385,9 +468,6 @@ export async function play() {
         playbackPositionMs = totalDurationMs;
         notifyTransportListeners();
     }, Math.max(0, totalDurationMs - startOffsetMs) + 10);
-
-    notifyTransportListeners();
-    return getTransportState();
 }
 
 export function stop() { stopSequencePlayback(); return getTransportState(); }

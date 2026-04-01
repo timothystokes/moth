@@ -59,6 +59,7 @@ export default function ModuleShell({ title, module, onDragStart, onRemove, widt
 
     return (
         <div style={outerStyle}>
+            {title && (
             <div
                 style={headerStyle}
                 onMouseDown={onDragStart ? (e) => onDragStart(e, module.id) : undefined}
@@ -87,7 +88,8 @@ export default function ModuleShell({ title, module, onDragStart, onRemove, widt
                     >×</button>
                 )}
             </div>
-            <div className="module-body" style={{ padding: '10px 10px 12px', flex: isFixed ? 1 : undefined, overflow: isFixed ? 'hidden' : undefined }}>
+            )}
+            <div className="module-body" style={{ padding: '10px 10px 12px', flex: isFixed ? 1 : undefined, overflow: isFixed ? 'hidden' : undefined, display: isFixed ? 'flex' : undefined, flexDirection: isFixed ? 'column' : undefined, minHeight: isFixed ? 0 : undefined }}>
                 {children}
             </div>
         </div>

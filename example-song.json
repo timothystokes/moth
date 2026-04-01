@@ -21,966 +21,966 @@
         {
           "note": "F4",
           "bar": 1,
-          "beat": 1,
+          "beat": 0.0,
           "duration": 1,
           "velocity": 0.74
         },
         {
-          "note": "Gs4",
+          "note": "G4s",
           "bar": 1,
-          "beat": 2,
+          "beat": 1.0,
           "duration": 0.75,
           "velocity": 0.91
         },
         {
           "note": "F4",
           "bar": 1,
-          "beat": 2.75,
+          "beat": 1.75,
           "duration": 0.5,
           "velocity": 0.82
         },
         {
           "note": "F4",
           "bar": 1,
-          "beat": 3.25,
+          "beat": 2.25,
           "duration": 0.25,
           "velocity": 0.7
         },
         {
-          "note": "As4",
+          "note": "A4s",
           "bar": 1,
-          "beat": 3.5,
+          "beat": 2.5,
           "duration": 0.5,
           "velocity": 0.66
         },
         {
           "note": "F4",
           "bar": 1,
-          "beat": 4.0,
+          "beat": 3.0,
           "duration": 0.5,
           "velocity": 0.6
         },
         {
-          "note": "Ds4",
+          "note": "D4s",
           "bar": 1,
-          "beat": 4.5,
+          "beat": 3.5,
           "duration": 0.5,
           "velocity": 0.78
         },
         {
           "note": "F4",
           "bar": 2,
-          "beat": 1.0,
+          "beat": 0.0,
           "duration": 1,
           "velocity": 0.76
         },
         {
           "note": "C5",
           "bar": 2,
-          "beat": 2.0,
+          "beat": 1.0,
           "duration": 0.75,
           "velocity": 0.7
         },
         {
           "note": "F4",
           "bar": 2,
-          "beat": 2.75,
+          "beat": 1.75,
           "duration": 0.5,
           "velocity": 0.76
         },
         {
           "note": "F4",
           "bar": 2,
-          "beat": 3.25,
+          "beat": 2.25,
           "duration": 0.25,
           "velocity": 0.79
         },
         {
-          "note": "Cs5",
+          "note": "C5s",
           "bar": 2,
-          "beat": 3.5,
+          "beat": 2.5,
           "duration": 0.5,
           "velocity": 0.78
         },
         {
           "note": "C5",
           "bar": 2,
-          "beat": 4.0,
+          "beat": 3.0,
           "duration": 0.5,
           "velocity": 0.71
         },
         {
-          "note": "Gs4",
+          "note": "G4s",
           "bar": 2,
-          "beat": 4.5,
+          "beat": 3.5,
           "duration": 0.5,
           "velocity": 0.83
         },
         {
           "note": "F4",
           "bar": 3,
-          "beat": 1.0,
+          "beat": 0.0,
           "duration": 0.5,
           "velocity": 0.87
         },
         {
           "note": "C5",
           "bar": 3,
-          "beat": 1.5,
+          "beat": 0.5,
           "duration": 0.5,
           "velocity": 0.71
         },
         {
           "note": "F5",
           "bar": 3,
-          "beat": 2.0,
+          "beat": 1.0,
           "duration": 0.5,
           "velocity": 0.73
         },
         {
           "note": "F4",
           "bar": 3,
-          "beat": 2.5,
+          "beat": 1.5,
           "duration": 0.25,
           "velocity": 0.72
         },
         {
-          "note": "Ds4",
+          "note": "D4s",
           "bar": 3,
-          "beat": 2.75,
+          "beat": 1.75,
           "duration": 0.5,
           "velocity": 0.88
         },
         {
-          "note": "Ds4",
+          "note": "D4s",
           "bar": 3,
-          "beat": 3.25,
+          "beat": 2.25,
           "duration": 0.25,
           "velocity": 0.86
         },
         {
           "note": "C4",
           "bar": 3,
-          "beat": 3.5,
+          "beat": 2.5,
           "duration": 0.5,
           "velocity": 0.83
         },
         {
           "note": "G4",
           "bar": 3,
-          "beat": 4.0,
+          "beat": 3.0,
           "duration": 0.5,
           "velocity": 0.79
         },
         {
           "note": "F4",
           "bar": 3,
-          "beat": 4.5,
+          "beat": 3.5,
           "duration": 1,
           "velocity": 0.76
         },
         {
           "note": "F4",
           "bar": 5,
-          "beat": 1,
+          "beat": 0.0,
           "duration": 1,
           "velocity": 0.88
         },
         {
-          "note": "Gs4",
+          "note": "G4s",
           "bar": 5,
-          "beat": 2,
+          "beat": 1.0,
           "duration": 0.75,
           "velocity": 0.85
         },
         {
           "note": "F4",
           "bar": 5,
-          "beat": 2.75,
+          "beat": 1.75,
           "duration": 0.5,
           "velocity": 0.84
         },
         {
           "note": "F4",
           "bar": 5,
-          "beat": 3.25,
+          "beat": 2.25,
           "duration": 0.25,
           "velocity": 0.73
         },
         {
-          "note": "As4",
+          "note": "A4s",
           "bar": 5,
-          "beat": 3.5,
+          "beat": 2.5,
           "duration": 0.5,
           "velocity": 0.73
         },
         {
           "note": "F4",
           "bar": 5,
-          "beat": 4.0,
+          "beat": 3.0,
           "duration": 0.5,
           "velocity": 0.88
         },
         {
-          "note": "Ds4",
+          "note": "D4s",
           "bar": 5,
-          "beat": 4.5,
+          "beat": 3.5,
           "duration": 0.5,
           "velocity": 0.79
         },
         {
           "note": "F4",
           "bar": 6,
-          "beat": 1.0,
+          "beat": 0.0,
           "duration": 1,
           "velocity": 0.78
         },
         {
           "note": "C5",
           "bar": 6,
-          "beat": 2.0,
+          "beat": 1.0,
           "duration": 0.75,
           "velocity": 0.86
         },
         {
           "note": "F4",
           "bar": 6,
-          "beat": 2.75,
+          "beat": 1.75,
           "duration": 0.5,
           "velocity": 0.85
         },
         {
           "note": "F4",
           "bar": 6,
-          "beat": 3.25,
+          "beat": 2.25,
           "duration": 0.25,
           "velocity": 0.82
         },
         {
-          "note": "Cs5",
+          "note": "C5s",
           "bar": 6,
-          "beat": 3.5,
+          "beat": 2.5,
           "duration": 0.5,
           "velocity": 0.8
         },
         {
           "note": "C5",
           "bar": 6,
-          "beat": 4.0,
+          "beat": 3.0,
           "duration": 0.5,
           "velocity": 0.79
         },
         {
-          "note": "Gs4",
+          "note": "G4s",
           "bar": 6,
-          "beat": 4.5,
+          "beat": 3.5,
           "duration": 0.5,
           "velocity": 0.73
         },
         {
           "note": "F4",
           "bar": 7,
-          "beat": 1.0,
+          "beat": 0.0,
           "duration": 0.5,
           "velocity": 0.88
         },
         {
           "note": "C5",
           "bar": 7,
-          "beat": 1.5,
+          "beat": 0.5,
           "duration": 0.5,
           "velocity": 0.71
         },
         {
           "note": "F5",
           "bar": 7,
-          "beat": 2.0,
+          "beat": 1.0,
           "duration": 0.5,
           "velocity": 0.8
         },
         {
           "note": "F4",
           "bar": 7,
-          "beat": 2.5,
+          "beat": 1.5,
           "duration": 0.25,
           "velocity": 0.81
         },
         {
-          "note": "Ds4",
+          "note": "D4s",
           "bar": 7,
-          "beat": 2.75,
+          "beat": 1.75,
           "duration": 0.5,
           "velocity": 0.77
         },
         {
-          "note": "Ds4",
+          "note": "D4s",
           "bar": 7,
-          "beat": 3.25,
+          "beat": 2.25,
           "duration": 0.25,
           "velocity": 0.76
         },
         {
           "note": "C4",
           "bar": 7,
-          "beat": 3.5,
+          "beat": 2.5,
           "duration": 0.5,
           "velocity": 0.8
         },
         {
           "note": "G4",
           "bar": 7,
-          "beat": 4.0,
+          "beat": 3.0,
           "duration": 0.5,
           "velocity": 0.82
         },
         {
           "note": "F4",
           "bar": 7,
-          "beat": 4.5,
+          "beat": 3.5,
           "duration": 1,
           "velocity": 0.74
         },
         {
           "note": "F4",
           "bar": 9,
-          "beat": 1,
+          "beat": 0.0,
           "duration": 1,
           "velocity": 0.83
         },
         {
-          "note": "Gs4",
+          "note": "G4s",
           "bar": 9,
-          "beat": 2,
+          "beat": 1.0,
           "duration": 0.75,
           "velocity": 0.89
         },
         {
           "note": "F4",
           "bar": 9,
-          "beat": 2.75,
+          "beat": 1.75,
           "duration": 0.5,
           "velocity": 0.74
         },
         {
           "note": "F4",
           "bar": 9,
-          "beat": 3.25,
+          "beat": 2.25,
           "duration": 0.25,
           "velocity": 0.75
         },
         {
-          "note": "As4",
+          "note": "A4s",
           "bar": 9,
-          "beat": 3.5,
+          "beat": 2.5,
           "duration": 0.5,
           "velocity": 0.78
         },
         {
           "note": "F4",
           "bar": 9,
-          "beat": 4.0,
+          "beat": 3.0,
           "duration": 0.5,
           "velocity": 0.71
         },
         {
-          "note": "Ds4",
+          "note": "D4s",
           "bar": 9,
-          "beat": 4.5,
+          "beat": 3.5,
           "duration": 0.5,
           "velocity": 0.77
         },
         {
           "note": "F4",
           "bar": 10,
-          "beat": 1.0,
+          "beat": 0.0,
           "duration": 1,
           "velocity": 0.71
         },
         {
           "note": "C5",
           "bar": 10,
-          "beat": 2.0,
+          "beat": 1.0,
           "duration": 0.75,
           "velocity": 0.83
         },
         {
           "note": "F4",
           "bar": 10,
-          "beat": 2.75,
+          "beat": 1.75,
           "duration": 0.5,
           "velocity": 0.87
         },
         {
           "note": "F4",
           "bar": 10,
-          "beat": 3.25,
+          "beat": 2.25,
           "duration": 0.25,
           "velocity": 0.82
         },
         {
-          "note": "Cs5",
+          "note": "C5s",
           "bar": 10,
-          "beat": 3.5,
+          "beat": 2.5,
           "duration": 0.5,
           "velocity": 0.74
         },
         {
           "note": "C5",
           "bar": 10,
-          "beat": 4.0,
+          "beat": 3.0,
           "duration": 0.5,
           "velocity": 0.81
         },
         {
-          "note": "Gs4",
+          "note": "G4s",
           "bar": 10,
-          "beat": 4.5,
+          "beat": 3.5,
           "duration": 0.5,
           "velocity": 0.8
         },
         {
           "note": "F4",
           "bar": 11,
-          "beat": 1.0,
+          "beat": 0.0,
           "duration": 0.5,
           "velocity": 0.76
         },
         {
           "note": "C5",
           "bar": 11,
-          "beat": 1.5,
+          "beat": 0.5,
           "duration": 0.5,
           "velocity": 0.86
         },
         {
           "note": "F5",
           "bar": 11,
-          "beat": 2.0,
+          "beat": 1.0,
           "duration": 0.5,
           "velocity": 0.83
         },
         {
           "note": "F4",
           "bar": 11,
-          "beat": 2.5,
+          "beat": 1.5,
           "duration": 0.25,
           "velocity": 0.84
         },
         {
-          "note": "Ds4",
+          "note": "D4s",
           "bar": 11,
-          "beat": 2.75,
+          "beat": 1.75,
           "duration": 0.5,
           "velocity": 0.76
         },
         {
-          "note": "Ds4",
+          "note": "D4s",
           "bar": 11,
-          "beat": 3.25,
+          "beat": 2.25,
           "duration": 0.25,
           "velocity": 0.89
         },
         {
           "note": "C4",
           "bar": 11,
-          "beat": 3.5,
+          "beat": 2.5,
           "duration": 0.5,
           "velocity": 0.84
         },
         {
           "note": "G4",
           "bar": 11,
-          "beat": 4.0,
+          "beat": 3.0,
           "duration": 0.5,
           "velocity": 0.78
         },
         {
           "note": "F4",
           "bar": 11,
-          "beat": 4.5,
+          "beat": 3.5,
           "duration": 1,
           "velocity": 0.78
         },
         {
           "note": "F4",
           "bar": 13,
-          "beat": 1,
+          "beat": 0.0,
           "duration": 1,
           "velocity": 0.89
         },
         {
-          "note": "Gs4",
+          "note": "G4s",
           "bar": 13,
-          "beat": 2,
+          "beat": 1.0,
           "duration": 0.75,
           "velocity": 0.78
         },
         {
           "note": "F4",
           "bar": 13,
-          "beat": 2.75,
+          "beat": 1.75,
           "duration": 0.5,
           "velocity": 0.76
         },
         {
           "note": "F4",
           "bar": 13,
-          "beat": 3.25,
+          "beat": 2.25,
           "duration": 0.25,
           "velocity": 0.72
         },
         {
-          "note": "As4",
+          "note": "A4s",
           "bar": 13,
-          "beat": 3.5,
+          "beat": 2.5,
           "duration": 0.5,
           "velocity": 0.86
         },
         {
           "note": "F4",
           "bar": 13,
-          "beat": 4.0,
+          "beat": 3.0,
           "duration": 0.5,
           "velocity": 0.85
         },
         {
-          "note": "Ds4",
+          "note": "D4s",
           "bar": 13,
-          "beat": 4.5,
+          "beat": 3.5,
           "duration": 0.5,
           "velocity": 0.88
         },
         {
           "note": "F4",
           "bar": 14,
-          "beat": 1.0,
+          "beat": 0.0,
           "duration": 1,
           "velocity": 0.73
         },
         {
           "note": "C5",
           "bar": 14,
-          "beat": 2.0,
+          "beat": 1.0,
           "duration": 0.75,
           "velocity": 0.78
         },
         {
           "note": "F4",
           "bar": 14,
-          "beat": 2.75,
+          "beat": 1.75,
           "duration": 0.5,
           "velocity": 0.75
         },
         {
           "note": "F4",
           "bar": 14,
-          "beat": 3.25,
+          "beat": 2.25,
           "duration": 0.25,
           "velocity": 0.75
         },
         {
-          "note": "Cs5",
+          "note": "C5s",
           "bar": 14,
-          "beat": 3.5,
+          "beat": 2.5,
           "duration": 0.5,
           "velocity": 0.81
         },
         {
           "note": "C5",
           "bar": 14,
-          "beat": 4.0,
+          "beat": 3.0,
           "duration": 0.5,
           "velocity": 0.87
         },
         {
-          "note": "Gs4",
+          "note": "G4s",
           "bar": 14,
-          "beat": 4.5,
+          "beat": 3.5,
           "duration": 0.5,
           "velocity": 0.86
         },
         {
           "note": "F4",
           "bar": 15,
-          "beat": 1.0,
+          "beat": 0.0,
           "duration": 0.5,
           "velocity": 0.86
         },
         {
           "note": "C5",
           "bar": 15,
-          "beat": 1.5,
+          "beat": 0.5,
           "duration": 0.5,
           "velocity": 0.74
         },
         {
           "note": "F5",
           "bar": 15,
-          "beat": 2.0,
+          "beat": 1.0,
           "duration": 0.5,
           "velocity": 0.76
         },
         {
           "note": "F4",
           "bar": 15,
-          "beat": 2.5,
+          "beat": 1.5,
           "duration": 0.25,
           "velocity": 0.73
         },
         {
-          "note": "Ds4",
+          "note": "D4s",
           "bar": 15,
-          "beat": 2.75,
+          "beat": 1.75,
           "duration": 0.5,
           "velocity": 0.89
         },
         {
-          "note": "Ds4",
+          "note": "D4s",
           "bar": 15,
-          "beat": 3.25,
+          "beat": 2.25,
           "duration": 0.25,
           "velocity": 0.73
         },
         {
           "note": "C4",
           "bar": 15,
-          "beat": 3.5,
+          "beat": 2.5,
           "duration": 0.5,
           "velocity": 0.76
         },
         {
           "note": "G4",
           "bar": 15,
-          "beat": 4.0,
+          "beat": 3.0,
           "duration": 0.5,
           "velocity": 0.86
         },
         {
           "note": "F4",
           "bar": 15,
-          "beat": 4.5,
+          "beat": 3.5,
           "duration": 1,
           "velocity": 0.79
         },
         {
           "note": "F4",
           "bar": 17,
-          "beat": 1,
+          "beat": 0.0,
           "duration": 1,
           "velocity": 0.84
         },
         {
-          "note": "Gs4",
+          "note": "G4s",
           "bar": 17,
-          "beat": 2,
+          "beat": 1.0,
           "duration": 0.75,
           "velocity": 0.89
         },
         {
           "note": "F4",
           "bar": 17,
-          "beat": 2.75,
+          "beat": 1.75,
           "duration": 0.5,
           "velocity": 0.84
         },
         {
           "note": "F4",
           "bar": 17,
-          "beat": 3.25,
+          "beat": 2.25,
           "duration": 0.25,
           "velocity": 0.84
         },
         {
-          "note": "As4",
+          "note": "A4s",
           "bar": 17,
-          "beat": 3.5,
+          "beat": 2.5,
           "duration": 0.5,
           "velocity": 0.88
         },
         {
           "note": "F4",
           "bar": 17,
-          "beat": 4.0,
+          "beat": 3.0,
           "duration": 0.5,
           "velocity": 0.86
         },
         {
-          "note": "Ds4",
+          "note": "D4s",
           "bar": 17,
-          "beat": 4.5,
+          "beat": 3.5,
           "duration": 0.5,
           "velocity": 0.76
         },
         {
           "note": "F4",
           "bar": 18,
-          "beat": 1.0,
+          "beat": 0.0,
           "duration": 1,
           "velocity": 0.78
         },
         {
           "note": "C5",
           "bar": 18,
-          "beat": 2.0,
+          "beat": 1.0,
           "duration": 0.75,
           "velocity": 0.87
         },
         {
           "note": "F4",
           "bar": 18,
-          "beat": 2.75,
+          "beat": 1.75,
           "duration": 0.5,
           "velocity": 0.85
         },
         {
           "note": "F4",
           "bar": 18,
-          "beat": 3.25,
+          "beat": 2.25,
           "duration": 0.25,
           "velocity": 0.83
         },
         {
-          "note": "Cs5",
+          "note": "C5s",
           "bar": 18,
-          "beat": 3.5,
+          "beat": 2.5,
           "duration": 0.5,
           "velocity": 0.71
         },
         {
           "note": "C5",
           "bar": 18,
-          "beat": 4.0,
+          "beat": 3.0,
           "duration": 0.5,
           "velocity": 0.74
         },
         {
-          "note": "Gs4",
+          "note": "G4s",
           "bar": 18,
-          "beat": 4.5,
+          "beat": 3.5,
           "duration": 0.5,
           "velocity": 0.73
         },
         {
           "note": "F4",
           "bar": 19,
-          "beat": 1.0,
+          "beat": 0.0,
           "duration": 0.5,
           "velocity": 0.78
         },
         {
           "note": "C5",
           "bar": 19,
-          "beat": 1.5,
+          "beat": 0.5,
           "duration": 0.5,
           "velocity": 0.89
         },
         {
           "note": "F5",
           "bar": 19,
-          "beat": 2.0,
+          "beat": 1.0,
           "duration": 0.5,
           "velocity": 0.78
         },
         {
           "note": "F4",
           "bar": 19,
-          "beat": 2.5,
+          "beat": 1.5,
           "duration": 0.25,
           "velocity": 0.79
         },
         {
-          "note": "Ds4",
+          "note": "D4s",
           "bar": 19,
-          "beat": 2.75,
+          "beat": 1.75,
           "duration": 0.5,
           "velocity": 0.89
         },
         {
-          "note": "Ds4",
+          "note": "D4s",
           "bar": 19,
-          "beat": 3.25,
+          "beat": 2.25,
           "duration": 0.25,
           "velocity": 0.87
         },
         {
           "note": "C4",
           "bar": 19,
-          "beat": 3.5,
+          "beat": 2.5,
           "duration": 0.5,
           "velocity": 0.8
         },
         {
           "note": "G4",
           "bar": 19,
-          "beat": 4.0,
+          "beat": 3.0,
           "duration": 0.5,
           "velocity": 0.81
         },
         {
           "note": "F4",
           "bar": 19,
-          "beat": 4.5,
+          "beat": 3.5,
           "duration": 1,
           "velocity": 0.84
         },
         {
           "note": "F4",
           "bar": 21,
-          "beat": 1,
+          "beat": 0.0,
           "duration": 1,
           "velocity": 0.74
         },
         {
-          "note": "Gs4",
+          "note": "G4s",
           "bar": 21,
-          "beat": 2,
+          "beat": 1.0,
           "duration": 0.75,
           "velocity": 0.86
         },
         {
           "note": "F4",
           "bar": 21,
-          "beat": 2.75,
+          "beat": 1.75,
           "duration": 0.5,
           "velocity": 0.79
         },
         {
           "note": "F4",
           "bar": 21,
-          "beat": 3.25,
+          "beat": 2.25,
           "duration": 0.25,
           "velocity": 0.79
         },
         {
-          "note": "As4",
+          "note": "A4s",
           "bar": 21,
-          "beat": 3.5,
+          "beat": 2.5,
           "duration": 0.5,
           "velocity": 0.88
         },
         {
           "note": "F4",
           "bar": 21,
-          "beat": 4.0,
+          "beat": 3.0,
           "duration": 0.5,
           "velocity": 0.83
         },
         {
-          "note": "Ds4",
+          "note": "D4s",
           "bar": 21,
-          "beat": 4.5,
+          "beat": 3.5,
           "duration": 0.5,
           "velocity": 0.86
         },
         {
           "note": "F4",
           "bar": 22,
-          "beat": 1.0,
+          "beat": 0.0,
           "duration": 1,
           "velocity": 0.84
         },
         {
           "note": "C5",
           "bar": 22,
-          "beat": 2.0,
+          "beat": 1.0,
           "duration": 0.75,
           "velocity": 0.87
         },
         {
           "note": "F4",
           "bar": 22,
-          "beat": 2.75,
+          "beat": 1.75,
           "duration": 0.5,
           "velocity": 0.77
         },
         {
           "note": "F4",
           "bar": 22,
-          "beat": 3.25,
+          "beat": 2.25,
           "duration": 0.25,
           "velocity": 0.71
         },
         {
-          "note": "Cs5",
+          "note": "C5s",
           "bar": 22,
-          "beat": 3.5,
+          "beat": 2.5,
           "duration": 0.5,
           "velocity": 0.89
         },
         {
           "note": "C5",
           "bar": 22,
-          "beat": 4.0,
+          "beat": 3.0,
           "duration": 0.5,
           "velocity": 0.87
         },
         {
-          "note": "Gs4",
+          "note": "G4s",
           "bar": 22,
-          "beat": 4.5,
+          "beat": 3.5,
           "duration": 0.5,
           "velocity": 0.77
         },
         {
           "note": "F4",
           "bar": 23,
-          "beat": 1.0,
+          "beat": 0.0,
           "duration": 0.5,
           "velocity": 0.86
         },
         {
           "note": "C5",
           "bar": 23,
-          "beat": 1.5,
+          "beat": 0.5,
           "duration": 0.5,
           "velocity": 0.87
         },
         {
           "note": "F5",
           "bar": 23,
-          "beat": 2.0,
+          "beat": 1.0,
           "duration": 0.5,
           "velocity": 0.84
         },
         {
           "note": "F4",
           "bar": 23,
-          "beat": 2.5,
+          "beat": 1.5,
           "duration": 0.25,
           "velocity": 0.79
         },
         {
-          "note": "Ds4",
+          "note": "D4s",
           "bar": 23,
-          "beat": 2.75,
+          "beat": 1.75,
           "duration": 0.5,
           "velocity": 0.81
         },
         {
-          "note": "Ds4",
+          "note": "D4s",
           "bar": 23,
-          "beat": 3.25,
+          "beat": 2.25,
           "duration": 0.25,
           "velocity": 0.76
         },
         {
           "note": "C4",
           "bar": 23,
-          "beat": 3.5,
+          "beat": 2.5,
           "duration": 0.5,
           "velocity": 0.88
         },
         {
           "note": "G4",
           "bar": 23,
-          "beat": 4.0,
+          "beat": 3.0,
           "duration": 0.5,
           "velocity": 0.86
         },
         {
           "note": "F4",
           "bar": 23,
-          "beat": 4.5,
+          "beat": 3.5,
           "duration": 1,
           "velocity": 0.79
         }
@@ -1078,672 +1078,672 @@
         {
           "note": "F1",
           "bar": 9,
-          "beat": 1.0,
+          "beat": 0.0,
           "duration": 0.75,
           "velocity": 0.82
         },
         {
           "note": "F2",
           "bar": 9,
-          "beat": 2.0,
+          "beat": 1.0,
           "duration": 0.5,
           "velocity": 0.87
         },
         {
-          "note": "Ds2",
+          "note": "D2s",
           "bar": 9,
-          "beat": 2.75,
+          "beat": 1.75,
           "duration": 0.25,
           "velocity": 0.81
         },
         {
-          "note": "Ds3",
+          "note": "D3s",
           "bar": 9,
-          "beat": 3.25,
+          "beat": 2.25,
           "duration": 0.25,
           "velocity": 0.87
         },
         {
           "note": "C1",
           "bar": 9,
-          "beat": 3.5,
+          "beat": 2.5,
           "duration": 0.25,
           "velocity": 0.71
         },
         {
           "note": "C2",
           "bar": 9,
-          "beat": 4.0,
+          "beat": 3.0,
           "duration": 0.25,
           "velocity": 0.71
         },
         {
-          "note": "Ds2",
+          "note": "D2s",
           "bar": 9,
-          "beat": 4.5,
+          "beat": 3.5,
           "duration": 0.25,
           "velocity": 0.85
         },
         {
           "note": "F1",
           "bar": 10,
-          "beat": 1.0,
+          "beat": 0.0,
           "duration": 0.75,
           "velocity": 0.73
         },
         {
           "note": "F2",
           "bar": 10,
-          "beat": 2.0,
+          "beat": 1.0,
           "duration": 0.25,
           "velocity": 0.84
         },
         {
           "note": "F1",
           "bar": 10,
-          "beat": 3.25,
+          "beat": 2.25,
           "duration": 0.25,
           "velocity": 0.79
         },
         {
           "note": "C2",
           "bar": 10,
-          "beat": 3.5,
+          "beat": 2.5,
           "duration": 0.25,
           "velocity": 0.77
         },
         {
-          "note": "Ds2",
+          "note": "D2s",
           "bar": 10,
-          "beat": 4.0,
+          "beat": 3.0,
           "duration": 0.25,
           "velocity": 0.8
         },
         {
           "note": "F2",
           "bar": 10,
-          "beat": 4.5,
+          "beat": 3.5,
           "duration": 0.25,
           "velocity": 0.75
         },
         {
-          "note": "Cs1",
+          "note": "C1s",
           "bar": 11,
-          "beat": 1.0,
+          "beat": 0.0,
           "duration": 0.75,
           "velocity": 0.78
         },
         {
-          "note": "Cs2",
+          "note": "C2s",
           "bar": 11,
-          "beat": 2.0,
+          "beat": 1.0,
           "duration": 0.5,
           "velocity": 0.75
         },
         {
-          "note": "Ds1",
+          "note": "D1s",
           "bar": 11,
-          "beat": 3.25,
+          "beat": 2.25,
           "duration": 0.25,
           "velocity": 0.85
         },
         {
-          "note": "Ds2",
+          "note": "D2s",
           "bar": 11,
-          "beat": 3.5,
+          "beat": 2.5,
           "duration": 0.25,
           "velocity": 0.73
         },
         {
           "note": "C2",
           "bar": 11,
-          "beat": 4.0,
+          "beat": 3.0,
           "duration": 0.25,
           "velocity": 0.73
         },
         {
-          "note": "Ds2",
+          "note": "D2s",
           "bar": 11,
-          "beat": 4.5,
+          "beat": 3.5,
           "duration": 0.5,
           "velocity": 0.75
         },
         {
           "note": "F1",
           "bar": 12,
-          "beat": 1.0,
+          "beat": 0.0,
           "duration": 1,
           "velocity": 0.77
         },
         {
-          "note": "Ds2",
+          "note": "D2s",
           "bar": 12,
-          "beat": 3.25,
+          "beat": 2.25,
           "duration": 0.25,
           "velocity": 0.81
         },
         {
           "note": "C2",
           "bar": 12,
-          "beat": 3.5,
+          "beat": 2.5,
           "duration": 0.25,
           "velocity": 0.83
         },
         {
-          "note": "As1",
+          "note": "A1s",
           "bar": 12,
-          "beat": 4.0,
+          "beat": 3.0,
           "duration": 0.25,
           "velocity": 0.84
         },
         {
           "note": "G1",
           "bar": 12,
-          "beat": 4.5,
+          "beat": 3.5,
           "duration": 0.25,
           "velocity": 0.75
         },
         {
           "note": "F1",
           "bar": 13,
-          "beat": 1.0,
+          "beat": 0.0,
           "duration": 0.75,
           "velocity": 0.79
         },
         {
           "note": "F2",
           "bar": 13,
-          "beat": 2.0,
+          "beat": 1.0,
           "duration": 0.5,
           "velocity": 0.7
         },
         {
-          "note": "Ds2",
+          "note": "D2s",
           "bar": 13,
-          "beat": 2.75,
+          "beat": 1.75,
           "duration": 0.25,
           "velocity": 0.9
         },
         {
-          "note": "Ds3",
+          "note": "D3s",
           "bar": 13,
-          "beat": 3.25,
+          "beat": 2.25,
           "duration": 0.25,
           "velocity": 0.82
         },
         {
           "note": "C1",
           "bar": 13,
-          "beat": 3.5,
+          "beat": 2.5,
           "duration": 0.25,
           "velocity": 0.8
         },
         {
           "note": "C2",
           "bar": 13,
-          "beat": 4.0,
+          "beat": 3.0,
           "duration": 0.25,
           "velocity": 0.9
         },
         {
-          "note": "Ds2",
+          "note": "D2s",
           "bar": 13,
-          "beat": 4.5,
+          "beat": 3.5,
           "duration": 0.25,
           "velocity": 0.7
         },
         {
           "note": "F1",
           "bar": 14,
-          "beat": 1.0,
+          "beat": 0.0,
           "duration": 0.75,
           "velocity": 0.84
         },
         {
           "note": "F2",
           "bar": 14,
-          "beat": 2.0,
+          "beat": 1.0,
           "duration": 0.25,
           "velocity": 0.75
         },
         {
           "note": "F1",
           "bar": 14,
-          "beat": 3.25,
+          "beat": 2.25,
           "duration": 0.25,
           "velocity": 0.77
         },
         {
           "note": "C2",
           "bar": 14,
-          "beat": 3.5,
+          "beat": 2.5,
           "duration": 0.25,
           "velocity": 0.73
         },
         {
-          "note": "Ds2",
+          "note": "D2s",
           "bar": 14,
-          "beat": 4.0,
+          "beat": 3.0,
           "duration": 0.25,
           "velocity": 0.82
         },
         {
           "note": "F2",
           "bar": 14,
-          "beat": 4.5,
+          "beat": 3.5,
           "duration": 0.25,
           "velocity": 0.7
         },
         {
-          "note": "Cs1",
+          "note": "C1s",
           "bar": 15,
-          "beat": 1.0,
+          "beat": 0.0,
           "duration": 0.75,
           "velocity": 0.74
         },
         {
-          "note": "Cs2",
+          "note": "C2s",
           "bar": 15,
-          "beat": 2.0,
+          "beat": 1.0,
           "duration": 0.5,
           "velocity": 0.71
         },
         {
-          "note": "Ds1",
+          "note": "D1s",
           "bar": 15,
-          "beat": 3.25,
+          "beat": 2.25,
           "duration": 0.25,
           "velocity": 0.89
         },
         {
-          "note": "Ds2",
+          "note": "D2s",
           "bar": 15,
-          "beat": 3.5,
+          "beat": 2.5,
           "duration": 0.25,
           "velocity": 0.74
         },
         {
           "note": "C2",
           "bar": 15,
-          "beat": 4.0,
+          "beat": 3.0,
           "duration": 0.25,
           "velocity": 0.82
         },
         {
-          "note": "Ds2",
+          "note": "D2s",
           "bar": 15,
-          "beat": 4.5,
+          "beat": 3.5,
           "duration": 0.5,
           "velocity": 0.8
         },
         {
           "note": "F1",
           "bar": 16,
-          "beat": 1.0,
+          "beat": 0.0,
           "duration": 1,
           "velocity": 0.76
         },
         {
-          "note": "Ds2",
+          "note": "D2s",
           "bar": 16,
-          "beat": 3.25,
+          "beat": 2.25,
           "duration": 0.25,
           "velocity": 0.77
         },
         {
           "note": "C2",
           "bar": 16,
-          "beat": 3.5,
+          "beat": 2.5,
           "duration": 0.25,
           "velocity": 0.78
         },
         {
-          "note": "As1",
+          "note": "A1s",
           "bar": 16,
-          "beat": 4.0,
+          "beat": 3.0,
           "duration": 0.25,
           "velocity": 0.76
         },
         {
           "note": "G1",
           "bar": 16,
-          "beat": 4.5,
+          "beat": 3.5,
           "duration": 0.25,
           "velocity": 0.89
         },
         {
           "note": "F1",
           "bar": 17,
-          "beat": 1.0,
+          "beat": 0.0,
           "duration": 0.75,
           "velocity": 0.85
         },
         {
           "note": "F2",
           "bar": 17,
-          "beat": 2.0,
+          "beat": 1.0,
           "duration": 0.5,
           "velocity": 0.79
         },
         {
-          "note": "Ds2",
+          "note": "D2s",
           "bar": 17,
-          "beat": 2.75,
+          "beat": 1.75,
           "duration": 0.25,
           "velocity": 0.73
         },
         {
-          "note": "Ds3",
+          "note": "D3s",
           "bar": 17,
-          "beat": 3.25,
+          "beat": 2.25,
           "duration": 0.25,
           "velocity": 0.7
         },
         {
           "note": "C1",
           "bar": 17,
-          "beat": 3.5,
+          "beat": 2.5,
           "duration": 0.25,
           "velocity": 0.84
         },
         {
           "note": "C2",
           "bar": 17,
-          "beat": 4.0,
+          "beat": 3.0,
           "duration": 0.25,
           "velocity": 0.86
         },
         {
-          "note": "Ds2",
+          "note": "D2s",
           "bar": 17,
-          "beat": 4.5,
+          "beat": 3.5,
           "duration": 0.25,
           "velocity": 0.72
         },
         {
           "note": "F1",
           "bar": 18,
-          "beat": 1.0,
+          "beat": 0.0,
           "duration": 0.75,
           "velocity": 0.74
         },
         {
           "note": "F2",
           "bar": 18,
-          "beat": 2.0,
+          "beat": 1.0,
           "duration": 0.25,
           "velocity": 0.73
         },
         {
           "note": "F1",
           "bar": 18,
-          "beat": 3.25,
+          "beat": 2.25,
           "duration": 0.25,
           "velocity": 0.72
         },
         {
           "note": "C2",
           "bar": 18,
-          "beat": 3.5,
+          "beat": 2.5,
           "duration": 0.25,
           "velocity": 0.87
         },
         {
-          "note": "Ds2",
+          "note": "D2s",
           "bar": 18,
-          "beat": 4.0,
+          "beat": 3.0,
           "duration": 0.25,
           "velocity": 0.75
         },
         {
           "note": "F2",
           "bar": 18,
-          "beat": 4.5,
+          "beat": 3.5,
           "duration": 0.25,
           "velocity": 0.83
         },
         {
-          "note": "Cs1",
+          "note": "C1s",
           "bar": 19,
-          "beat": 1.0,
+          "beat": 0.0,
           "duration": 0.75,
           "velocity": 0.81
         },
         {
-          "note": "Cs2",
+          "note": "C2s",
           "bar": 19,
-          "beat": 2.0,
+          "beat": 1.0,
           "duration": 0.5,
           "velocity": 0.78
         },
         {
-          "note": "Ds1",
+          "note": "D1s",
           "bar": 19,
-          "beat": 3.25,
+          "beat": 2.25,
           "duration": 0.25,
           "velocity": 0.88
         },
         {
-          "note": "Ds2",
+          "note": "D2s",
           "bar": 19,
-          "beat": 3.5,
+          "beat": 2.5,
           "duration": 0.25,
           "velocity": 0.81
         },
         {
           "note": "C2",
           "bar": 19,
-          "beat": 4.0,
+          "beat": 3.0,
           "duration": 0.25,
           "velocity": 0.87
         },
         {
-          "note": "Ds2",
+          "note": "D2s",
           "bar": 19,
-          "beat": 4.5,
+          "beat": 3.5,
           "duration": 0.5,
           "velocity": 0.73
         },
         {
           "note": "F1",
           "bar": 20,
-          "beat": 1.0,
+          "beat": 0.0,
           "duration": 1,
           "velocity": 0.86
         },
         {
-          "note": "Ds2",
+          "note": "D2s",
           "bar": 20,
-          "beat": 3.25,
+          "beat": 2.25,
           "duration": 0.25,
           "velocity": 0.9
         },
         {
           "note": "C2",
           "bar": 20,
-          "beat": 3.5,
+          "beat": 2.5,
           "duration": 0.25,
           "velocity": 0.86
         },
         {
-          "note": "As1",
+          "note": "A1s",
           "bar": 20,
-          "beat": 4.0,
+          "beat": 3.0,
           "duration": 0.25,
           "velocity": 0.88
         },
         {
           "note": "G1",
           "bar": 20,
-          "beat": 4.5,
+          "beat": 3.5,
           "duration": 0.25,
           "velocity": 0.83
         },
         {
           "note": "F1",
           "bar": 21,
-          "beat": 1.0,
+          "beat": 0.0,
           "duration": 0.75,
           "velocity": 0.88
         },
         {
           "note": "F2",
           "bar": 21,
-          "beat": 2.0,
+          "beat": 1.0,
           "duration": 0.5,
           "velocity": 0.74
         },
         {
-          "note": "Ds2",
+          "note": "D2s",
           "bar": 21,
-          "beat": 2.75,
+          "beat": 1.75,
           "duration": 0.25,
           "velocity": 0.88
         },
         {
-          "note": "Ds3",
+          "note": "D3s",
           "bar": 21,
-          "beat": 3.25,
+          "beat": 2.25,
           "duration": 0.25,
           "velocity": 0.71
         },
         {
           "note": "C1",
           "bar": 21,
-          "beat": 3.5,
+          "beat": 2.5,
           "duration": 0.25,
           "velocity": 0.89
         },
         {
           "note": "C2",
           "bar": 21,
-          "beat": 4.0,
+          "beat": 3.0,
           "duration": 0.25,
           "velocity": 0.7
         },
         {
-          "note": "Ds2",
+          "note": "D2s",
           "bar": 21,
-          "beat": 4.5,
+          "beat": 3.5,
           "duration": 0.25,
           "velocity": 0.74
         },
         {
           "note": "F1",
           "bar": 22,
-          "beat": 1.0,
+          "beat": 0.0,
           "duration": 0.75,
           "velocity": 0.81
         },
         {
           "note": "F2",
           "bar": 22,
-          "beat": 2.0,
+          "beat": 1.0,
           "duration": 0.25,
           "velocity": 0.81
         },
         {
           "note": "F1",
           "bar": 22,
-          "beat": 3.25,
+          "beat": 2.25,
           "duration": 0.25,
           "velocity": 0.71
         },
         {
           "note": "C2",
           "bar": 22,
-          "beat": 3.5,
+          "beat": 2.5,
           "duration": 0.25,
           "velocity": 0.79
         },
         {
-          "note": "Ds2",
+          "note": "D2s",
           "bar": 22,
-          "beat": 4.0,
+          "beat": 3.0,
           "duration": 0.25,
           "velocity": 0.8
         },
         {
           "note": "F2",
           "bar": 22,
-          "beat": 4.5,
+          "beat": 3.5,
           "duration": 0.25,
           "velocity": 0.73
         },
         {
-          "note": "Cs1",
+          "note": "C1s",
           "bar": 23,
-          "beat": 1.0,
+          "beat": 0.0,
           "duration": 0.75,
           "velocity": 0.86
         },
         {
-          "note": "Cs2",
+          "note": "C2s",
           "bar": 23,
-          "beat": 2.0,
+          "beat": 1.0,
           "duration": 0.5,
           "velocity": 0.86
         },
         {
-          "note": "Ds1",
+          "note": "D1s",
           "bar": 23,
-          "beat": 3.25,
+          "beat": 2.25,
           "duration": 0.25,
           "velocity": 0.88
         },
         {
-          "note": "Ds2",
+          "note": "D2s",
           "bar": 23,
-          "beat": 3.5,
+          "beat": 2.5,
           "duration": 0.25,
           "velocity": 0.76
         },
         {
           "note": "C2",
           "bar": 23,
-          "beat": 4.0,
+          "beat": 3.0,
           "duration": 0.25,
           "velocity": 0.84
         },
         {
-          "note": "Ds2",
+          "note": "D2s",
           "bar": 23,
-          "beat": 4.5,
+          "beat": 3.5,
           "duration": 0.5,
           "velocity": 0.82
         },
         {
           "note": "F1",
           "bar": 24,
-          "beat": 1.0,
+          "beat": 0.0,
           "duration": 1,
           "velocity": 0.72
         },
         {
-          "note": "Ds2",
+          "note": "D2s",
           "bar": 24,
-          "beat": 3.25,
+          "beat": 2.25,
           "duration": 0.25,
           "velocity": 0.74
         },
         {
           "note": "C2",
           "bar": 24,
-          "beat": 3.5,
+          "beat": 2.5,
           "duration": 0.25,
           "velocity": 0.82
         },
         {
-          "note": "As1",
+          "note": "A1s",
           "bar": 24,
-          "beat": 4.0,
+          "beat": 3.0,
           "duration": 0.25,
           "velocity": 0.87
         },
         {
           "note": "G1",
           "bar": 24,
-          "beat": 4.5,
+          "beat": 3.5,
           "duration": 0.25,
           "velocity": 0.86
         }
@@ -1841,630 +1841,630 @@
         {
           "note": "A5",
           "bar": 17,
-          "beat": 1.5,
+          "beat": 0.5,
           "duration": 0.25,
           "velocity": 0.89
         },
         {
           "note": "C6",
           "bar": 17,
-          "beat": 1.5,
+          "beat": 0.5,
           "duration": 0.25,
           "velocity": 0.89
         },
         {
           "note": "F6",
           "bar": 17,
-          "beat": 1.5,
+          "beat": 0.5,
           "duration": 0.25,
           "velocity": 0.71
         },
         {
           "note": "A5",
           "bar": 17,
-          "beat": 2.0,
+          "beat": 1.0,
           "duration": 0.25,
           "velocity": 0.74
         },
         {
           "note": "C6",
           "bar": 17,
-          "beat": 2.0,
+          "beat": 1.0,
           "duration": 0.25,
           "velocity": 0.8
         },
         {
           "note": "F6",
           "bar": 17,
-          "beat": 2.0,
+          "beat": 1.0,
           "duration": 0.25,
           "velocity": 0.72
         },
         {
           "note": "A5",
           "bar": 17,
-          "beat": 2.5,
+          "beat": 1.5,
           "duration": 0.25,
           "velocity": 0.9
         },
         {
           "note": "C6",
           "bar": 17,
-          "beat": 2.5,
+          "beat": 1.5,
           "duration": 0.25,
           "velocity": 0.9
         },
         {
           "note": "F6",
           "bar": 17,
-          "beat": 2.5,
+          "beat": 1.5,
           "duration": 0.25,
           "velocity": 0.87
         },
         {
-          "note": "As5",
+          "note": "A5s",
           "bar": 17,
-          "beat": 2.75,
+          "beat": 1.75,
           "duration": 0.25,
           "velocity": 0.73
         },
         {
-          "note": "Ds6",
+          "note": "D6s",
           "bar": 17,
-          "beat": 2.75,
+          "beat": 1.75,
           "duration": 0.25,
           "velocity": 0.88
         },
         {
           "note": "G5",
           "bar": 17,
-          "beat": 2.75,
+          "beat": 1.75,
           "duration": 0.25,
           "velocity": 0.76
         },
         {
-          "note": "As5",
+          "note": "A5s",
           "bar": 17,
-          "beat": 3.25,
+          "beat": 2.25,
           "duration": 0.25,
           "velocity": 0.89
         },
         {
-          "note": "Ds6",
+          "note": "D6s",
           "bar": 17,
-          "beat": 3.25,
+          "beat": 2.25,
           "duration": 0.25,
           "velocity": 0.8
         },
         {
           "note": "G5",
           "bar": 17,
-          "beat": 3.25,
+          "beat": 2.25,
           "duration": 0.25,
           "velocity": 0.83
         },
         {
-          "note": "As5",
+          "note": "A5s",
           "bar": 17,
-          "beat": 3.75,
+          "beat": 2.75,
           "duration": 0.25,
           "velocity": 0.79
         },
         {
-          "note": "Ds6",
+          "note": "D6s",
           "bar": 17,
-          "beat": 3.75,
+          "beat": 2.75,
           "duration": 0.25,
           "velocity": 0.73
         },
         {
           "note": "G5",
           "bar": 17,
-          "beat": 3.75,
+          "beat": 2.75,
           "duration": 0.25,
           "velocity": 0.72
         },
         {
-          "note": "As5",
+          "note": "A5s",
           "bar": 17,
-          "beat": 4.0,
+          "beat": 3.0,
           "duration": 0.25,
           "velocity": 0.74
         },
         {
           "note": "D6",
           "bar": 17,
-          "beat": 4.0,
+          "beat": 3.0,
           "duration": 0.25,
           "velocity": 0.86
         },
         {
           "note": "F5",
           "bar": 17,
-          "beat": 4.0,
+          "beat": 3.0,
           "duration": 0.25,
           "velocity": 0.73
         },
         {
-          "note": "As5",
+          "note": "A5s",
           "bar": 17,
-          "beat": 4.5,
+          "beat": 3.5,
           "duration": 0.25,
           "velocity": 0.85
         },
         {
           "note": "D6",
           "bar": 17,
-          "beat": 4.5,
+          "beat": 3.5,
           "duration": 0.25,
           "velocity": 0.73
         },
         {
           "note": "F5",
           "bar": 17,
-          "beat": 4.5,
+          "beat": 3.5,
           "duration": 0.25,
           "velocity": 0.82
         },
         {
           "note": "A5",
           "bar": 18,
-          "beat": 1.5,
+          "beat": 0.5,
           "duration": 0.25,
           "velocity": 0.8
         },
         {
           "note": "C6",
           "bar": 18,
-          "beat": 1.5,
+          "beat": 0.5,
           "duration": 0.25,
           "velocity": 0.74
         },
         {
           "note": "F5",
           "bar": 18,
-          "beat": 1.5,
+          "beat": 0.5,
           "duration": 0.25,
           "velocity": 0.8
         },
         {
           "note": "A5",
           "bar": 18,
-          "beat": 2.0,
+          "beat": 1.0,
           "duration": 0.25,
           "velocity": 0.78
         },
         {
           "note": "C6",
           "bar": 18,
-          "beat": 2.0,
+          "beat": 1.0,
           "duration": 0.25,
           "velocity": 0.84
         },
         {
           "note": "F5",
           "bar": 18,
-          "beat": 2.0,
+          "beat": 1.0,
           "duration": 0.25,
           "velocity": 0.71
         },
         {
           "note": "A5",
           "bar": 18,
-          "beat": 2.5,
+          "beat": 1.5,
           "duration": 0.25,
           "velocity": 0.88
         },
         {
           "note": "C6",
           "bar": 18,
-          "beat": 2.5,
+          "beat": 1.5,
           "duration": 0.25,
           "velocity": 0.84
         },
         {
           "note": "F5",
           "bar": 18,
-          "beat": 2.5,
+          "beat": 1.5,
           "duration": 0.25,
           "velocity": 0.84
         },
         {
-          "note": "As5",
+          "note": "A5s",
           "bar": 18,
-          "beat": 2.75,
+          "beat": 1.75,
           "duration": 0.25,
           "velocity": 0.8
         },
         {
-          "note": "Ds6",
+          "note": "D6s",
           "bar": 18,
-          "beat": 2.75,
+          "beat": 1.75,
           "duration": 0.25,
           "velocity": 0.81
         },
         {
           "note": "G5",
           "bar": 18,
-          "beat": 2.75,
+          "beat": 1.75,
           "duration": 0.25,
           "velocity": 0.7
         },
         {
-          "note": "As5",
+          "note": "A5s",
           "bar": 18,
-          "beat": 3.25,
+          "beat": 2.25,
           "duration": 0.25,
           "velocity": 0.76
         },
         {
-          "note": "Ds6",
+          "note": "D6s",
           "bar": 18,
-          "beat": 3.25,
+          "beat": 2.25,
           "duration": 0.25,
           "velocity": 0.76
         },
         {
           "note": "G5",
           "bar": 18,
-          "beat": 3.25,
+          "beat": 2.25,
           "duration": 0.25,
           "velocity": 0.76
         },
         {
           "note": "B5",
           "bar": 18,
-          "beat": 3.5,
+          "beat": 2.5,
           "duration": 0.25,
           "velocity": 0.83
         },
         {
           "note": "D6",
           "bar": 18,
-          "beat": 3.5,
+          "beat": 2.5,
           "duration": 0.25,
           "velocity": 0.71
         },
         {
           "note": "G5",
           "bar": 18,
-          "beat": 3.5,
+          "beat": 2.5,
           "duration": 0.25,
           "velocity": 0.85
         },
         {
           "note": "A5",
           "bar": 18,
-          "beat": 4.0,
+          "beat": 3.0,
           "duration": 0.25,
           "velocity": 0.85
         },
         {
           "note": "C6",
           "bar": 18,
-          "beat": 4.0,
+          "beat": 3.0,
           "duration": 0.25,
           "velocity": 0.83
         },
         {
           "note": "F5",
           "bar": 18,
-          "beat": 4.0,
+          "beat": 3.0,
           "duration": 0.25,
           "velocity": 0.79
         },
         {
-          "note": "Cs5",
+          "note": "C5s",
           "bar": 19,
-          "beat": 1.5,
+          "beat": 0.5,
           "duration": 0.25,
           "velocity": 0.71
         },
         {
           "note": "F5",
           "bar": 19,
-          "beat": 1.5,
+          "beat": 0.5,
           "duration": 0.25,
           "velocity": 0.72
         },
         {
-          "note": "Gs5",
+          "note": "G5s",
           "bar": 19,
-          "beat": 1.5,
+          "beat": 0.5,
           "duration": 0.25,
           "velocity": 0.74
         },
         {
-          "note": "Cs5",
+          "note": "C5s",
           "bar": 19,
-          "beat": 2.0,
+          "beat": 1.0,
           "duration": 0.25,
           "velocity": 0.71
         },
         {
           "note": "F5",
           "bar": 19,
-          "beat": 2.0,
+          "beat": 1.0,
           "duration": 0.25,
           "velocity": 0.73
         },
         {
-          "note": "Gs5",
+          "note": "G5s",
           "bar": 19,
-          "beat": 2.0,
+          "beat": 1.0,
           "duration": 0.25,
           "velocity": 0.78
         },
         {
-          "note": "Cs5",
+          "note": "C5s",
           "bar": 19,
-          "beat": 2.5,
+          "beat": 1.5,
           "duration": 0.25,
           "velocity": 0.84
         },
         {
           "note": "F5",
           "bar": 19,
-          "beat": 2.5,
+          "beat": 1.5,
           "duration": 0.25,
           "velocity": 0.78
         },
         {
-          "note": "Gs5",
+          "note": "G5s",
           "bar": 19,
-          "beat": 2.5,
+          "beat": 1.5,
           "duration": 0.25,
           "velocity": 0.89
         },
         {
-          "note": "Cs5",
+          "note": "C5s",
           "bar": 19,
-          "beat": 3.0,
+          "beat": 2.0,
           "duration": 0.25,
           "velocity": 0.73
         },
         {
           "note": "F5",
           "bar": 19,
-          "beat": 3.0,
+          "beat": 2.0,
           "duration": 0.25,
           "velocity": 0.8
         },
         {
-          "note": "Gs5",
+          "note": "G5s",
           "bar": 19,
-          "beat": 3.0,
+          "beat": 2.0,
           "duration": 0.25,
           "velocity": 0.76
         },
         {
-          "note": "As5",
+          "note": "A5s",
           "bar": 19,
-          "beat": 3.25,
+          "beat": 2.25,
           "duration": 0.25,
           "velocity": 0.87
         },
         {
-          "note": "Ds5",
+          "note": "D5s",
           "bar": 19,
-          "beat": 3.25,
+          "beat": 2.25,
           "duration": 0.25,
           "velocity": 0.84
         },
         {
           "note": "G5",
           "bar": 19,
-          "beat": 3.25,
+          "beat": 2.25,
           "duration": 0.25,
           "velocity": 0.77
         },
         {
-          "note": "As5",
+          "note": "A5s",
           "bar": 19,
-          "beat": 3.75,
+          "beat": 2.75,
           "duration": 0.25,
           "velocity": 0.78
         },
         {
-          "note": "Ds5",
+          "note": "D5s",
           "bar": 19,
-          "beat": 3.75,
+          "beat": 2.75,
           "duration": 0.25,
           "velocity": 0.71
         },
         {
           "note": "G5",
           "bar": 19,
-          "beat": 3.75,
+          "beat": 2.75,
           "duration": 0.25,
           "velocity": 0.85
         },
         {
-          "note": "As5",
+          "note": "A5s",
           "bar": 19,
-          "beat": 4.25,
+          "beat": 3.25,
           "duration": 0.25,
           "velocity": 0.84
         },
         {
-          "note": "Ds5",
+          "note": "D5s",
           "bar": 19,
-          "beat": 4.25,
+          "beat": 3.25,
           "duration": 0.25,
           "velocity": 0.79
         },
         {
           "note": "G5",
           "bar": 19,
-          "beat": 4.25,
+          "beat": 3.25,
           "duration": 0.25,
           "velocity": 0.78
         },
         {
-          "note": "As5",
+          "note": "A5s",
           "bar": 19,
-          "beat": 4.75,
+          "beat": 3.75,
           "duration": 0.25,
           "velocity": 0.72
         },
         {
-          "note": "Ds5",
+          "note": "D5s",
           "bar": 19,
-          "beat": 4.75,
+          "beat": 3.75,
           "duration": 0.25,
           "velocity": 0.88
         },
         {
           "note": "G5",
           "bar": 19,
-          "beat": 4.75,
+          "beat": 3.75,
           "duration": 0.25,
           "velocity": 0.76
         },
         {
-          "note": "As5",
+          "note": "A5s",
           "bar": 20,
-          "beat": 1.0,
+          "beat": 0.0,
           "duration": 0.25,
           "velocity": 0.88
         },
         {
-          "note": "Ds5",
+          "note": "D5s",
           "bar": 20,
-          "beat": 1.0,
+          "beat": 0.0,
           "duration": 0.25,
           "velocity": 0.82
         },
         {
           "note": "G5",
           "bar": 20,
-          "beat": 1.0,
+          "beat": 0.0,
           "duration": 0.25,
           "velocity": 0.74
         },
         {
           "note": "A5",
           "bar": 20,
-          "beat": 1.5,
+          "beat": 0.5,
           "duration": 0.25,
           "velocity": 0.74
         },
         {
           "note": "C6",
           "bar": 20,
-          "beat": 1.5,
+          "beat": 0.5,
           "duration": 0.25,
           "velocity": 0.87
         },
         {
           "note": "F5",
           "bar": 20,
-          "beat": 1.5,
+          "beat": 0.5,
           "duration": 0.25,
           "velocity": 0.73
         },
         {
           "note": "A5",
           "bar": 20,
-          "beat": 2.0,
+          "beat": 1.0,
           "duration": 0.25,
           "velocity": 0.85
         },
         {
           "note": "C6",
           "bar": 20,
-          "beat": 2.0,
+          "beat": 1.0,
           "duration": 0.25,
           "velocity": 0.81
         },
         {
           "note": "F5",
           "bar": 20,
-          "beat": 2.0,
+          "beat": 1.0,
           "duration": 0.25,
           "velocity": 0.78
         },
         {
           "note": "A5",
           "bar": 20,
-          "beat": 2.5,
+          "beat": 1.5,
           "duration": 0.25,
           "velocity": 0.83
         },
         {
           "note": "C6",
           "bar": 20,
-          "beat": 2.5,
+          "beat": 1.5,
           "duration": 0.25,
           "velocity": 0.85
         },
         {
           "note": "F5",
           "bar": 20,
-          "beat": 2.5,
+          "beat": 1.5,
           "duration": 0.25,
           "velocity": 0.83
         },
         {
-          "note": "As5",
+          "note": "A5s",
           "bar": 20,
-          "beat": 3.0,
+          "beat": 2.0,
           "duration": 0.25,
           "velocity": 0.83
         },
         {
-          "note": "Ds5",
+          "note": "D5s",
           "bar": 20,
-          "beat": 3.0,
+          "beat": 2.0,
           "duration": 0.25,
           "velocity": 0.78
         },
         {
           "note": "G5",
           "bar": 20,
-          "beat": 3.0,
+          "beat": 2.0,
           "duration": 0.25,
           "velocity": 0.88
         },
         {
           "note": "A5",
           "bar": 20,
-          "beat": 3.25,
+          "beat": 2.25,
           "duration": 0.25,
           "velocity": 0.72
         },
         {
           "note": "C6",
           "bar": 20,
-          "beat": 3.25,
+          "beat": 2.25,
           "duration": 0.25,
           "velocity": 0.76
         },
         {
           "note": "F5",
           "bar": 20,
-          "beat": 3.25,
+          "beat": 2.25,
           "duration": 0.25,
           "velocity": 0.87
         },
         {
           "note": "A5",
           "bar": 20,
-          "beat": 3.75,
+          "beat": 2.75,
           "duration": 0.25,
           "velocity": 0.78
         },
         {
           "note": "C6",
           "bar": 20,
-          "beat": 3.75,
+          "beat": 2.75,
           "duration": 0.25,
           "velocity": 0.83
         },
         {
           "note": "F5",
           "bar": 20,
-          "beat": 3.75,
+          "beat": 2.75,
           "duration": 0.25,
           "velocity": 0.89
         }
