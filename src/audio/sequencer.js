@@ -50,6 +50,13 @@ let playbackCompletionTimeout = null;
 let activeSequenceNotes = new Map();
 let playbackAnimationFrameId = null;
 
+// ── Recording state ───────────────────────────────────────────────────────────
+let isRecording = false;
+let recordingStartPositionMs = 0;
+let recordingEndPositionMs = 0;
+let activeRecordingNotes = new Map(); // noteNumber → { startPositionMs, velocity }
+let capturedNotes = [];              // completed notes: { noteNumber, velocity, startMs, durationMs }
+
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 function getCurrentPlaybackPositionMs() {
@@ -137,12 +144,30 @@ function handleNoteOn(trackId, noteNumber, velocity, timestamp) {
     if (!trackId) return;
     noteOn(trackId, noteNumber, velocity);
     noteOnListeners.forEach(l => l({ trackId, noteNumber, velocity, noteOnTime: timestamp }));
+    if (isRecording && trackId === activeTrackId) {
+        activeRecordingNotes.set(noteNumber, {
+            velocity,
+            startPositionMs: getCurrentPlaybackPositionMs()
+        });
+    }
 }
 
 function handleNoteOff(trackId, noteNumber, timestamp) {
     if (!trackId) return;
     noteOff(trackId, noteNumber);
     noteOffListeners.forEach(l => l({ trackId, noteNumber, timestamp }));
+    if (isRecording && trackId === activeTrackId) {
+        const data = activeRecordingNotes.get(noteNumber);
+        if (data) {
+            activeRecordingNotes.delete(noteNumber);
+            capturedNotes.push({
+                noteNumber,
+                velocity: data.velocity,
+                startMs: data.startPositionMs,
+                durationMs: Math.max(50, getCurrentPlaybackPositionMs() - data.startPositionMs)
+            });
+        }
+    }
 }
 
 function handleMidiNoteOff(trackId, noteNumber, timestamp) {
@@ -174,7 +199,9 @@ function handleMidiStateChange(event) {
 }
 
 function handleMidiMessage(event) {
-    if (!activeTrackId) return;
+    // Route to active track; MIDI is always live if a device is selected
+    const targetTrackId = activeTrackId ?? loadedSession?.tracks?.[0]?.id ?? null;
+    if (!targetTrackId) return;
     const [status, note, velocity] = event.data;
     const command = status >> 4;
     const channel = status & 0x0f;
@@ -182,18 +209,17 @@ function handleMidiMessage(event) {
     switch (command) {
         case 0x9:
             if (velocity > 0) {
-                // If this note has a pending pedal release, cancel it (note is being retriggered)
-                pendingPedalReleases.get(activeTrackId)?.delete(note);
-                handleNoteOn(activeTrackId, note, velocity / 127, event.timeStamp);
+                pendingPedalReleases.get(targetTrackId)?.delete(note);
+                handleNoteOn(targetTrackId, note, velocity / 127, event.timeStamp);
             } else {
-                handleMidiNoteOff(activeTrackId, note, event.timeStamp);
+                handleMidiNoteOff(targetTrackId, note, event.timeStamp);
             }
             break;
         case 0x8:
-            handleMidiNoteOff(activeTrackId, note, event.timeStamp);
+            handleMidiNoteOff(targetTrackId, note, event.timeStamp);
             break;
         case 0xB: // Control change
-            if (note === 64) handleSustainPedal(activeTrackId, velocity >= 64);
+            if (note === 64) handleSustainPedal(targetTrackId, velocity >= 64);
             break;
     }
 }
@@ -202,6 +228,42 @@ function handleMidiMessage(event) {
 
 export function getPlaybackPositionMs() { return getCurrentPlaybackPositionMs(); }
 export function getIsPlaying() { return isPlaying; }
+export function getIsRecording() { return isRecording; }
+
+export function startRecording() {
+    isRecording = true;
+    recordingStartPositionMs = getCurrentPlaybackPositionMs();
+    recordingEndPositionMs = recordingStartPositionMs;
+    activeRecordingNotes.clear();
+    capturedNotes = [];
+}
+
+/**
+ * Stops recording and returns the captured data so the caller can merge into tracks.
+ * Returns { notes: [{noteNumber, velocity, startMs, durationMs}], startMs, endMs }
+ */
+export function stopRecording() {
+    if (!isRecording) return null;
+    isRecording = false;
+    // Close any still-held notes
+    const endPositionMs = getCurrentPlaybackPositionMs();
+    activeRecordingNotes.forEach((data, noteNumber) => {
+        capturedNotes.push({
+            noteNumber,
+            velocity: data.velocity,
+            startMs: data.startPositionMs,
+            durationMs: Math.max(50, endPositionMs - data.startPositionMs)
+        });
+    });
+    activeRecordingNotes.clear();
+    const result = {
+        notes: capturedNotes.slice(),
+        startMs: recordingStartPositionMs,
+        endMs: endPositionMs
+    };
+    capturedNotes = [];
+    return result;
+}
 
 export function loadSession(sessionMeta, tracks) {
     stopSequencePlayback({ resetPosition: true });

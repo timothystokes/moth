@@ -18,6 +18,8 @@ Web-based modular synthesiser built with React 18 and Vite. Runs entirely in the
 - [x] Playhead animation via direct DOM rAF (per TrackRow), not React state
 - [x] Track names editable by clicking in the transport strip
 - [x] Audio engine split into: sequencer.js, noteUtils.js, trackMigration.js, midiConvert.js
+- [x] Add a MFX module with Delay and Reverb settings
+- [ ] Add a record button to record midi notes into the active track (override any note info on the playhead where record was active)
 
 ## Module Inventory
 

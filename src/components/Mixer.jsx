@@ -13,11 +13,11 @@ function Mixer({ module, onDragStart, onOutputClick, isConnecting, onRemove }) {
     }, [module.id]);
 
     return (
-        <ModuleShell title="MIXER" module={module} onDragStart={onDragStart} onRemove={onRemove}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+        <ModuleShell title="MIX" module={module} onDragStart={onDragStart} onRemove={onRemove}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
                     <div>
                         <InputPort moduleId={module.id} portId="input-a" label="IN A"
-                            onOutputClick={onOutputClick} isConnecting={isConnecting} style={{ marginBottom: '6px' }} />
+                            onOutputClick={onOutputClick} isConnecting={isConnecting} />
                         <InputPort moduleId={module.id} portId="input-b" label="IN B"
                             onOutputClick={onOutputClick} isConnecting={isConnecting} style={{ marginBottom: 0 }} />
                     </div>

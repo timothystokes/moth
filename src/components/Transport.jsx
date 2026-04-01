@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getPlaybackPositionMs, getIsPlaying } from '../audio/sequencer.js';
+import ToolbarButton from './ToolbarButton.jsx';
 
 function formatDuration(milliseconds) {
     const totalSeconds = Math.max(0, Math.round(milliseconds / 1000));
@@ -16,13 +17,15 @@ function Transport({
     onPlay,
     onStop,
     onRewind,
-    onSelectTrack,
-    onUpdateTrackMix,
     onCreateTrack,
     onRemoveTrack,
     onRenameTrack,
+    onSelectTrack,
+    onUpdateTrackMix,
     isPendingPlay,
-    onSetTransportPosition
+    onSetTransportPosition,
+    isRecording,
+    onRecord,
 }) {
     const [statusMessage, setStatusMessage] = useState('No sequence loaded');
     const rafRef = useRef(null);
@@ -79,11 +82,22 @@ function Transport({
             position: 'relative'
         }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px', width: '100%', minHeight: '40px' }}>
-                <button onClick={handlePlayStop} style={isPlaying ? stopButtonStyle : primaryButtonStyle} disabled={!transportState?.hasSequence || isPendingPlay}>
-                    {isPendingPlay ? 'Starting…' : isPlaying ? 'Stop' : 'Play'}
-                </button>
-                <button onClick={handleRewind} style={controlButtonStyle} disabled={!transportState?.hasSequence}>Rewind</button>
-                <button onClick={onCreateTrack} style={secondaryButtonStyle}>New Track</button>
+                <ToolbarButton
+                    variant="active" active={isPlaying}
+                    onClick={handlePlayStop}
+                    disabled={!transportState?.hasSequence || isPendingPlay}
+                >
+                    {isPendingPlay ? '…' : isPlaying ? '■' : '▶'}
+                </ToolbarButton>
+                <ToolbarButton onClick={handleRewind} disabled={!transportState?.hasSequence}>⏮</ToolbarButton>
+                <ToolbarButton
+                    variant="active" active={isRecording}
+                    onClick={onRecord}
+                    style={isRecording ? { background: '#cc0000', border: '2px solid #ff4444', color: '#fff' } : {}}
+                >
+                    ⏺
+                </ToolbarButton>
+                <ToolbarButton onClick={onCreateTrack}>＋ Track</ToolbarButton>
 
                 <div style={{ minWidth: '240px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <div style={{ fontSize: '11px', letterSpacing: '0.08em', color: '#6f6f6f' }}>STATUS</div>
@@ -345,50 +359,6 @@ function TrackRow({ track, isSelected, isPlaying, timelineDurationMs, onSelect, 
         </div>
     );
 }
-
-const primaryButtonStyle = {
-    padding: '10px 18px',
-    background: '#295d2b',
-    border: '1px solid #4f9b54',
-    borderRadius: '5px',
-    color: '#eaffea',
-    cursor: 'pointer',
-    fontSize: '12px',
-    fontFamily: 'inherit'
-};
-
-const stopButtonStyle = {
-    padding: '10px 18px',
-    background: '#5d2929',
-    border: '1px solid #9b4f4f',
-    borderRadius: '5px',
-    color: '#ffeaea',
-    cursor: 'pointer',
-    fontSize: '12px',
-    fontFamily: 'inherit'
-};
-
-const controlButtonStyle = {
-    padding: '10px 16px',
-    background: '#2f2f2f',
-    border: '1px solid #5a5a5a',
-    borderRadius: '5px',
-    color: '#f2f2f2',
-    cursor: 'pointer',
-    fontSize: '12px',
-    fontFamily: 'inherit'
-};
-
-const secondaryButtonStyle = {
-    padding: '10px 14px',
-    background: '#202020',
-    border: '1px solid #5a5a5a',
-    borderRadius: '5px',
-    color: '#f2f2f2',
-    cursor: 'pointer',
-    fontSize: '12px',
-    fontFamily: 'inherit'
-};
 
 const muteButtonStyle = {
     width: '32px',

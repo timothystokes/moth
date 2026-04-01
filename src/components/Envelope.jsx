@@ -70,7 +70,7 @@ function Envelope({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isCon
     }, [module.id, attack, decay, sustain, release]);
 
     return (
-        <ModuleShell title="ENVELOPE" module={module} onDragStart={onDragStart} onRemove={onRemove} minHeight="245px">
+        <ModuleShell title="ENV" module={module} onDragStart={onDragStart} onRemove={onRemove} minHeight="245px">
                 <div style={{ marginBottom: '15px' }}>
                     <div style={{
                         border: '1px solid #444',

@@ -20,12 +20,25 @@ function VCA({ module, onDragStart, onOutputClick, isConnecting, connections, on
     const [gain, setGain] = useState(saved.gain ?? 1.0);
     const [invert, setInvert] = useState(saved.invert ?? false);
 
+    // Two-segment log scale: pos 0–0.5 → −60dB to 0dB, pos 0.5–1 → 0dB to +6dB
+    const gainToPos = (g) => {
+        if (g <= 0) return 0;
+        const dB = 20 * Math.log10(g);
+        if (dB <= 0) return Math.max(0, (dB + 60) / 120);
+        return Math.min(1, dB / 12 + 0.5);
+    };
+    const posToGain = (pos) => {
+        const dB = pos <= 0.5 ? -60 + pos * 120 : (pos - 0.5) * 12;
+        return Math.pow(10, dB / 20);
+    };
+    const gainTodBLabel = (g) => g <= 0 ? '∞' : `${(20 * Math.log10(g)).toFixed(1)}dB`;
+
     useEffect(() => {
         registerModule(module.id, { type: 'vca', params: { gain, invert } });
     }, [module.id, gain, invert]);
 
     return (
-        <ModuleShell title="AMPLIFIER" module={module} onDragStart={onDragStart} onRemove={onRemove}>
+        <ModuleShell title="VCA" module={module} onDragStart={onDragStart} onRemove={onRemove}>
                             <ToggleSwitch
                     label="POLARITY"
                     value={!invert}
@@ -35,12 +48,12 @@ function VCA({ module, onDragStart, onOutputClick, isConnecting, connections, on
                 
                 <InputSlider
                     moduleId={module.id} portId="gain-input"
-                    label={`GAIN: ${gain.toFixed(2)}×`}
+                    label={`AMPLITUDE: ${gainTodBLabel(gain)}`}
                     onOutputClick={onOutputClick} isConnecting={isConnecting}
-                    min="0" max="2" step="0.01"
-                    value={gain}
-                    onChange={(e) => setGain(parseFloat(e.target.value))}
-                    labelLeft="−∞" labelMid="0dB" labelRight="+6dB"
+                    min="0" max="1" step="0.001"
+                    value={gainToPos(gain)}
+                    onChange={(e) => setGain(posToGain(parseFloat(e.target.value)))}
+                    labelLeft="∞" labelMid="0dB" labelRight="+6dB"
                 />
 
                 {/* IN (left) and OUT (right) inline at the bottom */}

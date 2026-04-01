@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { COLOR_WIRE, COLOR_WIRE_DIM, COLOR_SLIDER } from './theme.js';
+import ToolbarButton from './components/ToolbarButton.jsx';
 import Amplifier from './components/Amplifier.jsx';
 import Oscillator from './components/Oscillator.jsx';
 import Filter from './components/Filter.jsx';
@@ -9,6 +10,8 @@ import Envelope from './components/Envelope.jsx';
 import Mixer from './components/Mixer.jsx';
 import Multi from './components/Multi.jsx';
 import VCA from './components/VCA.jsx';
+import Delay from './components/Delay.jsx';
+import MFX from './components/MFX.jsx';
 import Transport from './components/Transport.jsx';
 import {
     clearAllModules,
@@ -33,8 +36,12 @@ import {
     seekTo,
     setActiveTrack,
     stop,
+    startRecording,
+    stopRecording,
+    getIsRecording,
     subscribeToTransport
 } from './audio/sequencer.js';
+import { midiToNoteName, absoluteBeatToBarBeat } from './audio/noteUtils.js';
 
 const toolbarHeight = 50;
 
@@ -339,6 +346,7 @@ function App() {
     const [transportState, setTransportState] = useState(initialTransportState);
     const [pendingTransportPlay, setPendingTransportPlay] = useState(false);
     const [moduleUiRevision, setModuleUiRevision] = useState(0);
+    const [isRecording, setIsRecording] = useState(false);
     const [projectSequence, setProjectSequence] = useState(initialProjectSequence);
     const [voiceStatus, setVoiceStatus] = useState(initialVoiceStatus);
 
@@ -825,12 +833,54 @@ function App() {
 
     const handleTransportStop = () => {
         setPendingTransportPlay(false);
+        if (isRecording) {
+            handleStopRecording();
+        }
         stop();
     };
 
     const handleTransportRewind = () => {
         setPendingTransportPlay(false);
+        if (isRecording) {
+            handleStopRecording();
+        }
         rewind();
+    };
+
+    const handleStopRecording = () => {
+        const recorded = stopRecording();
+        setIsRecording(false);
+        if (!recorded || recorded.notes.length === 0 || !selectedTrackId) return;
+
+        const bpm = projectSequence.bpm ?? 120;
+        const msPerBeat = 60000 / bpm;
+        const timeSignatures = projectSequence.timeSignatures ?? [];
+
+        const newNotes = recorded.notes.map(({ noteNumber, velocity, startMs, durationMs }) => {
+            const startBeat = startMs / msPerBeat;
+            const { bar, beat } = absoluteBeatToBarBeat(startBeat, timeSignatures);
+            const duration = Math.max(0.0625, durationMs / msPerBeat);
+            return { note: midiToNoteName(noteNumber), bar, beat, duration, velocity };
+        });
+
+        updateTrack(selectedTrackId, (track) => {
+            // Remove existing notes that overlap the recorded range
+            const existing = (track.notes ?? []).filter(n => {
+                const noteBeat = (n.bar - 1) * 4 + (n.beat - 1); // rough absolute beat
+                const noteMs = noteBeat * msPerBeat;
+                return noteMs < recorded.startMs || noteMs >= recorded.endMs;
+            });
+            return { ...track, notes: [...existing, ...newNotes] };
+        });
+    };
+
+    const handleToggleRecord = () => {
+        if (isRecording) {
+            handleStopRecording();
+        } else {
+            startRecording();
+            setIsRecording(true);
+        }
     };
 
     const handleSelectTrack = (trackId) => {
@@ -1132,6 +1182,8 @@ function App() {
                 onRenameTrack={handleRenameTrack}
                 isPendingPlay={pendingTransportPlay}
                 onSetTransportPosition={seekTo}
+                isRecording={isRecording}
+                onRecord={handleToggleRecord}
             />
         </div>
     );
@@ -1153,17 +1205,18 @@ function Toolbar({ addModule, isPoweredOn, togglePower, hasSelectedTrack, audioE
             flexShrink: 0
         }}>
             <b>MOTH1</b>
-            <button onClick={onImportMidi} style={buttonStyle}>Import MIDI</button>
-            <button onClick={onLoadProject} style={buttonStyle}>LOAD</button>
-            <button onClick={onSaveProject} style={buttonStyle}>SAVE</button>
+            <ToolbarButton onClick={onLoadProject}>LOAD</ToolbarButton>
+            <ToolbarButton onClick={onSaveProject}>SAVE</ToolbarButton>
+            <ToolbarButton onClick={onImportMidi}>IMPORT</ToolbarButton>
             <div style={{ width: '1px', alignSelf: 'stretch', background: '#505050', margin: '6px 4px' }} />
-            <button onClick={() => addModule('oscillator')} style={buttonStyle} disabled={!hasSelectedTrack}>+ Oscillator</button>
-            <button onClick={() => addModule('filter')} style={buttonStyle} disabled={!hasSelectedTrack}>+ Filter</button>
-            <button onClick={() => addModule('envelope')} style={buttonStyle} disabled={!hasSelectedTrack}>+ Envelope</button>
-            <button onClick={() => addModule('random')} style={buttonStyle} disabled={!hasSelectedTrack}>+ Random</button>
-            <button onClick={() => addModule('mixer')} style={buttonStyle} disabled={!hasSelectedTrack}>+ Mixer</button>
-            <button onClick={() => addModule('multi')} style={buttonStyle} disabled={!hasSelectedTrack}>+ Multi</button>
-            <button onClick={() => addModule('vca')} style={buttonStyle} disabled={!hasSelectedTrack}>+ Amplifier</button>
+            <ToolbarButton onClick={() => addModule('oscillator')} disabled={!hasSelectedTrack}>+ VCO</ToolbarButton>
+            <ToolbarButton onClick={() => addModule('filter')} disabled={!hasSelectedTrack}>+ VCF</ToolbarButton>
+            <ToolbarButton onClick={() => addModule('envelope')} disabled={!hasSelectedTrack}>+ ENV</ToolbarButton>
+            <ToolbarButton onClick={() => addModule('random')} disabled={!hasSelectedTrack}>+ RND</ToolbarButton>
+            <ToolbarButton onClick={() => addModule('mixer')} disabled={!hasSelectedTrack}>+ MIX</ToolbarButton>
+            <ToolbarButton onClick={() => addModule('multi')} disabled={!hasSelectedTrack}>+ MUL</ToolbarButton>
+            <ToolbarButton onClick={() => addModule('vca')} disabled={!hasSelectedTrack}>+ VCA</ToolbarButton>
+            <ToolbarButton onClick={() => addModule('mfx')} disabled={!hasSelectedTrack}>+ MFX</ToolbarButton>
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
 
                 {audioError && (
@@ -1182,18 +1235,14 @@ function Toolbar({ addModule, isPoweredOn, togglePower, hasSelectedTrack, audioE
                         AUDIO ERROR: {audioError}
                     </div>
                 )}
-                <button
+                <ToolbarButton
+                    variant="power"
+                    active={isPoweredOn}
                     onClick={togglePower}
-                    style={{
-                        ...buttonStyle,
-                        background: isPoweredOn ? '#0a0' : '#444',
-                        color: isPoweredOn ? '#000' : '#0f0',
-                        fontWeight: 'bold',
-                        border: isPoweredOn ? '2px solid #0f0' : '1px solid #666'
-                    }}
                 >
-                    {isPoweredOn ? 'ON' : 'OFF'}
-                </button>
+                    {/* Unicode power symbol ⏻ */}
+                    ⏻
+                </ToolbarButton>
             </div>
         </div>
     );
@@ -1233,6 +1282,8 @@ function Canvas({ canvasRef, modules, connections, connectingFrom, onModuleDragS
                     child = <Multi key={`${module.id}:${moduleUiRevision}`} module={module} onDragStart={onModuleDragStart} onOutputClick={onOutputClick} isConnecting={connectingFrom?.moduleId === module.id} {...removeProp} />;
                 } else if (module.type === 'vca') {
                     child = <VCA key={`${module.id}:${moduleUiRevision}`} module={module} onDragStart={onModuleDragStart} onOutputClick={onOutputClick} isConnecting={connectingFrom?.moduleId === module.id} connections={connections} {...removeProp} />;
+                } else if (module.type === 'delay' || module.type === 'mfx') {
+                    child = <MFX key={`${module.id}:${moduleUiRevision}`} module={module} onDragStart={onModuleDragStart} onOutputClick={onOutputClick} isConnecting={connectingFrom?.moduleId === module.id} {...removeProp} />;
                 }
                 if (!child) return null;
                 return (
@@ -1250,15 +1301,5 @@ function Canvas({ canvasRef, modules, connections, connectingFrom, onModuleDragS
         </div>
     );
 }
-
-const buttonStyle = {
-    padding: '8px 14px',
-    background: '#444',
-    border: '1px solid #666',
-    borderRadius: '4px',
-    color: '#fff',
-    cursor: 'pointer',
-    fontSize: '12px'
-};
 
 export default App;

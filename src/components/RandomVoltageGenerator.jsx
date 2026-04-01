@@ -16,7 +16,7 @@ function RandomVoltageGenerator({ module, onDragStart, onDrag, onDragEnd, onOutp
     }, [module.id, rate]);
 
     return (
-        <ModuleShell title="RANDOM" module={module} onDragStart={onDragStart} onRemove={onRemove} minHeight="120px">
+        <ModuleShell title="RND" module={module} onDragStart={onDragStart} onRemove={onRemove} minHeight="120px">
                 <InputSlider
                     moduleId={module.id} portId="rate-input"
                     label={`RATE: ${rate < 10 ? rate.toFixed(2) : rate < 100 ? rate.toFixed(1) : rate.toFixed(0)}Hz`}

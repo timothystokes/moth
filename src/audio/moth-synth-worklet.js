@@ -719,6 +719,10 @@ class MothSynthProcessor extends AudioWorkletProcessor {
                 isVoiceDependent = ['audio-input', 'gain-input']
                     .some((inputName) => this.isInputVoiceDependent(moduleId, inputName, visited));
                 break;
+            case 'mfx':
+                isVoiceDependent = ['audio-input', 'time-input', 'feedback-input']
+                    .some((inputName) => this.isInputVoiceDependent(moduleId, inputName, visited));
+                break;
             case 'multi':
                 isVoiceDependent = this.isInputVoiceDependent(moduleId, 'signal-input', visited);
                 break;
@@ -816,6 +820,8 @@ class MothSynthProcessor extends AudioWorkletProcessor {
                 return this.createMixerFactory(moduleId, module.params, activeStack);
             case 'vca':
                 return this.createVCAFactory(moduleId, module.params, activeStack);
+            case 'mfx':
+                return this.createMFXFactory(moduleId, module.params, activeStack);
             case 'multi': {
                 const signalRead = this.createInputReader(moduleId, 'signal-input', activeStack);
                 return (timeMs, laneContext) => (signalRead ? signalRead(timeMs, laneContext) : 0);
@@ -1131,6 +1137,96 @@ class MothSynthProcessor extends AudioWorkletProcessor {
             }
             const polarity = params.invert ? -1 : 1;
             return input * finalGain * polarity;
+        };
+    }
+
+    createMFXFactory(moduleId, params, activeStack) {
+        const audioRead    = this.createInputReader(moduleId, 'audio-input',    activeStack);
+        const timeRead     = this.createInputReader(moduleId, 'time-input',     activeStack);
+        const feedbackRead = this.createInputReader(moduleId, 'feedback-input', activeStack);
+
+        // ── Delay state ──────────────────────────────────────────────────────
+        const maxDelaySamples = Math.ceil(sampleRate * 2);
+        const delayStateMap = new Map();
+
+        // ── Reverb state (Freeverb-style: 4 comb + 2 all-pass per voice) ────
+        // Comb filter delay lengths (samples at 44100; scaled to actual sampleRate)
+        const COMB_DELAYS   = [1557, 1617, 1491, 1422].map(d => Math.round(d * sampleRate / 44100));
+        const ALLPASS_DELAYS = [225, 556].map(d => Math.round(d * sampleRate / 44100));
+        const reverbStateMap = new Map();
+
+        const makeReverbState = () => ({
+            combs: COMB_DELAYS.map(len => ({
+                buf: new Float32Array(len), idx: 0, filter: 0
+            })),
+            allpasses: ALLPASS_DELAYS.map(len => ({
+                buf: new Float32Array(len), idx: 0
+            }))
+        });
+
+        return (timeMs, laneContext) => {
+            const voiceId = laneContext?.voiceId ?? 'global';
+            const input = audioRead ? audioRead(timeMs, laneContext) : 0;
+            const mix = params.mix ?? 0.5;
+            const fxType = params.fxType ?? 'delay';
+
+            if (fxType === 'delay') {
+                // ── DELAY ──────────────────────────────────────────────────
+                let state = delayStateMap.get(voiceId);
+                if (!state) {
+                    state = { buffer: new Float32Array(maxDelaySamples), writeIndex: 0 };
+                    delayStateMap.set(voiceId, state);
+                }
+
+                let delayMs = params.time ?? 250;
+                if (timeRead) {
+                    delayMs = Math.max(1, Math.min(2000, delayMs + timeRead(timeMs, laneContext) * 200));
+                }
+                const delaySamples = Math.max(1, Math.min(maxDelaySamples - 1, Math.round(delayMs / 1000 * sampleRate)));
+
+                let feedback = params.feedback ?? 0.4;
+                if (feedbackRead) {
+                    feedback = Math.max(0, Math.min(0.8, feedback + feedbackRead(timeMs, laneContext) / 5));
+                }
+
+                const readIndex = (state.writeIndex - delaySamples + maxDelaySamples) % maxDelaySamples;
+                const delayed = state.buffer[readIndex];
+                state.buffer[state.writeIndex] = input + delayed * feedback;
+                state.writeIndex = (state.writeIndex + 1) % maxDelaySamples;
+
+                return input * (1 - mix) + delayed * mix;
+
+            } else {
+                // ── REVERB (Freeverb-style) ────────────────────────────────
+                let rv = reverbStateMap.get(voiceId);
+                if (!rv) { rv = makeReverbState(); reverbStateMap.set(voiceId, rv); }
+
+                const roomSize     = Math.max(0, Math.min(1, params.time ?? 0.5));
+                const combFeedback = 0.7 + roomSize * 0.2;                         // 0.7–0.9
+                const rawFeedback  = Math.max(0, Math.min(0.8, params.feedback ?? 0.4));
+                const damping      = 1 - rawFeedback * 0.9;                        // 0.28–1.0
+
+                // 4 comb filters in parallel
+                let reverbOut = 0;
+                for (const comb of rv.combs) {
+                    const out = comb.buf[comb.idx];
+                    comb.filter = out * (1 - damping) + comb.filter * damping; // low-pass
+                    comb.buf[comb.idx] = input + comb.filter * combFeedback;
+                    comb.idx = (comb.idx + 1) % comb.buf.length;
+                    reverbOut += out;
+                }
+                reverbOut *= 0.25; // normalise comb sum
+
+                // 2 all-pass filters in series
+                for (const ap of rv.allpasses) {
+                    const bufOut = ap.buf[ap.idx];
+                    ap.buf[ap.idx] = reverbOut + bufOut * 0.5;
+                    reverbOut = bufOut - reverbOut;
+                    ap.idx = (ap.idx + 1) % ap.buf.length;
+                }
+
+                return input * (1 - mix) + reverbOut * mix;
+            }
         };
     }
 

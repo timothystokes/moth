@@ -68,13 +68,13 @@ function Oscillator({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isC
         const dB = pos <= 0.5 ? -60 + pos * 120 : (pos - 0.5) * 12;
         return Math.pow(10, dB / 20);
     };
-    const ampTodBLabel = (amp) => amp <= 0 ? '−∞' : `${(20 * Math.log10(amp)).toFixed(1)}dB`;
+    const ampTodBLabel = (amp) => amp <= 0 ? '∞' : `${(20 * Math.log10(amp)).toFixed(1)}dB`;
 
     return (
-        <ModuleShell title="OSCILLATOR" module={module} onDragStart={onDragStart} onRemove={onRemove} minHeight="180px">
+        <ModuleShell title="VCO" module={module} onDragStart={onDragStart} onRemove={onRemove} minHeight="180px">
                 <InputSlider
                     moduleId={module.id} portId="freq-input"
-                    label={`FREQ: ${frequency < 10 ? frequency.toFixed(2) : frequency < 100 ? frequency.toFixed(1) : frequency.toFixed(0)}Hz`}
+                    label={`FREQUENCY: ${frequency < 10 ? frequency.toFixed(2) : frequency < 100 ? frequency.toFixed(1) : frequency.toFixed(0)}Hz`}
                     onOutputClick={onOutputClick} isConnecting={isConnecting}
                     min="0" max="1" step="0.001"
                     value={Math.log(frequency / 0.1) / Math.log(8000 / 0.1)}
@@ -84,17 +84,17 @@ function Oscillator({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isC
 
                 <InputSlider
                     moduleId={module.id} portId="amp-input"
-                    label={`AMP: ${ampTodBLabel(amplitude)}`}
+                    label={`AMPLITUDE: ${ampTodBLabel(amplitude)}`}
                     onOutputClick={onOutputClick} isConnecting={isConnecting}
                     min="0" max="1" step="0.001"
                     value={ampToPos(amplitude)}
                     onChange={(e) => setAmplitude(posToAmp(parseFloat(e.target.value)))}
-                    labelLeft="−∞" labelMid="0dB" labelRight="+6dB"
+                    labelLeft="∞" labelMid="0dB" labelRight="+6dB"
                 />
 
                 <InputSlider
                     moduleId={module.id} portId="shape-input"
-                    label={`SHAPE: ${shape < 0.25 ? 'SQR' : shape < 0.75 ? 'SIN' : 'TRI'}`}
+                    label={`SHAPE: ${shape < 0.25 ? 'SQUARE' : shape < 0.75 ? 'SINE' : 'TRIANGLE'}`}
                     onOutputClick={onOutputClick} isConnecting={isConnecting}
                     min="0" max="1" step="0.01"
                     value={shape}

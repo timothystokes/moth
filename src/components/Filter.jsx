@@ -27,12 +27,12 @@ function Filter({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isConne
     }, [module.id, cutoff, resonance, filterType]);
     
     return (
-        <ModuleShell title="FILTER" module={module} onDragStart={onDragStart} onRemove={onRemove} minHeight="180px">
+        <ModuleShell title="VCF" module={module} onDragStart={onDragStart} onRemove={onRemove} minHeight="180px">
                 <ToggleSwitch
                     label="TYPE"
-                    value={filterType === 'highpass'}
-                    onChange={(v) => setFilterType(v ? 'highpass' : 'lowpass')}
-                    labelOn="HIGH PASS" labelOff="LOW PASS"
+                    value={filterType === 'lowpass'}
+                    onChange={(v) => setFilterType(v ? 'lowpass' : 'highpass')}
+                    labelOn="LOW PASS" labelOff="HIGH PASS"
                 />
                 
                 <InputSlider

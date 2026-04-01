@@ -10,8 +10,8 @@ function Multi({ module, onDragStart, onOutputClick, isConnecting, onRemove }) {
     }, [module.id]);
 
     return (
-        <ModuleShell title="MULTI" module={module} onDragStart={onDragStart} onRemove={onRemove} width="150px" minHeight="120px">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+        <ModuleShell title="MUL" module={module} onDragStart={onDragStart} onRemove={onRemove}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <InputPort moduleId={module.id} portId="signal-input" label="IN"
                         onOutputClick={onOutputClick} isConnecting={isConnecting} style={{ marginBottom: 0 }} />
                     <div>
