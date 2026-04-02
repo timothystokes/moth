@@ -131,9 +131,6 @@ function Keyboard({ module, onOutputClick, isConnecting, isFixed, selectedTrackI
                         flex: 1,
                         position: 'relative',
                         overflow: 'auto',
-                        border: '1px solid #555',
-                        borderRadius: '4px',
-                        background: '#0a0a0a',
                         minHeight: 0,
                         scrollbarWidth: 'none',
                         msOverflowStyle: 'none',
@@ -166,7 +163,10 @@ function Keyboard({ module, onOutputClick, isConnecting, isFixed, selectedTrackI
                                         justifyContent: 'flex-end',
                                         paddingRight: 2,
                                         overflow: 'hidden',
+                                        borderTopRightRadius: 3,
+                                        borderBottomRightRadius: 3
                                     }}
+                                    title={note.noteName}
                                 >
                                     {note.noteName.startsWith('C') && !note.noteName.includes('#') && (
                                         <span style={{ fontSize: '7px', color: isActive ? '#fff' : '#000', lineHeight: 1, pointerEvents: 'none', userSelect: 'none' }}>
@@ -192,12 +192,13 @@ function Keyboard({ module, onOutputClick, isConnecting, isFixed, selectedTrackI
                                         top: `${whiteKeyIndex * keyHeight - keyHeight / 2}px`,
                                         left: 0,
                                         width: `${blackKeyWidthPct}%`,
-                                        height: `${keyHeight}px`,
+                                        height: `${keyHeight - 1}px`,
                                         background: isActive ? '#0a0' : (isHovered ? '#333' : '#333'),
-                                        border: '1px solid #000',
+                                        marginBottom: '2px',
                                         cursor: 'pointer',
                                         zIndex: 10,
-                                        transition: 'background 0.05s',
+                                        borderTopRightRadius: 3,
+                                        borderBottomRightRadius: 3
                                     }}
                                 />
                             );

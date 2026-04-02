@@ -478,7 +478,19 @@ function App() {
         });
 
         previousTrackIdsRef.current = currentTrackIds;
-    }, [tracks]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [
+        // Deliberately exclude module x/y positions — they are visual only and must not trigger audio graph rebuilds.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        tracks.map(t => JSON.stringify({
+            id: t.id,
+            mix: t.mix,
+            polyphony: t.polyphony,
+            portamento: t.portamento,
+            connections: t.connections,
+            modules: t.modules.map(m => ({ id: m.id, type: m.type }))
+        })).join('|')
+    ]);
 
     // Ensure AudioContext is created and worklet initialized — safe to call from any user gesture
     const ensureAudioReady = useCallback(async () => {

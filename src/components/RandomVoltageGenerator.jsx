@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getModuleState, registerModule } from '../audio/audioEngine.js';
+import { getModuleState, registerModule, updateModuleParams } from '../audio/audioEngine.js';
 import InputSlider from './InputSlider.jsx';
 import OutputPort from './OutputPort.jsx';
 import ModuleShell from './ModuleShell.jsx';
@@ -9,10 +9,11 @@ function RandomVoltageGenerator({ module, onDragStart, onDrag, onDragEnd, onOutp
     const [rate, setRate] = useState(savedParams.rate ?? 5); // Hz - random value changes per second
 
     useEffect(() => {
-        registerModule(module.id, {
-            type: 'random',
-            params: { rate }
-        });
+        registerModule(module.id, { type: 'random', params: { rate } });
+    }, [module.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    useEffect(() => {
+        updateModuleParams(module.id, { rate });
     }, [module.id, rate]);
 
     return (

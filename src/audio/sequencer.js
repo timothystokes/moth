@@ -38,6 +38,7 @@ const sustainPedalState = new Map(); // trackId → boolean
 const pendingPedalReleases = new Map(); // trackId → Set<noteNumber>
 
 let midiAccess = null;
+let midiInitPromise = null;
 let selectedInputId = null;
 let activeTrackId = null;
 let midiChannelFilter = null;
@@ -462,18 +463,22 @@ export function subscribeToTransport(callback) {
 }
 
 export async function initializeMidi() {
-    if (midiAccess) return true;
+    if (midiInitPromise) return midiInitPromise;
     if (!navigator.requestMIDIAccess) { console.warn('Web MIDI API not supported'); return false; }
-    try {
-        midiAccess = await navigator.requestMIDIAccess();
-        midiAccess.onstatechange = handleMidiStateChange;
-        const inputs = Array.from(midiAccess.inputs.values());
-        if (inputs.length > 0 && !selectedInputId) selectMidiInput(inputs[0].id);
-        return true;
-    } catch (error) {
-        console.error('Failed to get MIDI access:', error);
-        return false;
-    }
+    midiInitPromise = (async () => {
+        try {
+            midiAccess = await navigator.requestMIDIAccess();
+            midiAccess.onstatechange = handleMidiStateChange;
+            const inputs = Array.from(midiAccess.inputs.values());
+            if (inputs.length > 0 && !selectedInputId) selectMidiInput(inputs[0].id);
+            return true;
+        } catch (error) {
+            console.error('Failed to get MIDI access:', error);
+            midiInitPromise = null;
+            return false;
+        }
+    })();
+    return midiInitPromise;
 }
 
 export function setActiveTrack(trackId) { activeTrackId = trackId ?? null; }

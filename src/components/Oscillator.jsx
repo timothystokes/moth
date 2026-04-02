@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getModuleState, registerModule } from '../audio/audioEngine.js';
+import { getModuleState, registerModule, updateModuleParams } from '../audio/audioEngine.js';
 import InputSlider from './InputSlider.jsx';
 import OutputPort from './OutputPort.jsx';
 import ModuleShell from './ModuleShell.jsx';
@@ -45,15 +45,11 @@ function Oscillator({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isC
     const [dutyCycle, setDutyCycle] = useState(savedParams.dutyCycle ?? 0.5);  // 0–1; 0.5=equal halves, 0/1=full asymmetry
 
     useEffect(() => {
-        registerModule(module.id, {
-            type: 'oscillator',
-            params: {
-                frequency,
-                amplitude,
-                shape,
-                dutyCycle
-            }
-        });
+        registerModule(module.id, { type: 'oscillator', params: { frequency, amplitude, shape, dutyCycle } });
+    }, [module.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    useEffect(() => {
+        updateModuleParams(module.id, { frequency, amplitude, shape, dutyCycle });
     }, [module.id, frequency, amplitude, shape, dutyCycle]);
 
     // Two-segment log scale: pos 0–0.5 → −60dB to 0dB, pos 0.5–1 → 0dB to +6dB

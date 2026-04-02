@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getModuleState, registerModule } from '../audio/audioEngine.js';
+import { getModuleState, registerModule, updateModuleParams } from '../audio/audioEngine.js';
 import InputSlider from './InputSlider.jsx';
 import InputPort from './InputPort.jsx';
 import OutputPort from './OutputPort.jsx';
@@ -33,9 +33,13 @@ function MFX({ module, onDragStart, onOutputClick, isConnecting, onRemove }) {
     };
 
     useEffect(() => {
+        registerModule(module.id, { type: 'mfx', params: { fxType, time: isDelay ? delayMs : roomSize, feedback, mix } });
+    }, [module.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    useEffect(() => {
         // Pass the actual derived value to the worklet for each mode
         const time = isDelay ? delayMs : roomSize;
-        registerModule(module.id, { type: 'mfx', params: { fxType, time, feedback, mix } });
+        updateModuleParams(module.id, { fxType, time, feedback, mix });
     }, [module.id, fxType, timePos, feedback, mix]);
 
     return (

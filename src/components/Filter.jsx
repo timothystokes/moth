@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getModuleState, registerModule } from '../audio/audioEngine.js';
+import { getModuleState, registerModule, updateModuleParams } from '../audio/audioEngine.js';
 import InputSlider from './InputSlider.jsx';
 import InputPort from './InputPort.jsx';
 import OutputPort from './OutputPort.jsx';
@@ -16,15 +16,12 @@ function Filter({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isConne
     const cutoff = 20 * Math.pow(1000, (1 - cutoffSlider)); // Exponential scaling, inverted
     
     useEffect(() => {
-        registerModule(module.id, {
-            type: 'filter',
-            params: {
-                cutoffSlider,
-                resonance,
-                filterType
-            }
-        });
-    }, [module.id, cutoff, resonance, filterType]);
+        registerModule(module.id, { type: 'filter', params: { cutoffSlider, resonance, filterType } });
+    }, [module.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    useEffect(() => {
+        updateModuleParams(module.id, { cutoffSlider, resonance, filterType });
+    }, [module.id, cutoffSlider, resonance, filterType]);
     
     return (
         <ModuleShell title={`VCF${module.instanceNum ? ` - ${module.instanceNum}` : ''}`} module={module} onDragStart={onDragStart} onRemove={onRemove} minHeight="180px">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getModuleState, registerModule } from '../audio/audioEngine.js';
+import { getModuleState, registerModule, updateModuleParams } from '../audio/audioEngine.js';
 import InputSlider from './InputSlider.jsx';
 import Port from './Port.jsx';
 import ModuleShell from './ModuleShell.jsx';
@@ -35,6 +35,10 @@ function VCA({ module, onDragStart, onOutputClick, isConnecting, connections, on
 
     useEffect(() => {
         registerModule(module.id, { type: 'vca', params: { gain, invert } });
+    }, [module.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    useEffect(() => {
+        updateModuleParams(module.id, { gain, invert });
     }, [module.id, gain, invert]);
 
     return (

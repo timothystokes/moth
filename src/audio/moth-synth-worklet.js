@@ -42,6 +42,7 @@ class MothSynthProcessor extends AudioWorkletProcessor {
         super();
 
         this.modules = new Map();
+        this.moduleParams = new Map(); // stable mutable params objects — closures hold references to these
         this.connections = new Map();
         this.compiledModuleInputs = new Map();
         this.compiledModuleEvaluators = new Map();
@@ -280,11 +281,25 @@ class MothSynthProcessor extends AudioWorkletProcessor {
                     break;
                 case 'upsert-module':
                     this.modules.set(message.moduleId, message.module);
+                    // Initialise or reset the mutable params object for this module
+                    Object.assign(
+                        this.moduleParams.get(message.moduleId) ?? (() => {
+                            const p = {}; this.moduleParams.set(message.moduleId, p); return p;
+                        })(),
+                        message.module.params ?? {}
+                    );
                     this.rebuildCompiledRouting();
                     this.invalidateGraphAnalysisCache();
                     break;
+                case 'update-params': {
+                    // Hot-path: mutate the stable params object in-place — no recompile needed
+                    const mp = this.moduleParams.get(message.moduleId);
+                    if (mp) Object.assign(mp, message.params);
+                    break;
+                }
                 case 'remove-module':
                     this.modules.delete(message.moduleId);
+                    this.moduleParams.delete(message.moduleId);
                     this.moduleScopeBuffers.delete(message.moduleId);
                     this.rebuildCompiledRouting();
                     this.invalidateGraphAnalysisCache();
@@ -328,6 +343,7 @@ class MothSynthProcessor extends AudioWorkletProcessor {
                     break;
                 case 'clear-state':
                     this.modules.clear();
+                    this.moduleParams.clear();
                     this.connections.clear();
                     this.compiledModuleInputs.clear();
                     this.compiledModuleEvaluators.clear();
@@ -763,21 +779,22 @@ class MothSynthProcessor extends AudioWorkletProcessor {
     }
 
     createModuleFactory(moduleId, module, activeStack) {
+        const params = this.moduleParams.get(moduleId) ?? module.params ?? {};
         switch (module.type) {
             case 'oscillator':
-                return this.createOscillatorFactory(moduleId, module.params, activeStack);
+                return this.createOscillatorFactory(moduleId, params, activeStack);
             case 'filter':
-                return this.createFilterFactory(moduleId, module.params, activeStack);
+                return this.createFilterFactory(moduleId, params, activeStack);
             case 'envelope':
-                return this.createEnvelopeFactory(moduleId, module.params, activeStack);
+                return this.createEnvelopeFactory(moduleId, params, activeStack);
             case 'random':
-                return this.createRandomFactory(moduleId, module.params, activeStack);
+                return this.createRandomFactory(moduleId, params, activeStack);
             case 'mixer':
-                return this.createMixerFactory(moduleId, module.params, activeStack);
+                return this.createMixerFactory(moduleId, params, activeStack);
             case 'vca':
-                return this.createVCAFactory(moduleId, module.params, activeStack);
+                return this.createVCAFactory(moduleId, params, activeStack);
             case 'mfx':
-                return this.createMFXFactory(moduleId, module.params, activeStack);
+                return this.createMFXFactory(moduleId, params, activeStack);
             case 'multi': {
                 const signalRead = this.createInputReader(moduleId, 'signal-input', activeStack);
                 return (timeMs, laneContext) => (signalRead ? signalRead(timeMs, laneContext) : 0);

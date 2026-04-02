@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getModuleState, registerModule } from '../audio/audioEngine.js';
+import { getModuleState, registerModule, updateModuleParams } from '../audio/audioEngine.js';
 import InputSlider from './InputSlider.jsx';
 import InputPort from './InputPort.jsx';
 import OutputPort from './OutputPort.jsx';
@@ -58,15 +58,11 @@ function Envelope({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isCon
     const sustainGuideY = 8 + (previewHeight - 16) * (1 - sustain);
 
     useEffect(() => {
-        registerModule(module.id, {
-            type: 'envelope',
-            params: {
-                attack,
-                decay,
-                sustain,
-                release
-            }
-        });
+        registerModule(module.id, { type: 'envelope', params: { attack, decay, sustain, release } });
+    }, [module.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    useEffect(() => {
+        updateModuleParams(module.id, { attack, decay, sustain, release });
     }, [module.id, attack, decay, sustain, release]);
 
     return (

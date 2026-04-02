@@ -167,6 +167,12 @@ export function registerModule(moduleId, module) {
     postToWorklet({ type: 'upsert-module', moduleId, module });
 }
 
+export function updateModuleParams(moduleId, params) {
+    const existing = moduleStates.get(moduleId);
+    if (existing) moduleStates.set(moduleId, { ...existing, params: { ...existing.params, ...params } });
+    postToWorklet({ type: 'update-params', moduleId, params });
+}
+
 export function getModuleState(moduleId) {
     return moduleStates.get(moduleId) ?? null;
 }
