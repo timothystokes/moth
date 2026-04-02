@@ -30,7 +30,7 @@ export default function InputSlider({
 
     return (
         <div style={{ marginBottom: '10px' }}>
-            <label style={{ fontSize: '10px', color: '#bbb', display: 'block', marginBottom: '4px', marginLeft: '3px', userSelect: 'none' }}>
+            <label style={{ fontSize: '10px', color: '#fff', display: 'block', marginBottom: '4px', marginLeft: '3px', userSelect: 'none' }}>
                 {label}
             </label>
             <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -56,9 +56,9 @@ export default function InputSlider({
             </div>
             {hasTickLabels && (
                 <div style={{ position: 'relative', marginTop: '2px', paddingLeft: '30px', height: '12px' }}>
-                    {labelLeft  != null && <span style={{ fontSize: '8px', color: '#aaa', position: 'absolute', left: '30px' }}>{renderTick(labelLeft)}</span>}
-                    {labelMid   != null && <span style={{ fontSize: '8px', color: '#aaa', position: 'absolute', left: 'calc(50% + 15px)', transform: 'translateX(-50%)' }}>{renderTick(labelMid)}</span>}
-                    {labelRight != null && <span style={{ fontSize: '8px', color: '#aaa', position: 'absolute', right: '3px' }}>{renderTick(labelRight)}</span>}
+                    {labelLeft  != null && <span style={{ fontSize: '8px', color: '#ccc', position: 'absolute', left: '30px' }}>{renderTick(labelLeft)}</span>}
+                    {labelMid   != null && <span style={{ fontSize: '8px', color: '#ccc', position: 'absolute', left: 'calc(50% + 15px)', transform: 'translateX(-50%)' }}>{renderTick(labelMid)}</span>}
+                    {labelRight != null && <span style={{ fontSize: '8px', color: '#ccc', position: 'absolute', right: '3px' }}>{renderTick(labelRight)}</span>}
                 </div>
             )}
         </div>

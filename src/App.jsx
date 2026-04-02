@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import AppSelect from './components/AppSelect.jsx';
 import { COLOR_WIRE, COLOR_WIRE_DIM, COLOR_SLIDER } from './theme.js';
 import ToolbarButton from './components/ToolbarButton.jsx';
 import Amplifier from './components/Amplifier.jsx';
@@ -13,6 +14,8 @@ import VCA from './components/VCA.jsx';
 import Scope from './components/Scope.jsx';
 import MFX from './components/MFX.jsx';
 import Transport from './components/Transport.jsx';
+import NavDivider from './components/NavDivider.jsx';
+import ControlBlock from './components/ControlBlock.jsx';
 import PianoRoll from './components/PianoRoll.jsx';
 import {
     clearAllModules,
@@ -52,7 +55,7 @@ import {
 } from './audio/sequencer.js';
 import { midiToNoteName, absoluteBeatToBarBeat } from './audio/noteUtils.js';
 
-const toolbarHeight = 50;
+const toolbarHeight = 54;
 
 const initialTransportState = {
     hasSequence: false,
@@ -716,7 +719,9 @@ function App() {
         }
         const trackId = selectedTrack.id;
         updateTrack(trackId, (track) => {
-            const instanceNum = track.modules.filter((m) => m.type === type).length + 1;
+            const existing = track.modules.filter((m) => m.type === type);
+            const maxNum = existing.reduce((max, m) => Math.max(max, m.instanceNum ?? 0), 0);
+            const instanceNum = maxNum + 1;
             const moduleId = `${trackId}:${type}-${instanceNum}`;
             return {
                 ...track,
@@ -1265,70 +1270,45 @@ function MidiSelector() {
         setMidiChannel(val === 'all' ? null : parseInt(val, 10));
     };
 
-    const sel = { background: '#1a1a1a', color: '#ccc', border: '1px solid #444', borderRadius: 3, fontSize: '11px', padding: '2px 4px', height: 22 };
-    const lbl = { fontSize: '9px', color: '#666', marginBottom: 2, textTransform: 'uppercase', letterSpacing: '0.05em' };
-
     return (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={lbl}>MIDI</div>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-                
-                <select style={{ ...sel, width: 100 }} value={selectedId} onChange={handleDevice}>
-                    {midiInputs.length === 0 && <option value="">No MIDI devices</option>}
-                    {midiInputs.map(inp => <option key={inp.id} value={inp.id}>{inp.name}</option>)}
-                </select>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <select style={{ ...sel, width: 100 }} value={channel} onChange={handleChannel}>
-                    <option value="all">All Channels</option>
-                    {Array.from({ length: 16 }, (_, i) => <option key={i} value={i}>{i + 1}</option>)}
-                </select>
-            </div>
+            <AppSelect label="MIDI" style={{ width: 180 }} wrapperStyle={{ marginBottom: 0 }} value={selectedId} onChange={handleDevice}>
+                {midiInputs.length === 0 && <option value="">No MIDI devices</option>}
+                {midiInputs.map(inp => <option key={inp.id} value={inp.id}>{inp.name}</option>)}
+            </AppSelect>
+            <AppSelect style={{ width: 140 }} value={channel} onChange={handleChannel}>
+                <option value="all">All Channels</option>
+                {Array.from({ length: 16 }, (_, i) => <option key={i} value={i}>{i + 1}</option>)}
+            </AppSelect>
         </div>
     );
 }
 
 function Toolbar({ addModule, hasSelectedTrack, audioError, onImportMidi, onLoadProject, onSaveProject, viewMode, setViewMode, selectedTrack, onUpdatePolyphony, onUpdatePortamento }) {
-    const tabBase = {
-        padding: '0 14px',
-        fontSize: '10px',
-        fontWeight: 600,
-        letterSpacing: '0.08em',
-        textTransform: 'uppercase',
-        border: 'none',
-        borderBottom: '2px solid transparent',
-        background: 'transparent',
-        cursor: 'pointer',
-        height: '100%',
-        flexShrink: 0,
-        transition: 'color 0.1s, border-color 0.1s',
-    };
-
     return (
         <div style={{
             height: `${toolbarHeight}px`,
             background: '#222222',
             borderBottom: '2px solid #444',
             display: 'flex',
-            alignItems: 'stretch',
+            alignItems: 'center',
             padding: '0 10px 0 10px',
             gap: '0',
             zIndex: 1000,
             flexShrink: 0
         }}>
             {/* App title */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingRight: '14px', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
                 <img src="/moth.svg" alt="moth" style={{ height: 44, width: 'auto', display: 'block', opacity: 0.9 }} />
-                <b style={{ fontSize: '16px', letterSpacing: '0.1em' }}>MOTH</b>
+                <b style={{ fontSize: '14px', letterSpacing: '0.15em' }}>MOTH</b>
             </div>
-            <div style={{ width: '1px', alignSelf: 'stretch', background: '#505050', margin: '8px 12px' }} />
+            <NavDivider />
 
             {/* Track name + polyphony */}
             {selectedTrack ? (
                 <>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingRight: '12px', flexShrink: 0 }}>
-                        <span style={{ color: '#8a8a8a', fontSize: '11px', letterSpacing: '0.06em' }}>{selectedTrack.name}</span>
-                        
+                        <span style={{ color: '#fff', fontSize: '16px', letterSpacing: '0.06em' }}>{selectedTrack.name}</span>
                     </div>
                 </>
             ) : (
@@ -1337,57 +1317,78 @@ function Toolbar({ addModule, hasSelectedTrack, audioError, onImportMidi, onLoad
                 </div>
             )}
 
-            {/* View tabs */}
-            {(['voice', 'notes']).map((mode) => (
-                <button
-                    key={mode}
-                    onClick={() => setViewMode(mode)}
-                    style={{
-                        ...tabBase,
-                        marginLeft: mode === 'voice' ? '8px' : '0',
-                        borderBottom: `2px solid ${viewMode === mode ? '#5aaa5a' : 'transparent'}`,
-                        color: viewMode === mode ? '#8adb8a' : '#666',
-                    }}
-                >
-                    {mode}
-                </button>
-            ))}
+            {/* View tabs — folder tabs connected to content below */}
+            {(['voice', 'notes']).map((mode) => {
+                const isActive = viewMode === mode;
+                return (
+                    <button
+                        key={mode}
+                        onClick={() => setViewMode(mode)}
+                        style={{
+                            padding: '0 16px',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            letterSpacing: '0.08em',
+                            textTransform: 'uppercase',
+                            fontFamily: 'inherit',
+                            cursor: 'pointer',
+                            height: '80%',
+                            flexShrink: 0,
+                            alignSelf: 'flex-end',
+                            // Active: raised tab flush with content, no bottom border
+                            background: isActive ? '#101010' : '#1a1a1a',
+                            color: isActive ? '#ccc' : '#555',
+                            border: isActive ? '1px solid #444' : '1px solid #333',
+                            borderBottom: isActive ? '2px solid #101010' : '1px solid #444',
+                            borderRadius: '4px 4px 0 0',
+                            marginBottom: isActive ? '-2px' : '0',
+                            // Inactive tab is slightly shorter to look "behind"
+                            height: isActive ? `${toolbarHeight}px` : `${toolbarHeight - 4}px`,
+                            transition: 'background 0.1s, color 0.1s',
+                            marginLeft: mode === 'voice' ? '8px' : '2px',
+                        }}
+                    >
+                        {mode}
+                    </button>
+                );
+            })}
 
             {/* Right-side tools */}
-            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
-                <span style={{ color: '#555', fontSize: '10px', letterSpacing: '0.05em' }}>POLY</span>
-                        <select
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', alignSelf: 'stretch', minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                    {(selectedTrack.polyphony ?? 4) === 1 && (
+                            <ControlBlock label="PORTA" value={`${(selectedTrack.portamento ?? 0).toFixed(2)}s`}>
+                                <input
+                                    type="range" min="0" max="2" step="0.01"
+                                    value={selectedTrack.portamento ?? 0}
+                                    onChange={(e) => onUpdatePortamento(selectedTrack.id, parseFloat(e.target.value))}
+                                    style={{ width: '80px', cursor: 'pointer', accentColor: COLOR_SLIDER }}
+                                    title={`Portamento: ${(selectedTrack.portamento ?? 0).toFixed(2)}s`}
+                                />
+                            </ControlBlock>
+                        )}
+                        <AppSelect
+                            label="POLY"
                             value={selectedTrack.polyphony ?? 4}
                             onChange={(e) => onUpdatePolyphony(selectedTrack.id, Number(e.target.value))}
-                            style={{ width: '42px', background: '#1e1e1e', color: '#aaa', border: '1px solid #444', borderRadius: '3px', fontSize: '11px', height: '20px', padding: '0 2px', cursor: 'pointer', outline: 'none' }}
+                            style={{ width: '62px' }}
+                            wrapperStyle={{ marginBottom: 0 }}
                             title="Voices (polyphony)"
                         >
                             {Array.from({ length: 16 }, (_, i) => i + 1).map(n => (
                                 <option key={n} value={n}>{n}</option>
                             ))}
-                        </select>
-                        {(selectedTrack.polyphony ?? 4) === 1 && (
-                            <>
-                                <span style={{ color: '#555', fontSize: '10px', letterSpacing: '0.05em' }}>PORTA</span>
-                                <input
-                                    type="range" min="0" max="2" step="0.01"
-                                    value={selectedTrack.portamento ?? 0}
-                                    onChange={(e) => onUpdatePortamento(selectedTrack.id, parseFloat(e.target.value))}
-                                    style={{ width: '70px', cursor: 'pointer', accentColor: COLOR_SLIDER }}
-                                    title={`Portamento: ${(selectedTrack.portamento ?? 0).toFixed(2)}s`}
-                                />
-                                <span style={{ color: '#bbb', fontSize: '10px', minWidth: '28px' }}>
-                                    {(selectedTrack.portamento ?? 0).toFixed(2)}s
-                                </span>
-                            </>
-                        )}
-                                        <div style={{ width: '1px', alignSelf: 'stretch', background: '#505050', margin: '8px 0' }} />
+                        </AppSelect>
+                        </div>
+                        <NavDivider />
 
                 <MidiSelector />
-                <div style={{ width: '1px', alignSelf: 'stretch', background: '#505050', margin: '8px 0' }} />
-                <ToolbarButton onClick={onLoadProject}>LOAD</ToolbarButton>
-                <ToolbarButton onClick={onSaveProject}>SAVE</ToolbarButton>
-                <ToolbarButton onClick={onImportMidi}>IMPORT</ToolbarButton>
+                <NavDivider />
+                <div style={{ display: 'flex', gap: '8px' }}>
+                    <ToolbarButton onClick={onLoadProject}>LOAD</ToolbarButton>
+                    <ToolbarButton onClick={onSaveProject}>SAVE</ToolbarButton>
+                    <ToolbarButton onClick={onImportMidi}>IMPORT</ToolbarButton>
+                </div>
 
                 {audioError && (
                     <div style={{

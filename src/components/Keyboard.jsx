@@ -193,7 +193,7 @@ function Keyboard({ module, onOutputClick, isConnecting, isFixed, selectedTrackI
                                         left: 0,
                                         width: `${blackKeyWidthPct}%`,
                                         height: `${keyHeight - 2}px`,
-                                        background: isActive ? '#0a0' : (isHovered ? '#333' : '#333'),
+                                        background: isActive ? '#0a0' : (isHovered ? '#000' : '#000'),
                                         cursor: 'pointer',
                                         zIndex: 10,
                                         borderTopRightRadius: 3,

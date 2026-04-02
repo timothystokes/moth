@@ -1,28 +1,8 @@
 import React, { useRef, useCallback } from 'react';
 import InputPort from './InputPort.jsx';
 import ModuleShell from './ModuleShell.jsx';
+import ControlBlock from './ControlBlock.jsx';
 import { COLOR_SLIDER } from '../theme.js';
-
-// Consistent control card: label top-left, control centered, value bottom-right
-function ControlBlock({ label, value, children }) {
-    return (
-        <div style={{ position: 'relative', padding: '14px 4px 16px 4px' }}>
-            <span style={{
-                position: 'absolute', top: 2, left: 0,
-                fontSize: '9px', color: '#aaa', letterSpacing: '0.05em', userSelect: 'none',
-            }}>{label}</span>
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                {children}
-            </div>
-            {value !== undefined && (
-                <span style={{
-                    position: 'absolute', bottom: 2, right: 0,
-                    fontSize: '8px', color: '#ccc', letterSpacing: '0.03em', userSelect: 'none',
-                }}>{value}</span>
-            )}
-        </div>
-    );
-}
 
 function Knob({ value, min, max, onChange, defaultValue }) {
     const startRef = useRef(null);
@@ -141,15 +121,15 @@ function Amplifier({ onOutputClick, isConnecting, isFixed, selectedTrack, onUpda
                     style={{
                         padding: '4px 0',
                         width: '100%',
-                        fontSize: '9px',
+                        fontSize: '10px',
                         fontWeight: 700,
                         letterSpacing: '0.06em',
-                        border: `1px solid ${solo ? '#b89a2a' : '#444'}`,
-                        borderRadius: '3px',
-                        background: solo ? '#5a4a10' : 'transparent',
-                        color: solo ? '#f5d060' : '#777',
+                        borderRadius: '5px',
+                        background: solo ? '#2288FF' : '#fff',
+                        color: solo ? '#fff' : '#000',
                         cursor: disabled ? 'default' : 'pointer',
                         opacity: disabled ? 0.4 : 1,
+                        border: 0
                     }}
                     title={solo ? 'Unsolo' : 'Solo (silences other tracks)'}
                 >

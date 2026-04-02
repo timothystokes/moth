@@ -15,8 +15,7 @@ export default function ToolbarButton({ children, variant, active, style, disabl
     const lit      = (isPower || isActive) && active;
 
     const base = {
-        padding: '4px 10px',
-        paddingBlock: 0,
+        padding: '7px 12px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -26,7 +25,7 @@ export default function ToolbarButton({ children, variant, active, style, disabl
                   : '#444',
         border: lit     ? '2px solid #00ff00'
               : hovered ? '1px solid #22aa22'
-              : '1px solid #666',
+              : '1px solid #ccc',
         borderRadius: '4px',
         color: lit ? '#000' : '#fff',
         fontWeight: (isPower || isActive) ? 'bold' : 'normal',

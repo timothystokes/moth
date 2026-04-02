@@ -41,9 +41,8 @@ export default function ModuleShell({ title, module, onDragStart, onRemove, widt
     };
 
     const headerStyle = {
-        fontSize: '12px',
-        fontWeight: 'bold',
-        padding: '8px 10px',
+        fontSize: '16px',
+        padding: '10px 10px',
         color: '#ccc',
         display: 'flex',
         justifyContent: 'space-between',

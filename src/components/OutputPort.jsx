@@ -10,7 +10,7 @@ export default function OutputPort({ moduleId, portId, label, onOutputClick, isC
         <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '6px', ...style }}>
             {children}
             {label && (
-                <span style={{ fontSize: '10px', color: '#bbb', marginRight: '6px', userSelect: 'none' }}>
+                <span style={{ fontSize: '10px', color: '#fff', marginRight: '6px', userSelect: 'none' }}>
                     {label}
                 </span>
             )}

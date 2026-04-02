@@ -92,30 +92,30 @@ function Transport({
             boxShadow: '0 -10px 24px rgba(0,0,0,0.3)',
             position: 'relative'
         }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', width: '100%', minHeight: '40px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', minHeight: '40px' }}>
                 <ToolbarButton
                     variant="active" active={isPlaying}
                     onClick={handlePlayStop}
                     disabled={!transportState?.hasSequence || isPendingPlay}
-                    style={{ width: 36, height: 36, padding: 0 }}
+                    style={{ width: 36, height: 30, padding: 0 }}
                 >
                     {isPendingPlay ? '…' : isPlaying ? '■' : '▶'}
                 </ToolbarButton>
-                <ToolbarButton onClick={handleRewind} disabled={!transportState?.hasSequence} style={{ width: 36, height: 36, padding: 0 }}>⏮</ToolbarButton>
+                <ToolbarButton onClick={handleRewind} disabled={!transportState?.hasSequence} style={{ width: 36, height: 30, padding: 0 }}>⏮</ToolbarButton>
                 <ToolbarButton
                     variant="active" active={isRecording}
                     onClick={onRecord}
-                    style={isRecording ? { width: 36, height: 36, padding: 0, background: '#cc0000', border: '2px solid #ff4444', color: '#fff' } : { width: 36, height: 36, padding: 0 }}
+                    style={isRecording ? { width: 36, height: 30, padding: 0, background: '#cc0000', border: '2px solid #ff4444', color: '#fff' } : { width: 36, height: 30, padding: 0 }}
                 >
                     {isRecording ? '■' : '⏺'}
                 </ToolbarButton>
 
-                <div style={{ minWidth: '240px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                {/* <div style={{ minWidth: '240px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <div style={{ fontSize: '11px', letterSpacing: '0.08em', color: '#6f6f6f' }}>STATUS</div>
                     <div style={{ fontSize: '13px', color: isPlaying ? '#9cff9c' : '#c8c8c8' }}>
                         {isPlaying ? 'Playing' : statusMessage}
                     </div>
-                </div>
+                </div> */}
 
                 <div style={{ marginLeft: 'auto', display: 'flex', gap: '22px', alignItems: 'center' }}>
                     <div style={metaBlockStyle}>
@@ -123,8 +123,6 @@ function Transport({
                         {editingBpm ? (
                             <input
                                 autoFocus
-                                type="number"
-                                min="20" max="300"
                                 value={bpmInput}
                                 onChange={e => setBpmInput(e.target.value)}
                                 onBlur={() => commitBpm(bpmInput)}
@@ -135,13 +133,13 @@ function Transport({
                                 style={{
                                     width: '48px', background: '#1a2a1a', color: '#9cff9c',
                                     border: '1px solid #4f9b54', borderRadius: '3px',
-                                    fontSize: '14px', fontFamily: 'inherit',
+                                    fontSize: '11px', fontFamily: 'inherit',
                                     padding: '1px 4px', outline: 'none', textAlign: 'right',
                                 }}
                             />
                         ) : (
                             <span
-                                style={{ ...metaValueStyle, cursor: 'pointer', borderBottom: '1px dashed #555' }}
+                                style={{ ...metaValueStyle, cursor: 'pointer' }}
                                 title="Click to edit tempo"
                                 onClick={() => { setBpmInput(String(bpm ?? 120)); setEditingBpm(true); }}
                             >
@@ -188,8 +186,8 @@ function Transport({
                         minHeight: '30px',
                         padding: '0 12px',
                         cursor: 'pointer',
-                        color: '#555',
-                        fontSize: '12px',
+                        color: '#ccc',
+                        fontSize: '10px',
                         letterSpacing: '0.05em',
                         borderTop: tracks.length > 0 ? '1px solid #1a1a1a' : 'none',
                         userSelect: 'none',
@@ -318,12 +316,9 @@ function TrackRow({ track, isSelected, isPlaying, timelineDurationMs, onSelect, 
                     <div style={{ minWidth: 0, width: '100%' }}>
                         <div
                             title="Double-click to rename"
-                            style={{ fontSize: '12px', color: '#e3e3e3', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                            style={{ fontSize: '16px', color: '#e3e3e3', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
                         >
                             {trackName}
-                        </div>
-                        <div style={{ fontSize: '10px', color: '#666', marginTop: '1px' }}>
-                            {track?.notes?.length ?? 0} notes
                         </div>
                     </div>
                 )}
@@ -336,11 +331,11 @@ function TrackRow({ track, isSelected, isPlaying, timelineDurationMs, onSelect, 
                         <button
                             onClick={handleConfirmRemove}
                             style={{ fontSize: '9px', padding: '2px 5px', background: '#5a1a1a', color: '#ff9090', border: '1px solid #c44', borderRadius: '3px', cursor: 'pointer', letterSpacing: '0.04em', fontWeight: 600 }}
-                        >DEL</button>
+                        >YES</button>
                         <button
                             onClick={handleCancelRemove}
                             style={{ fontSize: '9px', padding: '2px 5px', background: 'transparent', color: '#888', border: '1px solid #444', borderRadius: '3px', cursor: 'pointer', letterSpacing: '0.04em' }}
-                        >✕</button>
+                        >NO</button>
                     </div>
                 ) : (
                     <SmallButton
