@@ -71,7 +71,7 @@ function Oscillator({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isC
     const ampTodBLabel = (amp) => amp <= 0 ? '∞' : `${(20 * Math.log10(amp)).toFixed(1)}dB`;
 
     return (
-        <ModuleShell title="VCO" module={module} onDragStart={onDragStart} onRemove={onRemove} minHeight="180px">
+        <ModuleShell title={`VCO${module.instanceNum ? ` - ${module.instanceNum}` : ''}`} module={module} onDragStart={onDragStart} onRemove={onRemove} minHeight="180px">
                 <InputSlider
                     moduleId={module.id} portId="freq-input"
                     label={`FREQUENCY: ${frequency < 10 ? frequency.toFixed(2) : frequency < 100 ? frequency.toFixed(1) : frequency.toFixed(0)}Hz`}

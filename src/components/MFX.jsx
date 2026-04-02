@@ -39,7 +39,7 @@ function MFX({ module, onDragStart, onOutputClick, isConnecting, onRemove }) {
     }, [module.id, fxType, timePos, feedback, mix]);
 
     return (
-        <ModuleShell title="MFX" module={module} onDragStart={onDragStart} onRemove={onRemove}>
+        <ModuleShell title={`MFX${module.instanceNum ? ` - ${module.instanceNum}` : ''}`} module={module} onDragStart={onDragStart} onRemove={onRemove}>
             <ToggleSwitch
                 label="TYPE"
                 value={isDelay}

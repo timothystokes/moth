@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { COLOR_WIRE, COLOR_WIRE_DIM, COLOR_SLIDER } from './theme.js';
 import ToolbarButton from './components/ToolbarButton.jsx';
 import Amplifier from './components/Amplifier.jsx';
@@ -10,7 +10,7 @@ import Envelope from './components/Envelope.jsx';
 import Mixer from './components/Mixer.jsx';
 import Multi from './components/Multi.jsx';
 import VCA from './components/VCA.jsx';
-import Delay from './components/Delay.jsx';
+import Scope from './components/Scope.jsx';
 import MFX from './components/MFX.jsx';
 import Transport from './components/Transport.jsx';
 import PianoRoll from './components/PianoRoll.jsx';
@@ -19,6 +19,7 @@ import {
     connectModules,
     disconnectInput,
     getModuleState,
+    initializeAudioEngine,
     registerModule,
     removeTrack,
     setScopeTrack,
@@ -30,17 +31,23 @@ import {
 import {
     buildNoteSegments,
     buildNotesFromMidiEvents,
+    getMidiChannel,
+    getMidiInputs,
     importMidiFile,
+    initializeMidi,
     loadSession,
     updateSession,
     play,
     rewind,
     seekTo,
+    selectMidiInput,
     setActiveTrack,
+    setMidiChannel,
     stop,
     startRecording,
     stopRecording,
     getIsRecording,
+    subscribeMidiStateChange,
     subscribeToTransport
 } from './audio/sequencer.js';
 import { midiToNoteName, absoluteBeatToBarBeat } from './audio/noteUtils.js';
@@ -77,7 +84,6 @@ const initialVoiceStatus = {
 };
 
 let manualTrackCounter = 1;
-let moduleCounter = 1;
 
 
 function createManualTrack(name = `Track ${manualTrackCounter++}`) {
@@ -193,23 +199,30 @@ function normalizeTrack(track, index, moduleStateLookup = new Map(), timeSignatu
 
     const normalizedTrackId = typeof track?.id === 'string' && track.id ? track.id : `track-loaded-${Date.now()}-${index}`;
     const normalizedModules = Array.isArray(track?.modules)
-        ? track.modules.map((module, moduleIndex) => {
-            const originalModuleId = typeof module?.id === 'string' ? module.id : '';
-            const normalizedModuleId = normalizeTrackModuleId(
-                normalizedTrackId,
-                originalModuleId,
-                `module-legacy-${index}-${moduleIndex}`
-            );
-            const fallbackState = moduleStateLookup.get(normalizedModuleId)
-                ?? moduleStateLookup.get(originalModuleId)
-                ?? null;
+        ? (() => {
+            const typeCounters = {};
+            return track.modules.map((module, moduleIndex) => {
+                const type = typeof module?.type === 'string' ? module.type : 'module';
+                typeCounters[type] = (typeCounters[type] || 0) + 1;
+                const instanceNum = typeof module?.instanceNum === 'number' ? module.instanceNum : typeCounters[type];
+                const originalModuleId = typeof module?.id === 'string' ? module.id : '';
+                const normalizedModuleId = normalizeTrackModuleId(
+                    normalizedTrackId,
+                    originalModuleId,
+                    `module-legacy-${index}-${moduleIndex}`
+                );
+                const fallbackState = moduleStateLookup.get(normalizedModuleId)
+                    ?? moduleStateLookup.get(originalModuleId)
+                    ?? null;
 
-            return {
-                ...module,
-                id: normalizedModuleId,
-                params: module?.params ?? fallbackState?.params ?? {}
-            };
-        })
+                return {
+                    ...module,
+                    id: normalizedModuleId,
+                    instanceNum,
+                    params: module?.params ?? fallbackState?.params ?? {}
+                };
+            });
+        })()
         : [];
     const normalizedConnections = Array.isArray(track?.connections)
         ? track.connections
@@ -262,19 +275,11 @@ function normalizeTrack(track, index, moduleStateLookup = new Map(), timeSignatu
 }
 
 function syncCountersFromTracks(projectTracks) {
-    const highestModuleCounter = projectTracks.reduce((maximum, track) => (
-        track.modules.reduce((trackMaximum, module) => {
-            const match = typeof module?.id === 'string' ? module.id.match(/:module-(\d+)$/) : null;
-            return match ? Math.max(trackMaximum, Number.parseInt(match[1], 10)) : trackMaximum;
-        }, maximum)
-    ), 0);
-
     const highestManualTrackNumber = projectTracks.reduce((maximum, track) => {
         const match = typeof track?.name === 'string' ? track.name.match(/^Track\s+(\d+)$/) : null;
         return match ? Math.max(maximum, Number.parseInt(match[1], 10)) : maximum;
     }, 0);
 
-    moduleCounter = Math.max(moduleCounter, highestModuleCounter + 1);
     manualTrackCounter = Math.max(manualTrackCounter, highestManualTrackNumber + 1);
 }
 
@@ -343,10 +348,9 @@ function App() {
     const [connectingFrom, setConnectingFrom] = useState(null);
     const [tempConnection, setTempConnection] = useState(null);
     const [audioContext, setAudioContext] = useState(null);
-    const [isPoweredOn, setIsPoweredOn] = useState(false);
+    const audioContextRef = useRef(null); // sync ref so ensureAudioReady is stable
     const [audioError, setAudioError] = useState(null);
     const [transportState, setTransportState] = useState(initialTransportState);
-    const [pendingTransportPlay, setPendingTransportPlay] = useState(false);
     const [moduleUiRevision, setModuleUiRevision] = useState(0);
     const [isRecording, setIsRecording] = useState(false);
     const [projectSequence, setProjectSequence] = useState(initialProjectSequence);
@@ -392,9 +396,7 @@ function App() {
             const phase = error?.context?.phase ? ` (${error.context.phase})` : '';
             setAudioError(`${nextMessage}${phase}`);
             setVoiceStatus(initialVoiceStatus);
-            setPendingTransportPlay(false);
             stop();
-            setIsPoweredOn(false);
         });
 
         return () => unsubscribe();
@@ -429,7 +431,6 @@ function App() {
             setAudioError(`Audio diagnostic on${trackId}${moduleId}: ${diagnostic?.type ?? 'runtime issue'}${phase}${contributorSuffix}`);
 
             if (diagnostic?.severity === 'fatal') {
-                setPendingTransportPlay(false);
                 stop();
             }
         });
@@ -452,15 +453,17 @@ function App() {
 
     useEffect(() => {
         const currentTrackIds = new Set(tracks.map((track) => track.id));
+        const anySolo = tracks.some((t) => t.mix?.solo);
 
         tracks.forEach((track) => {
             registerModule(`${track.id}:keyboard-cv`, { type: 'keyboard-cv', params: {} });
             registerModule(`${track.id}:keyboard-gate`, { type: 'keyboard-gate', params: {} });
             registerModule(`${track.id}:keyboard-velocity`, { type: 'keyboard-velocity', params: {} });
             registerModule(`${track.id}:track-output`, { type: 'track-output', params: {} });
+            const effectiveMute = track.mix.mute || (anySolo && !track.mix?.solo);
             upsertTrack(track.id, {
                 volume: track.mix.volume,
-                mute: track.mix.mute,
+                mute: effectiveMute,
                 polyphony: track.polyphony ?? 4,
                 portamento: track.portamento ?? 0,
                 keyboardLatchModeEnabled: !track.connections.some(
@@ -482,42 +485,37 @@ function App() {
         previousTrackIdsRef.current = currentTrackIds;
     }, [tracks]);
 
-    useEffect(() => {
-        if (isPoweredOn) {
-            setVoiceStatus(initialVoiceStatus);
-            return;
+    // Ensure AudioContext is created and worklet initialized — safe to call from any user gesture
+    const ensureAudioReady = useCallback(async () => {
+        if (!audioContextRef.current) {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            audioContextRef.current = ctx;
+            setAudioContext(ctx);
+            await initializeAudioEngine(ctx);
+        } else if (audioContextRef.current.state === 'suspended') {
+            await audioContextRef.current.resume();
         }
+    }, []);
 
-        setPendingTransportPlay(false);
-        stop();
-    }, [isPoweredOn]);
-
+    // Auto-init on first user gesture so audio is ready before explicit actions
     useEffect(() => {
-        if (!pendingTransportPlay || !audioContext || !isPoweredOn) {
-            return;
-        }
-
-        let cancelled = false;
-
-        const startPlayback = async () => {
-            try {
-                await audioContext.resume();
-                await play();
-            } catch (error) {
-                console.error('Failed to start MIDI playback:', error);
-            } finally {
-                if (!cancelled) {
-                    setPendingTransportPlay(false);
-                }
-            }
+        const handler = () => {
+            ensureAudioReady().catch(console.error);
+            document.removeEventListener('mousedown', handler, true);
+            document.removeEventListener('keydown', handler, true);
         };
-
-        startPlayback();
-
+        document.addEventListener('mousedown', handler, true);
+        document.addEventListener('keydown', handler, true);
         return () => {
-            cancelled = true;
+            document.removeEventListener('mousedown', handler, true);
+            document.removeEventListener('keydown', handler, true);
         };
-    }, [pendingTransportPlay, audioContext, isPoweredOn]);
+    }, [ensureAudioReady]);
+
+    // Initialise worklet when audioContext is set (e.g. after load)
+    useEffect(() => {
+        if (audioContext) initializeAudioEngine(audioContext).catch(console.error);
+    }, [audioContext]);
 
     useEffect(() => {
         const handleGlobalMouseMove = (event) => {
@@ -700,16 +698,20 @@ function App() {
             return;
         }
         const trackId = selectedTrack.id;
-        const moduleId = `${trackId}:module-${moduleCounter++}`;
-        updateTrack(trackId, (track) => ({
-            ...track,
-            modules: [...track.modules, {
-                id: moduleId,
-                type,
-                x: 100 + track.modules.length * 40,
-                y: 100 + track.modules.length * 24
-            }]
-        }));
+        updateTrack(trackId, (track) => {
+            const instanceNum = track.modules.filter((m) => m.type === type).length + 1;
+            const moduleId = `${trackId}:${type}-${instanceNum}`;
+            return {
+                ...track,
+                modules: [...track.modules, {
+                    id: moduleId,
+                    type,
+                    instanceNum,
+                    x: 100 + track.modules.length * 40,
+                    y: 100 + track.modules.length * 24
+                }]
+            };
+        });
     };
 
     const removeConnection = (connectionId) => {
@@ -729,13 +731,7 @@ function App() {
         }));
     };
 
-    const togglePower = () => {
-        setAudioError(null);
-        setIsPoweredOn((previous) => !previous);
-    };
-
     const handleSequenceLoad = async (file) => {
-        setPendingTransportPlay(false);
         const importedSession = await importMidiFile(file);
         const importedTracks = importedSession.tracks.map(createImportedTrack);
         syncCountersFromTracks(importedTracks);
@@ -776,7 +772,6 @@ function App() {
     };
 
     const handleProjectLoad = async (file) => {
-        setPendingTransportPlay(false);
         stop();
 
         const rawText = await file.text();
@@ -830,32 +825,17 @@ function App() {
         if (!transportState.hasSequence) {
             throw new Error('No sequence loaded. Import a MIDI file or add sequences to tracks.');
         }
-
-        if (!audioContext || !isPoweredOn) {
-            setPendingTransportPlay(true);
-            if (!isPoweredOn) {
-                setIsPoweredOn(true);
-            }
-            return;
-        }
-
-        await audioContext.resume();
+        await ensureAudioReady();
         await play();
     };
 
     const handleTransportStop = () => {
-        setPendingTransportPlay(false);
-        if (isRecording) {
-            handleStopRecording();
-        }
+        if (isRecording) handleStopRecording();
         stop();
     };
 
     const handleTransportRewind = () => {
-        setPendingTransportPlay(false);
-        if (isRecording) {
-            handleStopRecording();
-        }
+        if (isRecording) handleStopRecording();
         rewind();
     };
 
@@ -893,10 +873,11 @@ function App() {
         setTracks(synced);
     };
 
-    const handleToggleRecord = () => {
+    const handleToggleRecord = async () => {
         if (isRecording) {
             handleStopRecording();
         } else {
+            await ensureAudioReady();
             startRecording();
             setIsRecording(true);
         }
@@ -1039,8 +1020,6 @@ function App() {
 
             <Toolbar
                 addModule={addModule}
-                isPoweredOn={isPoweredOn}
-                togglePower={togglePower}
                 hasSelectedTrack={Boolean(selectedTrack)}
                 audioError={audioError}
                 voiceStatus={voiceStatus}
@@ -1048,6 +1027,7 @@ function App() {
                 onLoadProject={() => projectLoadInputRef.current?.click()}
                 onSaveProject={handleProjectSave}
                 viewMode={viewMode}
+                setViewMode={setViewMode}
             />
 
             <div ref={contentRef} style={{ flex: 1, position: 'relative', display: 'flex', flexDirection: 'column', minHeight: 0 }} onMouseMove={handleCanvasMouseMove}>
@@ -1124,30 +1104,6 @@ function App() {
 
                 {/* Full-width track title bar */}
                 <div style={{ height: '30px', borderBottom: '1px solid #2d2d2d', display: 'flex', alignItems: 'center', padding: '0 10px', gap: '8px', background: '#1a1a1a', flexShrink: 0, zIndex: 1 }}>
-                    {/* Mode toggle buttons */}
-                    {(['voice', 'notes']).map((mode) => (
-                        <button
-                            key={mode}
-                            onClick={() => setViewMode(mode)}
-                            style={{
-                                padding: '2px 10px',
-                                fontSize: '10px',
-                                fontWeight: 600,
-                                letterSpacing: '0.06em',
-                                textTransform: 'uppercase',
-                                border: `1px solid ${viewMode === mode ? '#5a9a5a' : '#444'}`,
-                                borderRadius: '10px',
-                                background: viewMode === mode ? '#2a4a2a' : 'transparent',
-                                color: viewMode === mode ? '#8adb8a' : '#666',
-                                cursor: 'pointer',
-                                lineHeight: 1.4,
-                                flexShrink: 0,
-                            }}
-                        >
-                            {mode}
-                        </button>
-                    ))}
-                    <div style={{ width: '1px', alignSelf: 'stretch', background: '#333', margin: '4px 2px' }} />
                     <span style={{ color: '#555', fontSize: '11px', letterSpacing: '0.06em', flexShrink: 0 }}>TRACK:</span>
                     <span style={{ color: '#8a8a8a', fontSize: '11px', letterSpacing: '0.06em', flexShrink: 0 }}>
                         {selectedTrack ? selectedTrack.name : 'none'}
@@ -1155,7 +1111,7 @@ function App() {
                     {selectedTrack && (
                         <>
                             <div style={{ width: '1px', alignSelf: 'stretch', background: '#333', margin: '4px 4px' }} />
-                            <span style={{ color: '#555', fontSize: '10px', letterSpacing: '0.05em', flexShrink: 0 }}>VOICES</span>
+                            <span style={{ color: '#555', fontSize: '10px', letterSpacing: '0.05em', flexShrink: 0 }}>POLYPHONY</span>
                             <select
                                 value={selectedTrack.polyphony ?? 4}
                                 onChange={(e) => handleUpdatePolyphony(selectedTrack.id, Number(e.target.value))}
@@ -1198,7 +1154,7 @@ function App() {
                     ) : (
                         // VOICE mode: keyboard | canvas | amplifier
                         <>
-                            <div style={{ width: '165px', height: '100%', background: '#1a1a1a', borderRight: '2px solid #444', flexShrink: 0 }}>
+                            <div style={{ width: '80px', height: '100%', background: '#1a1a1a', borderRight: '2px solid #444', flexShrink: 0 }}>
                                 <Keyboard
                                     module={{ id: 'keyboard-singleton' }}
                                     onOutputClick={handleOutputClick}
@@ -1223,17 +1179,43 @@ function App() {
                                     moduleUiRevision={moduleUiRevision}
                                     onRemove={removeModule}
                                 />
+                                {/* Floating module add buttons — bottom-right of grid */}
+                                <div style={{
+                                    position: 'absolute',
+                                    bottom: 10,
+                                    right: 10,
+                                    display: 'flex',
+                                    gap: 4,
+                                    flexWrap: 'nowrap',
+                                    zIndex: 20,
+                                }}>
+                                    {[
+                                        ['oscillator', 'VCO'],
+                                        ['filter', 'VCF'],
+                                        ['envelope', 'ENV'],
+                                        ['random', 'RND'],
+                                        ['mixer', 'MIX'],
+                                        ['multi', 'MUL'],
+                                        ['vca', 'VCA'],
+                                        ['mfx', 'MFX'],
+                                        ['scope', 'SCO'],
+                                    ].map(([type, label]) => (
+                                        <ToolbarButton
+                                            key={type}
+                                            onClick={() => addModule(type)}
+                                            disabled={!selectedTrack}
+                                        >+ {label}</ToolbarButton>
+                                    ))}
+                                </div>
                             </div>
 
-                            <div style={{ width: '220px', height: '100%', background: '#1a1a1a', borderLeft: '2px solid #444', flexShrink: 0 }}>
+                            <div style={{ width: '80px', height: '100%', background: '#1a1a1a', borderLeft: '2px solid #444', flexShrink: 0 }}>
                                 <Amplifier
                                     onOutputClick={handleOutputClick}
                                     isConnecting={connectingFrom?.moduleId === 'track-output-singleton'}
-                                    audioContext={audioContext}
-                                    setAudioContext={setAudioContext}
                                     isFixed={true}
-                                    isPoweredOn={isPoweredOn}
-                                    selectedTrackLabel={selectedTrack?.name ?? null}
+                                    selectedTrack={selectedTrack}
+                                    onUpdateMix={handleUpdateTrackMix}
                                 />
                             </div>
                         </>
@@ -1253,7 +1235,7 @@ function App() {
                 onCreateTrack={handleCreateTrack}
                 onRemoveTrack={handleRemoveTrack}
                 onRenameTrack={handleRenameTrack}
-                isPendingPlay={pendingTransportPlay}
+                isPendingPlay={false}
                 onSetTransportPosition={seekTo}
                 isRecording={isRecording}
                 onRecord={handleToggleRecord}
@@ -1268,7 +1250,58 @@ function App() {
     );
 }
 
-function Toolbar({ addModule, isPoweredOn, togglePower, hasSelectedTrack, audioError, voiceStatus, onImportMidi, onLoadProject, onSaveProject, viewMode }) {
+function MidiSelector() {
+    const [midiInputs, setMidiInputs] = React.useState([]);
+    const [selectedId, setSelectedId] = React.useState('');
+    const [channel, setChannelState] = React.useState('all');
+
+    useEffect(() => {
+        initializeMidi().then(() => {
+            const inputs = getMidiInputs();
+            setMidiInputs(inputs);
+            if (inputs.length > 0) { setSelectedId(inputs[0].id); selectMidiInput(inputs[0].id); }
+            const ch = getMidiChannel();
+            setChannelState(ch == null ? 'all' : String(ch));
+        });
+        return subscribeMidiStateChange((inputs) => setMidiInputs(inputs));
+    }, []);
+
+    const handleDevice = (e) => {
+        const id = e.target.value;
+        setSelectedId(id);
+        selectMidiInput(id);
+    };
+
+    const handleChannel = (e) => {
+        const val = e.target.value;
+        setChannelState(val);
+        setMidiChannel(val === 'all' ? null : parseInt(val, 10));
+    };
+
+    const sel = { background: '#1a1a1a', color: '#ccc', border: '1px solid #444', borderRadius: 3, fontSize: '11px', padding: '2px 4px', height: 22 };
+    const lbl = { fontSize: '9px', color: '#666', marginBottom: 2, textTransform: 'uppercase', letterSpacing: '0.05em' };
+
+    return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <div style={lbl}>MIDI IN</div>
+                <select style={sel} value={selectedId} onChange={handleDevice}>
+                    {midiInputs.length === 0 && <option value="">No MIDI devices</option>}
+                    {midiInputs.map(inp => <option key={inp.id} value={inp.id}>{inp.name}</option>)}
+                </select>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <div style={lbl}>CHANNEL</div>
+                <select style={{ ...sel, width: 54 }} value={channel} onChange={handleChannel}>
+                    <option value="all">All</option>
+                    {Array.from({ length: 16 }, (_, i) => <option key={i} value={i}>{i + 1}</option>)}
+                </select>
+            </div>
+        </div>
+    );
+}
+
+function Toolbar({ addModule, hasSelectedTrack, audioError, voiceStatus, onImportMidi, onLoadProject, onSaveProject, viewMode, setViewMode }) {
 
 
     return (
@@ -1284,23 +1317,36 @@ function Toolbar({ addModule, isPoweredOn, togglePower, hasSelectedTrack, audioE
             flexShrink: 0
         }}>
             <b>MOTH1</b>
-            <ToolbarButton onClick={onLoadProject}>LOAD</ToolbarButton>
-            <ToolbarButton onClick={onSaveProject}>SAVE</ToolbarButton>
-            <ToolbarButton onClick={onImportMidi}>IMPORT</ToolbarButton>
-            {viewMode !== 'notes' && (
-                <>
-                    <div style={{ width: '1px', alignSelf: 'stretch', background: '#505050', margin: '6px 4px' }} />
-                    <ToolbarButton onClick={() => addModule('oscillator')} disabled={!hasSelectedTrack}>+ VCO</ToolbarButton>
-                    <ToolbarButton onClick={() => addModule('filter')} disabled={!hasSelectedTrack}>+ VCF</ToolbarButton>
-                    <ToolbarButton onClick={() => addModule('envelope')} disabled={!hasSelectedTrack}>+ ENV</ToolbarButton>
-                    <ToolbarButton onClick={() => addModule('random')} disabled={!hasSelectedTrack}>+ RND</ToolbarButton>
-                    <ToolbarButton onClick={() => addModule('mixer')} disabled={!hasSelectedTrack}>+ MIX</ToolbarButton>
-                    <ToolbarButton onClick={() => addModule('multi')} disabled={!hasSelectedTrack}>+ MUL</ToolbarButton>
-                    <ToolbarButton onClick={() => addModule('vca')} disabled={!hasSelectedTrack}>+ VCA</ToolbarButton>
-                    <ToolbarButton onClick={() => addModule('mfx')} disabled={!hasSelectedTrack}>+ MFX</ToolbarButton>
-                </>
-            )}
+            <div style={{ width: '1px', alignSelf: 'stretch', background: '#505050', margin: '6px 4px' }} />
+            {(['voice', 'notes']).map((mode) => (
+                <button
+                    key={mode}
+                    onClick={() => setViewMode(mode)}
+                    style={{
+                        padding: '2px 10px',
+                        fontSize: '10px',
+                        fontWeight: 600,
+                        letterSpacing: '0.06em',
+                        textTransform: 'uppercase',
+                        border: `1px solid ${viewMode === mode ? '#5a9a5a' : '#444'}`,
+                        borderRadius: '10px',
+                        background: viewMode === mode ? '#2a4a2a' : 'transparent',
+                        color: viewMode === mode ? '#8adb8a' : '#666',
+                        cursor: 'pointer',
+                        lineHeight: 1.4,
+                        flexShrink: 0,
+                    }}
+                >
+                    {mode}
+                </button>
+            ))}
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
+                <MidiSelector />
+                <div style={{ width: '1px', alignSelf: 'stretch', background: '#505050', margin: '6px 0' }} />
+                <ToolbarButton onClick={onLoadProject}>LOAD</ToolbarButton>
+                <ToolbarButton onClick={onSaveProject}>SAVE</ToolbarButton>
+                <ToolbarButton onClick={onImportMidi}>IMPORT</ToolbarButton>
+                <div style={{ width: '1px', alignSelf: 'stretch', background: '#505050', margin: '6px 0' }} />
 
                 {audioError && (
                     <div style={{
@@ -1318,14 +1364,6 @@ function Toolbar({ addModule, isPoweredOn, togglePower, hasSelectedTrack, audioE
                         AUDIO ERROR: {audioError}
                     </div>
                 )}
-                <ToolbarButton
-                    variant="power"
-                    active={isPoweredOn}
-                    onClick={togglePower}
-                >
-                    {/* Unicode power symbol ⏻ */}
-                    ⏻
-                </ToolbarButton>
             </div>
         </div>
     );
@@ -1342,7 +1380,7 @@ function Canvas({ canvasRef, modules, connections, connectingFrom, onModuleDragS
             onClick={onClick}
             style={{
                 width: '100%',
-                height: 'calc(100% - 32px)',
+                height: '100%',
                 position: 'relative',
                 background: 'repeating-linear-gradient(0deg, transparent, transparent 19px, #222 19px, #222 20px), repeating-linear-gradient(90deg, transparent, transparent 19px, #222 19px, #222 20px)',
                 backgroundSize: '20px 20px'
@@ -1367,6 +1405,8 @@ function Canvas({ canvasRef, modules, connections, connectingFrom, onModuleDragS
                     child = <VCA key={`${module.id}:${moduleUiRevision}`} module={module} onDragStart={onModuleDragStart} onOutputClick={onOutputClick} isConnecting={connectingFrom?.moduleId === module.id} connections={connections} {...removeProp} />;
                 } else if (module.type === 'delay' || module.type === 'mfx') {
                     child = <MFX key={`${module.id}:${moduleUiRevision}`} module={module} onDragStart={onModuleDragStart} onOutputClick={onOutputClick} isConnecting={connectingFrom?.moduleId === module.id} {...removeProp} />;
+                } else if (module.type === 'scope') {
+                    child = <Scope key={`${module.id}:${moduleUiRevision}`} module={module} onDragStart={onModuleDragStart} onOutputClick={onOutputClick} isConnecting={connectingFrom?.moduleId === module.id} isAudioReady={!!audioContext} {...removeProp} />;
                 }
                 if (!child) return null;
                 return (
@@ -1378,7 +1418,7 @@ function Canvas({ canvasRef, modules, connections, connectingFrom, onModuleDragS
 
             {modules.length === 0 && (
                 <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4d4d4d', fontSize: '13px', letterSpacing: '0.04em' }}>
-                    Add modules and patch them TO MIXER to make this track audible.
+                    Add modules and patch them TO MIX to make this track audible.
                 </div>
             )}
         </div>

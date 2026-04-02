@@ -38,7 +38,7 @@ function VCA({ module, onDragStart, onOutputClick, isConnecting, connections, on
     }, [module.id, gain, invert]);
 
     return (
-        <ModuleShell title="VCA" module={module} onDragStart={onDragStart} onRemove={onRemove}>
+        <ModuleShell title={`VCA${module.instanceNum ? ` - ${module.instanceNum}` : ''}`} module={module} onDragStart={onDragStart} onRemove={onRemove}>
                             <ToggleSwitch
                     label="POLARITY"
                     value={!invert}

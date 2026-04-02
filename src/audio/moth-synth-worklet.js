@@ -56,6 +56,7 @@ class MothSynthProcessor extends AudioWorkletProcessor {
         this.scopeWriteIndex = 0;
         this.scopeSampleCounter = 0;
         this.scopeTrackId = null;
+        this.moduleScopeBuffers = new Map();
 
         this.oscillatorStates = new Map();
         this.filterStates = new Map();
@@ -300,6 +301,7 @@ class MothSynthProcessor extends AudioWorkletProcessor {
                     break;
                 case 'remove-module':
                     this.modules.delete(message.moduleId);
+                    this.moduleScopeBuffers.delete(message.moduleId);
                     this.clearRuntimeState(message.moduleId);
                     this.rebuildCompiledRouting();
                     this.invalidateGraphAnalysisCache();
@@ -326,10 +328,10 @@ class MothSynthProcessor extends AudioWorkletProcessor {
                     this.scopeTrackId = message.trackId ?? null;
                     break;
                 case 'note-on':
-                    this.allocateVoice(message.trackId, message.noteNumber, message.velocity);
+                    this.allocateVoice(message.trackId, message.noteNumber, message.velocity, message.forcePoly);
                     break;
                 case 'note-off':
-                    this.releaseVoice(message.trackId, message.noteNumber);
+                    this.releaseVoice(message.trackId, message.noteNumber, message.forcePoly);
                     break;
                 case 'all-notes-off':
                     this.trackStates.forEach((trackState) => {
@@ -570,7 +572,7 @@ class MothSynthProcessor extends AudioWorkletProcessor {
         }
     }
 
-    allocateVoice(trackId, noteNumber, velocity) {
+    allocateVoice(trackId, noteNumber, velocity, forcePoly = false) {
         const trackState = this.getTrackState(trackId);
         if (!trackState) return;
 
@@ -602,8 +604,8 @@ class MothSynthProcessor extends AudioWorkletProcessor {
             return;
         }
 
-        // Poly mode: normal round-robin allocation
-        const targetVoice = trackState.keyboardLatchModeEnabled
+        // Poly mode: round-robin allocation. forcePoly bypasses latch voice reservation.
+        const targetVoice = (!forcePoly && trackState.keyboardLatchModeEnabled)
             ? this.getKeyboardLatchVoice(trackState)
             : this.claimRoundRobinVoice(trackState);
 
@@ -616,7 +618,7 @@ class MothSynthProcessor extends AudioWorkletProcessor {
         this.addVoiceMapping(trackState, noteNumber, targetVoice.voiceId);
     }
 
-    releaseVoice(trackId, noteNumber) {
+    releaseVoice(trackId, noteNumber, forcePoly = false) {
         const trackState = this.getTrackState(trackId);
         if (!trackState) return;
 
@@ -655,7 +657,7 @@ class MothSynthProcessor extends AudioWorkletProcessor {
         this.removeVoiceMapping(trackState, noteNumber, voiceId);
         voice.gate = 0;
 
-        if (trackState.keyboardLatchModeEnabled && voice.voiceId === this.getKeyboardLatchVoice(trackState).voiceId) {
+        if (!forcePoly && trackState.keyboardLatchModeEnabled && voice.voiceId === this.getKeyboardLatchVoice(trackState).voiceId) {
             voice.state = VOICE_ACTIVE;
             return;
         }
@@ -724,6 +726,9 @@ class MothSynthProcessor extends AudioWorkletProcessor {
                     .some((inputName) => this.isInputVoiceDependent(moduleId, inputName, visited));
                 break;
             case 'multi':
+                isVoiceDependent = this.isInputVoiceDependent(moduleId, 'signal-input', visited);
+                break;
+            case 'scope':
                 isVoiceDependent = this.isInputVoiceDependent(moduleId, 'signal-input', visited);
                 break;
             default:
@@ -825,6 +830,43 @@ class MothSynthProcessor extends AudioWorkletProcessor {
             case 'multi': {
                 const signalRead = this.createInputReader(moduleId, 'signal-input', activeStack);
                 return (timeMs, laneContext) => (signalRead ? signalRead(timeMs, laneContext) : 0);
+            }
+            case 'scope': {
+                const signalRead = this.createInputReader(moduleId, 'signal-input', activeStack);
+                if (!this.moduleScopeBuffers.has(moduleId)) {
+                    this.moduleScopeBuffers.set(moduleId, {
+                        buffer: new Float32Array(4096),
+                        writeIndex: 0,
+                        sampleCounter: 0,
+                        frameAccum: 0,
+                        lastFrameTimeMs: -1,
+                    });
+                }
+                const scopeState = this.moduleScopeBuffers.get(moduleId);
+                return (timeMs, laneContext) => {
+                    const value = signalRead ? signalRead(timeMs, laneContext) : 0;
+
+                    // New audio frame — commit previous frame's summed sample to buffer
+                    if (timeMs !== scopeState.lastFrameTimeMs) {
+                        if (scopeState.lastFrameTimeMs >= 0) {
+                            scopeState.buffer[scopeState.writeIndex] = scopeState.frameAccum;
+                            scopeState.writeIndex = (scopeState.writeIndex + 1) % scopeState.buffer.length;
+                            scopeState.sampleCounter += 1;
+                            if (scopeState.sampleCounter >= 2048) {
+                                this.publishModuleScopeSnapshot(moduleId, scopeState);
+                                scopeState.sampleCounter = 0;
+                            }
+                        }
+                        scopeState.frameAccum = 0;
+                        scopeState.lastFrameTimeMs = timeMs;
+                    }
+
+                    // Sum all voices for this frame — produces the combined waveform
+                    scopeState.frameAccum += value;
+
+                    // Pass through unchanged per voice per route
+                    return value;
+                };
             }
             case 'keyboard-cv':
                 return (timeMs, laneContext) => {
@@ -1267,6 +1309,49 @@ class MothSynthProcessor extends AudioWorkletProcessor {
         } catch (error) {
             this.reportRuntimeIssueOnce('scope-publish', 'Failed to publish scope snapshot.', {
                 phase: 'publish-scope-snapshot',
+                message: error instanceof Error ? error.message : String(error)
+            });
+        }
+    }
+
+    publishModuleScopeSnapshot(moduleId, scopeState) {
+        try {
+            const snapshotLength = 360;
+            const bufferSize = scopeState.buffer.length;
+            let triggerIndex = -1;
+
+            for (let searchOffset = snapshotLength; searchOffset < Math.min(1000, bufferSize - 3); searchOffset++) {
+                const index = (scopeState.writeIndex - searchOffset + bufferSize) % bufferSize;
+                const prev3 = (index - 3 + bufferSize) % bufferSize;
+                const prev2 = (index - 2 + bufferSize) % bufferSize;
+                const prev1 = (index - 1 + bufferSize) % bufferSize;
+                const next1 = (index + 1) % bufferSize;
+                const next2 = (index + 2) % bufferSize;
+
+                const prev3Below = scopeState.buffer[prev3] <= 0 && scopeState.buffer[prev2] <= 0 && scopeState.buffer[prev1] <= 0;
+                const next3Above = scopeState.buffer[index] >= 0 && scopeState.buffer[next1] >= 0 && scopeState.buffer[next2] >= 0;
+
+                if (prev3Below && next3Above) {
+                    triggerIndex = index;
+                    break;
+                }
+            }
+
+            if (triggerIndex === -1) {
+                triggerIndex = (scopeState.writeIndex - snapshotLength + bufferSize) % bufferSize;
+            }
+
+            const snapshot = new Float32Array(snapshotLength);
+            for (let index = 0; index < snapshotLength; index++) {
+                const bufferIndex = (triggerIndex + index) % bufferSize;
+                snapshot[index] = Number.isFinite(scopeState.buffer[bufferIndex]) ? scopeState.buffer[bufferIndex] : 0;
+            }
+
+            this.port.postMessage({ type: 'module-scope-data', moduleId, samples: snapshot }, [snapshot.buffer]);
+        } catch (error) {
+            this.reportRuntimeIssueOnce(`module-scope-publish:${moduleId}`, `Failed to publish module scope snapshot for ${moduleId}.`, {
+                phase: 'publish-module-scope-snapshot',
+                moduleId,
                 message: error instanceof Error ? error.message : String(error)
             });
         }

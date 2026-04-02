@@ -1,131 +1,161 @@
-import React, { useEffect, useRef } from 'react';
-import {
-    initializeAudioEngine,
-    subscribeToScopeData
-} from '../audio/audioEngine.js';
+import React, { useRef, useCallback } from 'react';
 import InputPort from './InputPort.jsx';
 import ModuleShell from './ModuleShell.jsx';
-import { COLOR_SCREEN } from '../theme.js';
+import { COLOR_SLIDER } from '../theme.js';
 
-function Amplifier({ onOutputClick, isConnecting, audioContext, setAudioContext, isFixed, isPoweredOn, selectedTrackLabel }) {
-    const startTimeRef = useRef(null);
-    const scopeCanvasRef = useRef(null);
-    const scopeSnapshotRef = useRef(new Float32Array(360));
-    
-    // Initialize Web Audio API when powered on
-    useEffect(() => {
-        if (isPoweredOn && !audioContext) {
-            const ctx = new (window.AudioContext || window.webkitAudioContext)();
-            setAudioContext(ctx);
-            startTimeRef.current = Date.now();
-        }
-    }, [isPoweredOn, audioContext, setAudioContext]);
-
-    useEffect(() => {
-        if (!audioContext) {
-            return;
-        }
-
-        if (isPoweredOn) {
-            initializeAudioEngine(audioContext).catch((error) => {
-                console.error('Audio engine failed to initialize:', error);
-            });
-            audioContext.resume();
-        } else {
-            audioContext.suspend();
-        }
-    }, [audioContext, isPoweredOn]);
-
-    useEffect(() => {
-        const unsubscribe = subscribeToScopeData((samples) => {
-            scopeSnapshotRef.current = samples;
-        });
-
-        return () => {
-            unsubscribe();
-        };
-    }, []);
-
-    useEffect(() => {
-        if (!isPoweredOn || !scopeCanvasRef.current) return;
-        
-        const canvas = scopeCanvasRef.current;
-        const ctx = canvas.getContext('2d');
-        let animationId;
-        
-        const draw = () => {
-            const width = canvas.width;
-            const height = canvas.height;
-            
-            // Clear canvas
-            ctx.fillStyle = '#1a1a1a';
-            ctx.fillRect(0, 0, width, height);
-            
-            // Draw grid
-            ctx.strokeStyle = '#2a2a2a';
-            ctx.lineWidth = 1;
-            
-            // Horizontal center line
-            ctx.beginPath();
-            ctx.moveTo(0, height / 2);
-            ctx.lineTo(width, height / 2);
-            ctx.stroke();
-            
-            const snapshot = scopeSnapshotRef.current;
-            
-            // Draw waveform directly without any additional shifting
-            ctx.strokeStyle = COLOR_SCREEN;
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            
-            for (let i = 0; i < snapshot.length; i++) {
-                const x = (i / snapshot.length) * width;
-                const y = height / 2 - (snapshot[i] * height / 2);
-                
-                if (i === 0) {
-                    ctx.moveTo(x, y);
-                } else {
-                    ctx.lineTo(x, y);
-                }
-            }
-            
-            ctx.stroke();
-            
-            animationId = requestAnimationFrame(draw);
-        };
-        
-        draw();
-        
-        return () => {
-            if (animationId) {
-                cancelAnimationFrame(animationId);
-            }
-        };
-    }, [isPoweredOn]);
-    
+// Consistent control card: label top-left, control centered, value bottom-right
+function ControlBlock({ label, value, children }) {
     return (
-        <ModuleShell isFixed>
-                {/* Oscilloscope */}
-                <div style={{ marginBottom: '15px' }}>
-                    <label style={{ fontSize: '10px', color: '#aaa', display: 'block', marginBottom: '5px' }}>
-                        SCOPE
-                    </label>
-                    <canvas
-                        ref={scopeCanvasRef}
-                        width={isFixed ? 360 : 320}
-                        height={160}
-                        style={{
-                            width: '100%',
-                            height: '160px',
-                            border: '1px solid #444',
-                            background: '#1a1a1a',
-                            borderRadius: '2px'
-                        }}
-                    />
-                </div>
-                
-                <InputPort moduleId="track-output-singleton" portId="audio-input" label="TO MIXER"
+        <div style={{ position: 'relative', padding: '14px 4px 16px 4px' }}>
+            <span style={{
+                position: 'absolute', top: 2, left: 0,
+                fontSize: '9px', color: '#aaa', letterSpacing: '0.05em', userSelect: 'none',
+            }}>{label}</span>
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                {children}
+            </div>
+            {value !== undefined && (
+                <span style={{
+                    position: 'absolute', bottom: 2, right: 0,
+                    fontSize: '8px', color: '#ccc', letterSpacing: '0.03em', userSelect: 'none',
+                }}>{value}</span>
+            )}
+        </div>
+    );
+}
+
+function Knob({ value, min, max, onChange, defaultValue }) {
+    const startRef = useRef(null);
+
+    const norm = (v) => (v - min) / (max - min);
+    const angle = -135 + norm(value) * 270;
+
+    const handleMouseDown = useCallback((e) => {
+        e.preventDefault();
+        startRef.current = { y: e.clientY, value };
+        const move = (mv) => {
+            const delta = (startRef.current.y - mv.clientY) / 100;
+            onChange(Math.max(min, Math.min(max, startRef.current.value + delta * (max - min))));
+        };
+        const up = () => {
+            window.removeEventListener('mousemove', move);
+            window.removeEventListener('mouseup', up);
+        };
+        window.addEventListener('mousemove', move);
+        window.addEventListener('mouseup', up);
+    }, [value, min, max, onChange]);
+
+    const handleDoubleClick = useCallback(() => {
+        if (defaultValue !== undefined) onChange(defaultValue);
+    }, [defaultValue, onChange]);
+
+    const cx = 22, cy = 22, r = 17;
+    const rad = (a) => (a - 90) * (Math.PI / 180);
+    const tx = cx + r * Math.cos(rad(angle));
+    const ty = cy + r * Math.sin(rad(angle));
+
+    return (
+        <svg
+            width={44} height={44}
+            onMouseDown={handleMouseDown}
+            onDoubleClick={handleDoubleClick}
+            style={{ cursor: 'ns-resize', display: 'block' }}
+            title={`${value.toFixed(2)} (double-click to reset)`}
+        >
+            <circle cx={cx} cy={cy} r={r} fill="white" />
+            <line x1={cx} y1={cy} x2={tx} y2={ty} stroke={COLOR_SLIDER} strokeWidth={10} strokeLinecap="round" />
+        </svg>
+    );
+}
+
+function Amplifier({ onOutputClick, isConnecting, isFixed, selectedTrack, onUpdateMix }) {
+    const mix = selectedTrack?.mix ?? {};
+    const trackId = selectedTrack?.id;
+    const update = (patch) => { if (trackId) onUpdateMix(trackId, patch); };
+
+    const volume = mix.volume ?? 0.8;
+    const solo   = mix.solo   ?? false;
+    const high   = mix.high   ?? 0;
+    const mid    = mix.mid    ?? 0;
+    const low    = mix.low    ?? 0;
+    const pan    = mix.pan    ?? 0;
+
+    const disabled = !trackId;
+    const fmtEq = (v) => (v >= 0 ? '+' : '') + v.toFixed(1) + 'dB';
+    const fmtPan = (v) => v === 0 ? 'C' : (v > 0 ? 'R' : 'L') + Math.abs(v).toFixed(1);
+    const faderHeight = 90;
+
+    return (
+        <ModuleShell isFixed={isFixed}>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+
+                <InputPort moduleId="track-output-singleton" portId="audio-input" label="IN"
                     onOutputClick={onOutputClick} isConnecting={isConnecting} />
+
+                <div style={{ height: '1px', background: '#2a2a2a', margin: '8px 0' }} />
+
+                <ControlBlock label="HIGH" value={fmtEq(high)}>
+                    <Knob value={high} min={-12} max={12} defaultValue={0} onChange={(v) => update({ high: v })} />
+                </ControlBlock>
+
+                <ControlBlock label="MID" value={fmtEq(mid)}>
+                    <Knob value={mid} min={-12} max={12} defaultValue={0} onChange={(v) => update({ mid: v })} />
+                </ControlBlock>
+
+                <ControlBlock label="LOW" value={fmtEq(low)}>
+                    <Knob value={low} min={-12} max={12} defaultValue={0} onChange={(v) => update({ low: v })} />
+                </ControlBlock>
+
+                <ControlBlock label="PAN" value={fmtPan(pan)}>
+                    <Knob value={pan} min={-1} max={1} defaultValue={0} onChange={(v) => update({ pan: v })} />
+                </ControlBlock>
+
+                <div style={{ height: '1px', background: '#2a2a2a', margin: '8px 0' }} />
+
+                <ControlBlock label="VOL" value={(volume * 100).toFixed(0)}>
+                    <div style={{ height: faderHeight, width: 20, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <input
+                            type="range"
+                            min="0" max="1" step="0.01"
+                            value={volume}
+                            disabled={disabled}
+                            onChange={(e) => update({ volume: parseFloat(e.target.value) })}
+                            style={{
+                                width: faderHeight,
+                                transform: 'rotate(-90deg)',
+                                transformOrigin: 'center center',
+                                position: 'absolute',
+                                cursor: disabled ? 'default' : 'pointer',
+                                accentColor: COLOR_SLIDER,
+                                opacity: disabled ? 0.4 : 1,
+                            }}
+                        />
+                    </div>
+                </ControlBlock>
+
+                <div style={{ height: '1px', background: '#2a2a2a', margin: '4px 0 8px' }} />
+
+                <button
+                    onClick={() => update({ solo: !solo })}
+                    disabled={disabled}
+                    style={{
+                        padding: '4px 0',
+                        width: '100%',
+                        fontSize: '9px',
+                        fontWeight: 700,
+                        letterSpacing: '0.06em',
+                        border: `1px solid ${solo ? '#b89a2a' : '#444'}`,
+                        borderRadius: '3px',
+                        background: solo ? '#5a4a10' : 'transparent',
+                        color: solo ? '#f5d060' : '#777',
+                        cursor: disabled ? 'default' : 'pointer',
+                        opacity: disabled ? 0.4 : 1,
+                    }}
+                    title={solo ? 'Unsolo' : 'Solo (silences other tracks)'}
+                >
+                    SOLO
+                </button>
+            </div>
         </ModuleShell>
     );
 }

@@ -70,7 +70,7 @@ function Envelope({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isCon
     }, [module.id, attack, decay, sustain, release]);
 
     return (
-        <ModuleShell title="ENV" module={module} onDragStart={onDragStart} onRemove={onRemove} minHeight="245px">
+        <ModuleShell title={`ENV${module.instanceNum ? ` - ${module.instanceNum}` : ''}`} module={module} onDragStart={onDragStart} onRemove={onRemove} minHeight="245px">
                 <div style={{ marginBottom: '15px' }}>
                     <div style={{
                         border: '1px solid #444',
@@ -144,7 +144,7 @@ function Envelope({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isCon
                 />
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                    <InputPort moduleId={module.id} portId="gate-input" label="GATE IN"
+                    <InputPort moduleId={module.id} portId="gate-input" label="GATE"
                         onOutputClick={onOutputClick} isConnecting={isConnecting} style={{ marginBottom: 0 }} />
                     <OutputPort moduleId={module.id} portId="output" label="OUT"
                         onOutputClick={onOutputClick} isConnecting={isConnecting} style={{ marginBottom: 0 }} />

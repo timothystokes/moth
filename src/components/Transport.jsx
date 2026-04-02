@@ -174,8 +174,6 @@ function Transport({
                         playbackPositionMs={0}
                         timelineDurationMs={timelineDurationMs}
                         onSelect={() => onSelectTrack(track.id)}
-                        onToggleMute={() => onUpdateTrackMix(track.id, { mute: !track.mix.mute })}
-                        onVolumeChange={(volume) => onUpdateTrackMix(track.id, { volume })}
                         onSeek={(ms) => onSetTransportPosition(ms)}
                         onRemove={() => onRemoveTrack(track.id)}
                         onRename={(name) => onRenameTrack(track.id, name)}
@@ -186,7 +184,7 @@ function Transport({
     );
 }
 
-function TrackRow({ track, isSelected, isPlaying, timelineDurationMs, onSelect, onToggleMute, onVolumeChange, onSeek, onRemove, onRename }) {
+function TrackRow({ track, isSelected, isPlaying, timelineDurationMs, onSelect, onSeek, onRemove, onRename }) {
     const noteAreaRef = React.useRef(null);
     const playheadRef = React.useRef(null);
     const durationRef = React.useRef(timelineDurationMs);
@@ -216,7 +214,6 @@ function TrackRow({ track, isSelected, isPlaying, timelineDurationMs, onSelect, 
 
     const noteSegments = Array.isArray(track?.noteSegments) ? track.noteSegments : [];
     const trackName = typeof track?.name === 'string' ? track.name : 'Untitled';
-    const mix = track?.mix || { volume: 0.8, mute: false };
 
     const handleNoteAreaClick = (e) => {
         e.stopPropagation();
@@ -254,7 +251,7 @@ function TrackRow({ track, isSelected, isPlaying, timelineDurationMs, onSelect, 
         <div
             style={{
                 display: 'grid',
-                gridTemplateColumns: '200px 36px 110px 28px 1fr',
+                gridTemplateColumns: '200px 28px 1fr',
                 alignItems: 'center',
                 minHeight: '36px',
                 borderBottom: '1px solid #1e1e1e',
@@ -303,37 +300,8 @@ function TrackRow({ track, isSelected, isPlaying, timelineDurationMs, onSelect, 
                 )}
             </div>
 
-            {/* Mute */}
-            <div style={{ display: 'flex', justifyContent: 'center' }}>
-                <SmallButton
-                    onClick={(e) => { e.stopPropagation(); onToggleMute(); }}
-                    active={mix.mute}
-                    activeBackground="#732b2b"
-                    activeBorder="#b74d4d"
-                    activeColor="#f2f2f2"
-                    hoverBorder="#888"
-                    title={mix.mute ? 'Unmute' : 'Mute'}
-                >
-                    M
-                </SmallButton>
-            </div>
-
-            {/* Volume */}
-            <div style={{ padding: '0 8px' }}>
-                <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.01"
-                    value={mix.volume}
-                    onClick={(e) => e.stopPropagation()}
-                    onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
-                    style={{ width: '100%' }}
-                />
-            </div>
-
             {/* Delete track */}
-            <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', paddingRight: '8px' }}>
                 <SmallButton
                     onClick={handleRemove}
                     title={`Remove "${trackName}"`}
@@ -365,7 +333,7 @@ function TrackRow({ track, isSelected, isPlaying, timelineDurationMs, onSelect, 
                                 width: `${width}%`,
                                 top: `${top}px`,
                                 height: '3px',
-                                background: mix.mute ? '#555' : '#6dbe6d',
+                                background: '#6dbe6d',
                                 borderRadius: '2px',
                                 opacity: 0.9
                             }}

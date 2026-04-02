@@ -127,9 +127,16 @@ TrackRow renders these as the mini piano-roll in the transport strip.
 - Inputs: `input-a`, `input-b`, `level-a-input`, `level-b-input`
 - Output: `signalA × levelA + signalB × levelB`
 
-### Multi (`multi`)
-- Input: `signal-input`
-- Outputs: `output-a`, `output-b` (both carry the same signal — signal splitter)
+### Scope (`scope`)
+- Component: `src/components/Scope.jsx`, labelled "SCO - N" in UI
+- Inputs: `signal-input`
+- Outputs: `signal-output` (passthrough — signal unchanged per voice per route)
+- Internal sampling: maintains a private circular buffer (4096 samples) per module instance in the worklet (`moduleScopeBuffers` map)
+- **Poly mixing for display**: voice calls are accumulated (summed) per audio frame using `timeMs` as a frame sentinel; exactly one sample written per audio frame regardless of voice count
+- **Zero-crossing trigger**: searches backwards for a rising edge (negative→positive) within 1000 samples before the write index; falls back to window start if none found
+- **Auto-scaling display**: tracks peak absolute value per snapshot; maintains 5-frame history; display scale lerps towards `max(history) × 1.2` (20% headroom); minimum scale = 1
+- Dispatches `module-scope-data` messages (not `scope-data`); `audioEngine.js` routes these to per-module listener sets via `subscribeToModuleScopeData(moduleId, fn)`
+- Pass-through routing is per-voice: each voice's signal is routed unchanged through `signal-output`
 
 ### VCA / Amplifier (`vca`)
 - Component: `src/components/VCA.jsx`, labelled "AMPLIFIER" in UI
@@ -140,8 +147,13 @@ TrackRow renders these as the mini piano-roll in the transport strip.
 - Polarity toggle: `+` (normal) or `−` (phase invert)
 - Output = `input × finalGain × polarity`
 
-### Track Output (`track-output`)
-- Internal type registered per track. Routes the patched signal to the worklet's track mixer.
+### Module Instance Numbering
+- Each module gets an `instanceNum` field set at creation time: count of existing modules of the same type on that track + 1
+- Module IDs use the pattern `{trackId}:{type}-{instanceNum}` (e.g. `track-1:oscillator-2`)
+- All module headers display the instance number: `VCO - 1`, `VCF - 2`, `SCO - 1`, etc.
+- On project load, `instanceNum` is derived from the existing array order per type if not already stored
+
+
 
 ---
 
@@ -205,11 +217,16 @@ Key functions (all exported from `sequencer.js`):
 ## UI Conventions
 
 ### Layout
-- **Left panel** (200px, fixed): Keyboard singleton
-- **Centre canvas** (flex-grow): draggable modules on a grid
-- **Right panel** (220px, fixed): Oscilloscope / power panel (`Amplifier.jsx`)
-- **Toolbar** (top): module-add buttons (`+ Oscillator`, `+ Filter`, `+ Envelope`, `+ Random`, `+ Mixer`, `+ Multi`, `+ Amplifier`) + power button
-- **Transport** (bottom): track list with mini piano-roll, playback controls
+- **Two view modes**: VOICE (module grid) and NOTES (piano roll) — toggled via buttons in the top Toolbar after the logo
+- **VOICE mode:**
+  - Left panel (80px, fixed): Keyboard singleton
+  - Centre canvas (flex-grow): draggable modules on a dotted grid
+  - Right panel (80px, fixed): Amplifier mixing desk strip (`Amplifier.jsx`)
+  - Floating `+ module` buttons: absolute overlay, bottom-right of the VOICE grid, single horizontal row, always above modules (`z-index: 20`)
+- **NOTES mode:** Piano roll view — module buttons not shown
+- **Toolbar** (top, always visible): MOTH1 logo, VOICE/NOTES toggle buttons, project controls (save/load/MIDI import), BPM, audio status
+- **Transport** (bottom): track list with track name, delete button, mini piano-roll timeline. Volume and mute removed (now in Amplifier strip)
+- **Amplifier strip** (right panel, VOICE mode only): AUDIO IN port, EQ knobs (HI/MID/LO/PAN), vertical VOL fader, SOLO button. All controls use `ControlBlock` pattern: label top-left, control centered, value bottom-right.
 
 ### Canvas
 - There is a standalone `src/components/Canvas.jsx` that is **NOT used**

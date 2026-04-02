@@ -3,3 +3,7 @@
 .module-body > *:last-child {
     margin-bottom: 0 !important;
 }
+
+.keyboard-keys::-webkit-scrollbar {
+    display: none;
+}

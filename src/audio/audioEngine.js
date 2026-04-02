@@ -1,6 +1,7 @@
 const moduleStates = new Map();
 const inputConnections = new Map();
 const scopeListeners = new Set();
+const moduleScopeListeners = new Map();
 const trackStates = new Map();
 const audioErrorListeners = new Set();
 const audioDiagnosticListeners = new Set();
@@ -63,6 +64,12 @@ function handleWorkletMessage(event) {
     const message = event.data;
     if (message.type === 'scope-data') {
         scopeListeners.forEach((listener) => listener(message.samples));
+        return;
+    }
+
+    if (message.type === 'module-scope-data') {
+        const listeners = moduleScopeListeners.get(message.moduleId);
+        if (listeners) listeners.forEach((listener) => listener(message.samples));
         return;
     }
 
@@ -263,15 +270,15 @@ export function setScopeTrack(trackId) {
     postToWorklet({ type: 'set-scope-track', trackId: scopeTrackId });
 }
 
-export function noteOn(trackId, noteNumber, velocity) {
+export function noteOn(trackId, noteNumber, velocity, forcePoly = false) {
     if (!trackId) {
         return;
     }
 
-    postToWorklet({ type: 'note-on', trackId, noteNumber, velocity });
+    postToWorklet({ type: 'note-on', trackId, noteNumber, velocity, forcePoly });
 }
 
-export function noteOff(trackId, noteNumber) {
+export function noteOff(trackId, noteNumber, forcePoly = false) {
     if (trackId === null && noteNumber === -1) {
         postToWorklet({ type: 'all-notes-off' });
         return;
@@ -281,13 +288,27 @@ export function noteOff(trackId, noteNumber) {
         return;
     }
 
-    postToWorklet({ type: 'note-off', trackId, noteNumber });
+    postToWorklet({ type: 'note-off', trackId, noteNumber, forcePoly });
 }
 
 export function subscribeToScopeData(listener) {
     scopeListeners.add(listener);
     return () => {
         scopeListeners.delete(listener);
+    };
+}
+
+export function subscribeToModuleScopeData(moduleId, listener) {
+    if (!moduleScopeListeners.has(moduleId)) {
+        moduleScopeListeners.set(moduleId, new Set());
+    }
+    moduleScopeListeners.get(moduleId).add(listener);
+    return () => {
+        const set = moduleScopeListeners.get(moduleId);
+        if (set) {
+            set.delete(listener);
+            if (set.size === 0) moduleScopeListeners.delete(moduleId);
+        }
     };
 }
 

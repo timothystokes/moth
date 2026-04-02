@@ -147,9 +147,9 @@ function stopSequencePlayback({ resetPosition = false } = {}) {
     notifyTransportListeners();
 }
 
-function handleNoteOn(trackId, noteNumber, velocity, timestamp) {
+function handleNoteOn(trackId, noteNumber, velocity, timestamp, forcePoly = false) {
     if (!trackId) return;
-    noteOn(trackId, noteNumber, velocity);
+    noteOn(trackId, noteNumber, velocity, forcePoly);
     noteOnListeners.forEach(l => l({ trackId, noteNumber, velocity, noteOnTime: timestamp }));
     if (isRecording && trackId === activeTrackId) {
         activeRecordingNotes.set(noteNumber, {
@@ -159,9 +159,9 @@ function handleNoteOn(trackId, noteNumber, velocity, timestamp) {
     }
 }
 
-function handleNoteOff(trackId, noteNumber, timestamp) {
+function handleNoteOff(trackId, noteNumber, timestamp, forcePoly = false) {
     if (!trackId) return;
-    noteOff(trackId, noteNumber);
+    noteOff(trackId, noteNumber, forcePoly);
     noteOffListeners.forEach(l => l({ trackId, noteNumber, timestamp }));
     if (isRecording && trackId === activeTrackId) {
         const data = activeRecordingNotes.get(noteNumber);
@@ -548,11 +548,11 @@ export function getActiveNotes() {
 }
 
 export function triggerNoteOn(trackId, noteNumber, velocity = 0.8) {
-    handleNoteOn(trackId, noteNumber, velocity, performance.now());
+    handleNoteOn(trackId, noteNumber, velocity, performance.now(), true);
 }
 
 export function triggerNoteOff(trackId, noteNumber) {
-    handleNoteOff(trackId, noteNumber, performance.now());
+    handleNoteOff(trackId, noteNumber, performance.now(), true);
 }
 
 export function onNoteOn(callback) {

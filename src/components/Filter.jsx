@@ -27,7 +27,7 @@ function Filter({ module, onDragStart, onDrag, onDragEnd, onOutputClick, isConne
     }, [module.id, cutoff, resonance, filterType]);
     
     return (
-        <ModuleShell title="VCF" module={module} onDragStart={onDragStart} onRemove={onRemove} minHeight="180px">
+        <ModuleShell title={`VCF${module.instanceNum ? ` - ${module.instanceNum}` : ''}`} module={module} onDragStart={onDragStart} onRemove={onRemove} minHeight="180px">
                 <ToggleSwitch
                     label="TYPE"
                     value={filterType === 'lowpass'}
