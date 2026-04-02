@@ -172,7 +172,7 @@ function handleNoteOff(trackId, noteNumber, timestamp) {
                 noteNumber,
                 velocity: data.velocity,
                 startMs: data.startPositionMs,
-                durationMs: Math.max(50, getCurrentPlaybackPositionMs() - data.startPositionMs)
+                durationMs: Math.max(50, getRecordingPositionMs() - data.startPositionMs)
             });
         }
     }
@@ -304,8 +304,7 @@ function buildSessionTracks(tracks, bpm, msPerBeat, timeSignatures) {
                 const startBeat = barBeatToAbsoluteBeat(note.bar ?? 1, note.beat ?? 0, timeSignatures);
                 return Math.max(max, (startBeat + (note.duration || QUANTIZE_RESOLUTION)) * msPerBeat);
             }, 0);
-        const provided = Array.isArray(track.noteSegments) && track.noteSegments.length > 0 ? track.noteSegments : null;
-        const noteSegments = provided ?? computeNoteSegments(notes, msPerBeat, timeSignatures);
+        const noteSegments = computeNoteSegments(notes, msPerBeat, timeSignatures);
         return { id: track.id, name: track.name, notes, noteSegments, durationMs, mix: track.mix ?? { volume: 0.8, mute: false } };
     });
 }

@@ -32,15 +32,20 @@ const ROW_PATTERN = (() => {
 })();
 
 // SVG column-line pattern: one bar wide, tiles horizontally
+// Three brightness levels: sub-beat (dimmest) → beat/quarter-note → bar (brightest)
 function makeColBg(cellsPerBar, cellsPerBeat) {
     const w = cellsPerBar * CELL_WIDTH;
-    const lines = [];
+    // Draw dimmest first so brighter lines paint on top
+    const subLines = [], beatLines = [], barLines = [];
     for (let c = 1; c < cellsPerBar; c++) {
-        const color = (c % cellsPerBeat === 0) ? '#2a2a30' : '#1e1e22';
-        lines.push(`<line x1="${c * CELL_WIDTH + .5}" y1="0" x2="${c * CELL_WIDTH + .5}" y2="1" stroke="${color}" stroke-width="1"/>`);
+        const x = c * CELL_WIDTH + .5;
+        const line = (color) => `<line x1="${x}" y1="0" x2="${x}" y2="1" stroke="${color}" stroke-width="1"/>`;
+        if (c % cellsPerBeat === 0) beatLines.push(line('#505068'));
+        else subLines.push(line('#282832'));
     }
-    lines.push(`<line x1=".5" y1="0" x2=".5" y2="1" stroke="#3a3a44" stroke-width="1"/>`);
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="1">${lines.join('')}</svg>`;
+    // Bar line at left edge of tile (x=0 wraps to form bar boundary when tiled)
+    barLines.push(`<line x1=".5" y1="0" x2=".5" y2="1" stroke="#7878a0" stroke-width="1"/>`);
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="1">${[...subLines, ...beatLines, ...barLines].join('')}</svg>`;
     return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
 }
 
@@ -326,8 +331,8 @@ export default function PianoRoll({ track, timeSignatures, onNotesChange, select
                             width: totalCells * CELL_WIDTH,
                             height: NOTE_COUNT * ROW_HEIGHT,
                             flexShrink: 0,
-                            backgroundImage: `${ROW_PATTERN}, ${colBg}`,
-                            backgroundSize: `1px ${12 * ROW_HEIGHT}px, ${cellsPerBar * CELL_WIDTH}px 1px`,
+                            backgroundImage: `${colBg}, ${ROW_PATTERN}`,
+                            backgroundSize: `${cellsPerBar * CELL_WIDTH}px 1px, 1px ${12 * ROW_HEIGHT}px`,
                             backgroundRepeat: 'repeat, repeat',
                             cursor: 'crosshair',
                         }}

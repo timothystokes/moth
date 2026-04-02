@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "savedAt": "2026-03-30T14:08:27.719Z",
+  "savedAt": "2026-04-02T08:17:10.309Z",
   "sequence": {
     "bpm": 120,
     "ticksPerBeat": null,
@@ -12,23 +12,25 @@
       }
     ]
   },
-  "selectedTrackId": "import-1-track-6-channel-6",
+  "selectedTrackId": "track-manual-1775117238695-2",
   "tracks": [
     {
       "id": "import-1-track-7-channel-8",
       "name": "LEAD",
+      "polyphony": 4,
+      "portamento": 0,
       "notes": [
         {
           "note": "F4",
           "bar": 1,
-          "beat": 0.0,
+          "beat": 0,
           "duration": 1,
           "velocity": 0.74
         },
         {
           "note": "G4s",
           "bar": 1,
-          "beat": 1.0,
+          "beat": 1,
           "duration": 0.75,
           "velocity": 0.91
         },
@@ -56,7 +58,7 @@
         {
           "note": "F4",
           "bar": 1,
-          "beat": 3.0,
+          "beat": 3,
           "duration": 0.5,
           "velocity": 0.6
         },
@@ -70,14 +72,14 @@
         {
           "note": "F4",
           "bar": 2,
-          "beat": 0.0,
+          "beat": 0,
           "duration": 1,
           "velocity": 0.76
         },
         {
           "note": "C5",
           "bar": 2,
-          "beat": 1.0,
+          "beat": 1,
           "duration": 0.75,
           "velocity": 0.7
         },
@@ -105,7 +107,7 @@
         {
           "note": "C5",
           "bar": 2,
-          "beat": 3.0,
+          "beat": 3,
           "duration": 0.5,
           "velocity": 0.71
         },
@@ -119,7 +121,7 @@
         {
           "note": "F4",
           "bar": 3,
-          "beat": 0.0,
+          "beat": 0,
           "duration": 0.5,
           "velocity": 0.87
         },
@@ -133,7 +135,7 @@
         {
           "note": "F5",
           "bar": 3,
-          "beat": 1.0,
+          "beat": 1,
           "duration": 0.5,
           "velocity": 0.73
         },
@@ -168,7 +170,7 @@
         {
           "note": "G4",
           "bar": 3,
-          "beat": 3.0,
+          "beat": 3,
           "duration": 0.5,
           "velocity": 0.79
         },
@@ -182,14 +184,14 @@
         {
           "note": "F4",
           "bar": 5,
-          "beat": 0.0,
+          "beat": 0,
           "duration": 1,
           "velocity": 0.88
         },
         {
           "note": "G4s",
           "bar": 5,
-          "beat": 1.0,
+          "beat": 1,
           "duration": 0.75,
           "velocity": 0.85
         },
@@ -217,7 +219,7 @@
         {
           "note": "F4",
           "bar": 5,
-          "beat": 3.0,
+          "beat": 3,
           "duration": 0.5,
           "velocity": 0.88
         },
@@ -231,14 +233,14 @@
         {
           "note": "F4",
           "bar": 6,
-          "beat": 0.0,
+          "beat": 0,
           "duration": 1,
           "velocity": 0.78
         },
         {
           "note": "C5",
           "bar": 6,
-          "beat": 1.0,
+          "beat": 1,
           "duration": 0.75,
           "velocity": 0.86
         },
@@ -266,7 +268,7 @@
         {
           "note": "C5",
           "bar": 6,
-          "beat": 3.0,
+          "beat": 3,
           "duration": 0.5,
           "velocity": 0.79
         },
@@ -280,7 +282,7 @@
         {
           "note": "F4",
           "bar": 7,
-          "beat": 0.0,
+          "beat": 0,
           "duration": 0.5,
           "velocity": 0.88
         },
@@ -294,7 +296,7 @@
         {
           "note": "F5",
           "bar": 7,
-          "beat": 1.0,
+          "beat": 1,
           "duration": 0.5,
           "velocity": 0.8
         },
@@ -329,7 +331,7 @@
         {
           "note": "G4",
           "bar": 7,
-          "beat": 3.0,
+          "beat": 3,
           "duration": 0.5,
           "velocity": 0.82
         },
@@ -343,14 +345,14 @@
         {
           "note": "F4",
           "bar": 9,
-          "beat": 0.0,
+          "beat": 0,
           "duration": 1,
           "velocity": 0.83
         },
         {
           "note": "G4s",
           "bar": 9,
-          "beat": 1.0,
+          "beat": 1,
           "duration": 0.75,
           "velocity": 0.89
         },
@@ -378,7 +380,7 @@
         {
           "note": "F4",
           "bar": 9,
-          "beat": 3.0,
+          "beat": 3,
           "duration": 0.5,
           "velocity": 0.71
         },
@@ -392,14 +394,14 @@
         {
           "note": "F4",
           "bar": 10,
-          "beat": 0.0,
+          "beat": 0,
           "duration": 1,
           "velocity": 0.71
         },
         {
           "note": "C5",
           "bar": 10,
-          "beat": 1.0,
+          "beat": 1,
           "duration": 0.75,
           "velocity": 0.83
         },
@@ -427,7 +429,7 @@
         {
           "note": "C5",
           "bar": 10,
-          "beat": 3.0,
+          "beat": 3,
           "duration": 0.5,
           "velocity": 0.81
         },
@@ -441,7 +443,7 @@
         {
           "note": "F4",
           "bar": 11,
-          "beat": 0.0,
+          "beat": 0,
           "duration": 0.5,
           "velocity": 0.76
         },
@@ -455,7 +457,7 @@
         {
           "note": "F5",
           "bar": 11,
-          "beat": 1.0,
+          "beat": 1,
           "duration": 0.5,
           "velocity": 0.83
         },
@@ -490,7 +492,7 @@
         {
           "note": "G4",
           "bar": 11,
-          "beat": 3.0,
+          "beat": 3,
           "duration": 0.5,
           "velocity": 0.78
         },
@@ -504,14 +506,14 @@
         {
           "note": "F4",
           "bar": 13,
-          "beat": 0.0,
+          "beat": 0,
           "duration": 1,
           "velocity": 0.89
         },
         {
           "note": "G4s",
           "bar": 13,
-          "beat": 1.0,
+          "beat": 1,
           "duration": 0.75,
           "velocity": 0.78
         },
@@ -539,7 +541,7 @@
         {
           "note": "F4",
           "bar": 13,
-          "beat": 3.0,
+          "beat": 3,
           "duration": 0.5,
           "velocity": 0.85
         },
@@ -553,14 +555,14 @@
         {
           "note": "F4",
           "bar": 14,
-          "beat": 0.0,
+          "beat": 0,
           "duration": 1,
           "velocity": 0.73
         },
         {
           "note": "C5",
           "bar": 14,
-          "beat": 1.0,
+          "beat": 1,
           "duration": 0.75,
           "velocity": 0.78
         },
@@ -588,7 +590,7 @@
         {
           "note": "C5",
           "bar": 14,
-          "beat": 3.0,
+          "beat": 3,
           "duration": 0.5,
           "velocity": 0.87
         },
@@ -602,7 +604,7 @@
         {
           "note": "F4",
           "bar": 15,
-          "beat": 0.0,
+          "beat": 0,
           "duration": 0.5,
           "velocity": 0.86
         },
@@ -616,7 +618,7 @@
         {
           "note": "F5",
           "bar": 15,
-          "beat": 1.0,
+          "beat": 1,
           "duration": 0.5,
           "velocity": 0.76
         },
@@ -651,7 +653,7 @@
         {
           "note": "G4",
           "bar": 15,
-          "beat": 3.0,
+          "beat": 3,
           "duration": 0.5,
           "velocity": 0.86
         },
@@ -665,14 +667,14 @@
         {
           "note": "F4",
           "bar": 17,
-          "beat": 0.0,
+          "beat": 0,
           "duration": 1,
           "velocity": 0.84
         },
         {
           "note": "G4s",
           "bar": 17,
-          "beat": 1.0,
+          "beat": 1,
           "duration": 0.75,
           "velocity": 0.89
         },
@@ -700,7 +702,7 @@
         {
           "note": "F4",
           "bar": 17,
-          "beat": 3.0,
+          "beat": 3,
           "duration": 0.5,
           "velocity": 0.86
         },
@@ -714,14 +716,14 @@
         {
           "note": "F4",
           "bar": 18,
-          "beat": 0.0,
+          "beat": 0,
           "duration": 1,
           "velocity": 0.78
         },
         {
           "note": "C5",
           "bar": 18,
-          "beat": 1.0,
+          "beat": 1,
           "duration": 0.75,
           "velocity": 0.87
         },
@@ -749,7 +751,7 @@
         {
           "note": "C5",
           "bar": 18,
-          "beat": 3.0,
+          "beat": 3,
           "duration": 0.5,
           "velocity": 0.74
         },
@@ -763,7 +765,7 @@
         {
           "note": "F4",
           "bar": 19,
-          "beat": 0.0,
+          "beat": 0,
           "duration": 0.5,
           "velocity": 0.78
         },
@@ -777,7 +779,7 @@
         {
           "note": "F5",
           "bar": 19,
-          "beat": 1.0,
+          "beat": 1,
           "duration": 0.5,
           "velocity": 0.78
         },
@@ -812,7 +814,7 @@
         {
           "note": "G4",
           "bar": 19,
-          "beat": 3.0,
+          "beat": 3,
           "duration": 0.5,
           "velocity": 0.81
         },
@@ -826,14 +828,14 @@
         {
           "note": "F4",
           "bar": 21,
-          "beat": 0.0,
+          "beat": 0,
           "duration": 1,
           "velocity": 0.74
         },
         {
           "note": "G4s",
           "bar": 21,
-          "beat": 1.0,
+          "beat": 1,
           "duration": 0.75,
           "velocity": 0.86
         },
@@ -861,7 +863,7 @@
         {
           "note": "F4",
           "bar": 21,
-          "beat": 3.0,
+          "beat": 3,
           "duration": 0.5,
           "velocity": 0.83
         },
@@ -875,14 +877,14 @@
         {
           "note": "F4",
           "bar": 22,
-          "beat": 0.0,
+          "beat": 0,
           "duration": 1,
           "velocity": 0.84
         },
         {
           "note": "C5",
           "bar": 22,
-          "beat": 1.0,
+          "beat": 1,
           "duration": 0.75,
           "velocity": 0.87
         },
@@ -910,7 +912,7 @@
         {
           "note": "C5",
           "bar": 22,
-          "beat": 3.0,
+          "beat": 3,
           "duration": 0.5,
           "velocity": 0.87
         },
@@ -924,7 +926,7 @@
         {
           "note": "F4",
           "bar": 23,
-          "beat": 0.0,
+          "beat": 0,
           "duration": 0.5,
           "velocity": 0.86
         },
@@ -938,7 +940,7 @@
         {
           "note": "F5",
           "bar": 23,
-          "beat": 1.0,
+          "beat": 1,
           "duration": 0.5,
           "velocity": 0.84
         },
@@ -973,7 +975,7 @@
         {
           "note": "G4",
           "bar": 23,
-          "beat": 3.0,
+          "beat": 3,
           "duration": 0.5,
           "velocity": 0.86
         },
@@ -985,10 +987,14 @@
           "velocity": 0.79
         }
       ],
-      "durationMs": 128000.0,
+      "durationMs": 128000,
       "mix": {
         "volume": 0.8,
-        "mute": false
+        "mute": false,
+        "high": 0,
+        "mid": 0,
+        "low": 0,
+        "pan": -1
       },
       "modules": [
         {
@@ -998,10 +1004,11 @@
           "y": 99,
           "params": {
             "frequency": 440,
-            "amplitude": 0.5,
-            "shape": 0.5,
-            "dutyCycle": 0.5
-          }
+            "amplitude": 1.0055415018560432,
+            "shape": 1,
+            "dutyCycle": 0.9
+          },
+          "instanceNum": 1
         },
         {
           "id": "import-1-track-7-channel-8:module-2",
@@ -1012,8 +1019,9 @@
             "attack": 0.01,
             "decay": 0.2,
             "sustain": 0.7,
-            "release": 0.8629785477669702
-          }
+            "release": 0.039445730207527854
+          },
+          "instanceNum": 1
         }
       ],
       "connections": [
@@ -1074,18 +1082,20 @@
     {
       "id": "import-1-track-1-channel-1",
       "name": "BASS",
+      "polyphony": 4,
+      "portamento": 0,
       "notes": [
         {
           "note": "F1",
           "bar": 9,
-          "beat": 0.0,
+          "beat": 0,
           "duration": 0.75,
           "velocity": 0.82
         },
         {
           "note": "F2",
           "bar": 9,
-          "beat": 1.0,
+          "beat": 1,
           "duration": 0.5,
           "velocity": 0.87
         },
@@ -1113,7 +1123,7 @@
         {
           "note": "C2",
           "bar": 9,
-          "beat": 3.0,
+          "beat": 3,
           "duration": 0.25,
           "velocity": 0.71
         },
@@ -1127,14 +1137,14 @@
         {
           "note": "F1",
           "bar": 10,
-          "beat": 0.0,
+          "beat": 0,
           "duration": 0.75,
           "velocity": 0.73
         },
         {
           "note": "F2",
           "bar": 10,
-          "beat": 1.0,
+          "beat": 1,
           "duration": 0.25,
           "velocity": 0.84
         },
@@ -1155,7 +1165,7 @@
         {
           "note": "D2s",
           "bar": 10,
-          "beat": 3.0,
+          "beat": 3,
           "duration": 0.25,
           "velocity": 0.8
         },
@@ -1169,14 +1179,14 @@
         {
           "note": "C1s",
           "bar": 11,
-          "beat": 0.0,
+          "beat": 0,
           "duration": 0.75,
           "velocity": 0.78
         },
         {
           "note": "C2s",
           "bar": 11,
-          "beat": 1.0,
+          "beat": 1,
           "duration": 0.5,
           "velocity": 0.75
         },
@@ -1197,7 +1207,7 @@
         {
           "note": "C2",
           "bar": 11,
-          "beat": 3.0,
+          "beat": 3,
           "duration": 0.25,
           "velocity": 0.73
         },
@@ -1211,7 +1221,7 @@
         {
           "note": "F1",
           "bar": 12,
-          "beat": 0.0,
+          "beat": 0,
           "duration": 1,
           "velocity": 0.77
         },
@@ -1232,7 +1242,7 @@
         {
           "note": "A1s",
           "bar": 12,
-          "beat": 3.0,
+          "beat": 3,
           "duration": 0.25,
           "velocity": 0.84
         },
@@ -1246,14 +1256,14 @@
         {
           "note": "F1",
           "bar": 13,
-          "beat": 0.0,
+          "beat": 0,
           "duration": 0.75,
           "velocity": 0.79
         },
         {
           "note": "F2",
           "bar": 13,
-          "beat": 1.0,
+          "beat": 1,
           "duration": 0.5,
           "velocity": 0.7
         },
@@ -1281,7 +1291,7 @@
         {
           "note": "C2",
           "bar": 13,
-          "beat": 3.0,
+          "beat": 3,
           "duration": 0.25,
           "velocity": 0.9
         },
@@ -1295,14 +1305,14 @@
         {
           "note": "F1",
           "bar": 14,
-          "beat": 0.0,
+          "beat": 0,
           "duration": 0.75,
           "velocity": 0.84
         },
         {
           "note": "F2",
           "bar": 14,
-          "beat": 1.0,
+          "beat": 1,
           "duration": 0.25,
           "velocity": 0.75
         },
@@ -1323,7 +1333,7 @@
         {
           "note": "D2s",
           "bar": 14,
-          "beat": 3.0,
+          "beat": 3,
           "duration": 0.25,
           "velocity": 0.82
         },
@@ -1337,14 +1347,14 @@
         {
           "note": "C1s",
           "bar": 15,
-          "beat": 0.0,
+          "beat": 0,
           "duration": 0.75,
           "velocity": 0.74
         },
         {
           "note": "C2s",
           "bar": 15,
-          "beat": 1.0,
+          "beat": 1,
           "duration": 0.5,
           "velocity": 0.71
         },
@@ -1365,7 +1375,7 @@
         {
           "note": "C2",
           "bar": 15,
-          "beat": 3.0,
+          "beat": 3,
           "duration": 0.25,
           "velocity": 0.82
         },
@@ -1379,7 +1389,7 @@
         {
           "note": "F1",
           "bar": 16,
-          "beat": 0.0,
+          "beat": 0,
           "duration": 1,
           "velocity": 0.76
         },
@@ -1400,7 +1410,7 @@
         {
           "note": "A1s",
           "bar": 16,
-          "beat": 3.0,
+          "beat": 3,
           "duration": 0.25,
           "velocity": 0.76
         },
@@ -1414,14 +1424,14 @@
         {
           "note": "F1",
           "bar": 17,
-          "beat": 0.0,
+          "beat": 0,
           "duration": 0.75,
           "velocity": 0.85
         },
         {
           "note": "F2",
           "bar": 17,
-          "beat": 1.0,
+          "beat": 1,
           "duration": 0.5,
           "velocity": 0.79
         },
@@ -1449,7 +1459,7 @@
         {
           "note": "C2",
           "bar": 17,
-          "beat": 3.0,
+          "beat": 3,
           "duration": 0.25,
           "velocity": 0.86
         },
@@ -1463,14 +1473,14 @@
         {
           "note": "F1",
           "bar": 18,
-          "beat": 0.0,
+          "beat": 0,
           "duration": 0.75,
           "velocity": 0.74
         },
         {
           "note": "F2",
           "bar": 18,
-          "beat": 1.0,
+          "beat": 1,
           "duration": 0.25,
           "velocity": 0.73
         },
@@ -1491,7 +1501,7 @@
         {
           "note": "D2s",
           "bar": 18,
-          "beat": 3.0,
+          "beat": 3,
           "duration": 0.25,
           "velocity": 0.75
         },
@@ -1505,14 +1515,14 @@
         {
           "note": "C1s",
           "bar": 19,
-          "beat": 0.0,
+          "beat": 0,
           "duration": 0.75,
           "velocity": 0.81
         },
         {
           "note": "C2s",
           "bar": 19,
-          "beat": 1.0,
+          "beat": 1,
           "duration": 0.5,
           "velocity": 0.78
         },
@@ -1533,7 +1543,7 @@
         {
           "note": "C2",
           "bar": 19,
-          "beat": 3.0,
+          "beat": 3,
           "duration": 0.25,
           "velocity": 0.87
         },
@@ -1547,7 +1557,7 @@
         {
           "note": "F1",
           "bar": 20,
-          "beat": 0.0,
+          "beat": 0,
           "duration": 1,
           "velocity": 0.86
         },
@@ -1568,7 +1578,7 @@
         {
           "note": "A1s",
           "bar": 20,
-          "beat": 3.0,
+          "beat": 3,
           "duration": 0.25,
           "velocity": 0.88
         },
@@ -1582,14 +1592,14 @@
         {
           "note": "F1",
           "bar": 21,
-          "beat": 0.0,
+          "beat": 0,
           "duration": 0.75,
           "velocity": 0.88
         },
         {
           "note": "F2",
           "bar": 21,
-          "beat": 1.0,
+          "beat": 1,
           "duration": 0.5,
           "velocity": 0.74
         },
@@ -1617,7 +1627,7 @@
         {
           "note": "C2",
           "bar": 21,
-          "beat": 3.0,
+          "beat": 3,
           "duration": 0.25,
           "velocity": 0.7
         },
@@ -1631,14 +1641,14 @@
         {
           "note": "F1",
           "bar": 22,
-          "beat": 0.0,
+          "beat": 0,
           "duration": 0.75,
           "velocity": 0.81
         },
         {
           "note": "F2",
           "bar": 22,
-          "beat": 1.0,
+          "beat": 1,
           "duration": 0.25,
           "velocity": 0.81
         },
@@ -1659,7 +1669,7 @@
         {
           "note": "D2s",
           "bar": 22,
-          "beat": 3.0,
+          "beat": 3,
           "duration": 0.25,
           "velocity": 0.8
         },
@@ -1673,14 +1683,14 @@
         {
           "note": "C1s",
           "bar": 23,
-          "beat": 0.0,
+          "beat": 0,
           "duration": 0.75,
           "velocity": 0.86
         },
         {
           "note": "C2s",
           "bar": 23,
-          "beat": 1.0,
+          "beat": 1,
           "duration": 0.5,
           "velocity": 0.86
         },
@@ -1701,7 +1711,7 @@
         {
           "note": "C2",
           "bar": 23,
-          "beat": 3.0,
+          "beat": 3,
           "duration": 0.25,
           "velocity": 0.84
         },
@@ -1715,7 +1725,7 @@
         {
           "note": "F1",
           "bar": 24,
-          "beat": 0.0,
+          "beat": 0,
           "duration": 1,
           "velocity": 0.72
         },
@@ -1736,7 +1746,7 @@
         {
           "note": "A1s",
           "bar": 24,
-          "beat": 3.0,
+          "beat": 3,
           "duration": 0.25,
           "velocity": 0.87
         },
@@ -1748,10 +1758,14 @@
           "velocity": 0.86
         }
       ],
-      "durationMs": 128000.0,
+      "durationMs": 128000,
       "mix": {
-        "volume": 0.8,
-        "mute": false
+        "volume": 0.88,
+        "mute": false,
+        "high": -8.879999999999999,
+        "mid": -5.28,
+        "low": 5.5200000000000005,
+        "pan": 1
       },
       "modules": [
         {
@@ -1764,7 +1778,8 @@
             "amplitude": 0.5,
             "shape": 0.13,
             "dutyCycle": 0.13
-          }
+          },
+          "instanceNum": 1
         },
         {
           "id": "import-1-track-1-channel-1:module-4",
@@ -1775,8 +1790,9 @@
             "attack": 0.01,
             "decay": 0.2,
             "sustain": 0.7,
-            "release": 0.0772680585095702
-          }
+            "release": 0.004207266283844441
+          },
+          "instanceNum": 1
         }
       ],
       "connections": [
@@ -1837,6 +1853,8 @@
     {
       "id": "import-1-track-6-channel-6",
       "name": "CHORDS",
+      "polyphony": 4,
+      "portamento": 0,
       "notes": [
         {
           "note": "A5",
@@ -1862,21 +1880,21 @@
         {
           "note": "A5",
           "bar": 17,
-          "beat": 1.0,
+          "beat": 1,
           "duration": 0.25,
           "velocity": 0.74
         },
         {
           "note": "C6",
           "bar": 17,
-          "beat": 1.0,
+          "beat": 1,
           "duration": 0.25,
           "velocity": 0.8
         },
         {
           "note": "F6",
           "bar": 17,
-          "beat": 1.0,
+          "beat": 1,
           "duration": 0.25,
           "velocity": 0.72
         },
@@ -1967,21 +1985,21 @@
         {
           "note": "A5s",
           "bar": 17,
-          "beat": 3.0,
+          "beat": 3,
           "duration": 0.25,
           "velocity": 0.74
         },
         {
           "note": "D6",
           "bar": 17,
-          "beat": 3.0,
+          "beat": 3,
           "duration": 0.25,
           "velocity": 0.86
         },
         {
           "note": "F5",
           "bar": 17,
-          "beat": 3.0,
+          "beat": 3,
           "duration": 0.25,
           "velocity": 0.73
         },
@@ -2030,21 +2048,21 @@
         {
           "note": "A5",
           "bar": 18,
-          "beat": 1.0,
+          "beat": 1,
           "duration": 0.25,
           "velocity": 0.78
         },
         {
           "note": "C6",
           "bar": 18,
-          "beat": 1.0,
+          "beat": 1,
           "duration": 0.25,
           "velocity": 0.84
         },
         {
           "note": "F5",
           "bar": 18,
-          "beat": 1.0,
+          "beat": 1,
           "duration": 0.25,
           "velocity": 0.71
         },
@@ -2135,21 +2153,21 @@
         {
           "note": "A5",
           "bar": 18,
-          "beat": 3.0,
+          "beat": 3,
           "duration": 0.25,
           "velocity": 0.85
         },
         {
           "note": "C6",
           "bar": 18,
-          "beat": 3.0,
+          "beat": 3,
           "duration": 0.25,
           "velocity": 0.83
         },
         {
           "note": "F5",
           "bar": 18,
-          "beat": 3.0,
+          "beat": 3,
           "duration": 0.25,
           "velocity": 0.79
         },
@@ -2177,21 +2195,21 @@
         {
           "note": "C5s",
           "bar": 19,
-          "beat": 1.0,
+          "beat": 1,
           "duration": 0.25,
           "velocity": 0.71
         },
         {
           "note": "F5",
           "bar": 19,
-          "beat": 1.0,
+          "beat": 1,
           "duration": 0.25,
           "velocity": 0.73
         },
         {
           "note": "G5s",
           "bar": 19,
-          "beat": 1.0,
+          "beat": 1,
           "duration": 0.25,
           "velocity": 0.78
         },
@@ -2219,21 +2237,21 @@
         {
           "note": "C5s",
           "bar": 19,
-          "beat": 2.0,
+          "beat": 2,
           "duration": 0.25,
           "velocity": 0.73
         },
         {
           "note": "F5",
           "bar": 19,
-          "beat": 2.0,
+          "beat": 2,
           "duration": 0.25,
           "velocity": 0.8
         },
         {
           "note": "G5s",
           "bar": 19,
-          "beat": 2.0,
+          "beat": 2,
           "duration": 0.25,
           "velocity": 0.76
         },
@@ -2324,21 +2342,21 @@
         {
           "note": "A5s",
           "bar": 20,
-          "beat": 0.0,
+          "beat": 0,
           "duration": 0.25,
           "velocity": 0.88
         },
         {
           "note": "D5s",
           "bar": 20,
-          "beat": 0.0,
+          "beat": 0,
           "duration": 0.25,
           "velocity": 0.82
         },
         {
           "note": "G5",
           "bar": 20,
-          "beat": 0.0,
+          "beat": 0,
           "duration": 0.25,
           "velocity": 0.74
         },
@@ -2366,21 +2384,21 @@
         {
           "note": "A5",
           "bar": 20,
-          "beat": 1.0,
+          "beat": 1,
           "duration": 0.25,
           "velocity": 0.85
         },
         {
           "note": "C6",
           "bar": 20,
-          "beat": 1.0,
+          "beat": 1,
           "duration": 0.25,
           "velocity": 0.81
         },
         {
           "note": "F5",
           "bar": 20,
-          "beat": 1.0,
+          "beat": 1,
           "duration": 0.25,
           "velocity": 0.78
         },
@@ -2408,21 +2426,21 @@
         {
           "note": "A5s",
           "bar": 20,
-          "beat": 2.0,
+          "beat": 2,
           "duration": 0.25,
           "velocity": 0.83
         },
         {
           "note": "D5s",
           "bar": 20,
-          "beat": 2.0,
+          "beat": 2,
           "duration": 0.25,
           "velocity": 0.78
         },
         {
           "note": "G5",
           "bar": 20,
-          "beat": 2.0,
+          "beat": 2,
           "duration": 0.25,
           "velocity": 0.88
         },
@@ -2469,10 +2487,14 @@
           "velocity": 0.89
         }
       ],
-      "durationMs": 128000.0,
+      "durationMs": 128000,
       "mix": {
         "volume": 0.8,
-        "mute": false
+        "mute": false,
+        "high": 0,
+        "mid": 0,
+        "low": 0,
+        "pan": 0
       },
       "modules": [
         {
@@ -2485,7 +2507,8 @@
             "amplitude": 0.5,
             "shape": 0.91,
             "dutyCycle": 0.5
-          }
+          },
+          "instanceNum": 1
         },
         {
           "id": "import-1-track-6-channel-6:module-6",
@@ -2497,7 +2520,8 @@
             "decay": 0.2,
             "sustain": 0.7,
             "release": 0.008871560120379608
-          }
+          },
+          "instanceNum": 1
         }
       ],
       "connections": [
@@ -2554,7 +2578,340 @@
           }
         }
       ]
+    },
+    {
+      "id": "track-manual-1775117238695-2",
+      "name": "DRUMS",
+      "notes": [
+        {
+          "note": "A1s",
+          "bar": 1,
+          "beat": 0,
+          "duration": 1,
+          "velocity": 0.8
+        },
+        {
+          "note": "A1s",
+          "bar": 1,
+          "beat": 2,
+          "duration": 1,
+          "velocity": 0.8
+        },
+        {
+          "note": "A1s",
+          "bar": 2,
+          "beat": 0,
+          "duration": 1,
+          "velocity": 0.8
+        },
+        {
+          "note": "A1s",
+          "bar": 2,
+          "beat": 2,
+          "duration": 1,
+          "velocity": 0.8
+        },
+        {
+          "note": "A1s",
+          "bar": 3,
+          "beat": 0,
+          "duration": 1,
+          "velocity": 0.8
+        },
+        {
+          "note": "A1s",
+          "bar": 3,
+          "beat": 2,
+          "duration": 1,
+          "velocity": 0.8
+        },
+        {
+          "note": "A1s",
+          "bar": 4,
+          "beat": 0,
+          "duration": 1,
+          "velocity": 0.8
+        },
+        {
+          "note": "A1s",
+          "bar": 4,
+          "beat": 2,
+          "duration": 1,
+          "velocity": 0.8
+        },
+        {
+          "note": "D4",
+          "bar": 1,
+          "beat": 1,
+          "duration": 1,
+          "velocity": 0.8
+        },
+        {
+          "note": "D4",
+          "bar": 1,
+          "beat": 3,
+          "duration": 1,
+          "velocity": 0.8
+        },
+        {
+          "note": "D4",
+          "bar": 2,
+          "beat": 1,
+          "duration": 1,
+          "velocity": 0.8
+        },
+        {
+          "note": "D4",
+          "bar": 2,
+          "beat": 3,
+          "duration": 1,
+          "velocity": 0.8
+        },
+        {
+          "note": "D4",
+          "bar": 3,
+          "beat": 1,
+          "duration": 1,
+          "velocity": 0.8
+        },
+        {
+          "note": "D4",
+          "bar": 3,
+          "beat": 3,
+          "duration": 1,
+          "velocity": 0.8
+        },
+        {
+          "note": "D4",
+          "bar": 4,
+          "beat": 1,
+          "duration": 1,
+          "velocity": 0.8
+        },
+        {
+          "note": "D4",
+          "bar": 4,
+          "beat": 3,
+          "duration": 1,
+          "velocity": 0.8
+        }
+      ],
+      "durationMs": 125,
+      "mix": {
+        "volume": 0.8,
+        "mute": false
+      },
+      "modules": [
+        {
+          "id": "track-manual-1775117238695-2:random-1",
+          "type": "random",
+          "instanceNum": 1,
+          "x": 715,
+          "y": 311,
+          "params": {
+            "rate": 8000
+          }
+        },
+        {
+          "id": "track-manual-1775117238695-2:vca-1",
+          "type": "vca",
+          "instanceNum": 1,
+          "x": 944,
+          "y": 347,
+          "params": {
+            "gain": 0.001,
+            "invert": false
+          }
+        },
+        {
+          "id": "track-manual-1775117238695-2:envelope-1",
+          "type": "envelope",
+          "instanceNum": 1,
+          "x": 63,
+          "y": 90,
+          "params": {
+            "attack": 0.001,
+            "decay": 0.06426877173170198,
+            "sustain": 0,
+            "release": 0.001
+          }
+        },
+        {
+          "id": "track-manual-1775117238695-2:oscillator-1",
+          "type": "oscillator",
+          "instanceNum": 1,
+          "x": 482,
+          "y": 21,
+          "params": {
+            "frequency": 440,
+            "amplitude": 1.9952623149688795,
+            "shape": 0,
+            "dutyCycle": 0.5
+          }
+        },
+        {
+          "id": "track-manual-1775117238695-2:mixer-1",
+          "type": "mixer",
+          "instanceNum": 1,
+          "x": 1256,
+          "y": 170,
+          "params": {
+            "levelA": 0.5,
+            "levelB": 0.5
+          }
+        },
+        {
+          "id": "track-manual-1775117238695-2:multi-1",
+          "type": "multi",
+          "instanceNum": 1,
+          "x": 275,
+          "y": 335,
+          "params": {}
+        },
+        {
+          "id": "track-manual-1775117238695-2:vca-2",
+          "type": "vca",
+          "instanceNum": 2,
+          "x": 917,
+          "y": 65,
+          "params": {
+            "gain": 1.507301044163132,
+            "invert": false
+          }
+        }
+      ],
+      "connections": [
+        {
+          "id": "conn-1775117295053-t0f2r5",
+          "from": {
+            "moduleId": "keyboard-singleton",
+            "outputId": "gate-out",
+            "position": null
+          },
+          "to": {
+            "moduleId": "track-manual-1775117238695-2:envelope-1",
+            "outputId": "gate-input",
+            "position": null
+          }
+        },
+        {
+          "id": "conn-1775117439654-51zhjf",
+          "from": {
+            "moduleId": "keyboard-singleton",
+            "outputId": "cv-out",
+            "position": null
+          },
+          "to": {
+            "moduleId": "track-manual-1775117238695-2:oscillator-1",
+            "outputId": "freq-input",
+            "position": null
+          }
+        },
+        {
+          "id": "conn-1775117461960-s5vrv6",
+          "from": {
+            "moduleId": "track-manual-1775117238695-2:mixer-1",
+            "outputId": "output",
+            "position": null
+          },
+          "to": {
+            "moduleId": "track-output-singleton",
+            "outputId": "audio-input",
+            "position": null
+          }
+        },
+        {
+          "id": "conn-1775117477680-jvpt61",
+          "from": {
+            "moduleId": "track-manual-1775117238695-2:envelope-1",
+            "outputId": "output",
+            "position": null
+          },
+          "to": {
+            "moduleId": "track-manual-1775117238695-2:multi-1",
+            "outputId": "signal-input",
+            "position": null
+          }
+        },
+        {
+          "id": "conn-1775117527803-6oxykg",
+          "from": {
+            "moduleId": "track-manual-1775117238695-2:random-1",
+            "outputId": "output",
+            "position": null
+          },
+          "to": {
+            "moduleId": "track-manual-1775117238695-2:vca-1",
+            "outputId": "gain-input",
+            "position": null
+          }
+        },
+        {
+          "id": "conn-1775117532220-4k9582",
+          "from": {
+            "moduleId": "track-manual-1775117238695-2:multi-1",
+            "outputId": "output-a",
+            "position": null
+          },
+          "to": {
+            "moduleId": "track-manual-1775117238695-2:oscillator-1",
+            "outputId": "amp-input",
+            "position": null
+          }
+        },
+        {
+          "id": "conn-1775117535119-nr9lf9",
+          "from": {
+            "moduleId": "track-manual-1775117238695-2:multi-1",
+            "outputId": "output-b",
+            "position": null
+          },
+          "to": {
+            "moduleId": "track-manual-1775117238695-2:vca-1",
+            "outputId": "audio-input",
+            "position": null
+          }
+        },
+        {
+          "id": "conn-1775117628733-abzbzi",
+          "from": {
+            "moduleId": "track-manual-1775117238695-2:oscillator-1",
+            "outputId": "output",
+            "position": null
+          },
+          "to": {
+            "moduleId": "track-manual-1775117238695-2:vca-2",
+            "outputId": "audio-input",
+            "position": null
+          }
+        },
+        {
+          "id": "conn-1775117631908-d5xcw5",
+          "from": {
+            "moduleId": "track-manual-1775117238695-2:vca-2",
+            "outputId": "output",
+            "position": null
+          },
+          "to": {
+            "moduleId": "track-manual-1775117238695-2:mixer-1",
+            "outputId": "input-a",
+            "position": null
+          }
+        },
+        {
+          "id": "conn-1775117633924-b4kvoo",
+          "from": {
+            "moduleId": "track-manual-1775117238695-2:vca-1",
+            "outputId": "output",
+            "position": null
+          },
+          "to": {
+            "moduleId": "track-manual-1775117238695-2:mixer-1",
+            "outputId": "input-b",
+            "position": null
+          }
+        }
+      ]
     }
-  ],
-  "durationMs": 128000.0
+  ]
 }

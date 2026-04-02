@@ -82,7 +82,7 @@ function Transport({
 
     return (
         <div style={{
-            height: '320px',
+            height: '185px',
             background: '#161616',
             borderTop: '2px solid #444',
             display: 'flex',
@@ -97,18 +97,18 @@ function Transport({
                     variant="active" active={isPlaying}
                     onClick={handlePlayStop}
                     disabled={!transportState?.hasSequence || isPendingPlay}
+                    style={{ width: 36, height: 36, padding: 0 }}
                 >
                     {isPendingPlay ? '…' : isPlaying ? '■' : '▶'}
                 </ToolbarButton>
-                <ToolbarButton onClick={handleRewind} disabled={!transportState?.hasSequence}>⏮</ToolbarButton>
+                <ToolbarButton onClick={handleRewind} disabled={!transportState?.hasSequence} style={{ width: 36, height: 36, padding: 0 }}>⏮</ToolbarButton>
                 <ToolbarButton
                     variant="active" active={isRecording}
                     onClick={onRecord}
-                    style={isRecording ? { background: '#cc0000', border: '2px solid #ff4444', color: '#fff' } : {}}
+                    style={isRecording ? { width: 36, height: 36, padding: 0, background: '#cc0000', border: '2px solid #ff4444', color: '#fff' } : { width: 36, height: 36, padding: 0 }}
                 >
                     {isRecording ? '■' : '⏺'}
                 </ToolbarButton>
-                <ToolbarButton onClick={onCreateTrack}>＋</ToolbarButton>
 
                 <div style={{ minWidth: '240px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <div style={{ fontSize: '11px', letterSpacing: '0.08em', color: '#6f6f6f' }}>STATUS</div>
@@ -179,6 +179,26 @@ function Transport({
                         onRename={(name) => onRenameTrack(track.id, name)}
                     />
                 ))}
+                {/* Add track row */}
+                <div
+                    onClick={onCreateTrack}
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        minHeight: '30px',
+                        padding: '0 12px',
+                        cursor: 'pointer',
+                        color: '#555',
+                        fontSize: '12px',
+                        letterSpacing: '0.05em',
+                        borderTop: tracks.length > 0 ? '1px solid #1a1a1a' : 'none',
+                        userSelect: 'none',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.color = '#aaa'; e.currentTarget.style.background = '#161616'; }}
+                    onMouseLeave={e => { e.currentTarget.style.color = '#555'; e.currentTarget.style.background = ''; }}
+                >
+                    + new track
+                </div>
             </div>
         </div>
     );
@@ -190,6 +210,7 @@ function TrackRow({ track, isSelected, isPlaying, timelineDurationMs, onSelect, 
     const durationRef = React.useRef(timelineDurationMs);
     const [editing, setEditing] = React.useState(false);
     const [editValue, setEditValue] = React.useState('');
+    const [confirming, setConfirming] = React.useState(false);
     const inputRef = React.useRef(null);
 
     // Keep durationRef current so the rAF closure always has the latest value.
@@ -225,9 +246,17 @@ function TrackRow({ track, isSelected, isPlaying, timelineDurationMs, onSelect, 
 
     const handleRemove = (e) => {
         e.stopPropagation();
-        if (window.confirm(`Remove track "${trackName}"?`)) {
-            onRemove();
-        }
+        setConfirming(true);
+    };
+
+    const handleConfirmRemove = (e) => {
+        e.stopPropagation();
+        onRemove();
+    };
+
+    const handleCancelRemove = (e) => {
+        e.stopPropagation();
+        setConfirming(false);
     };
 
     const startEdit = (e) => {
@@ -251,7 +280,7 @@ function TrackRow({ track, isSelected, isPlaying, timelineDurationMs, onSelect, 
         <div
             style={{
                 display: 'grid',
-                gridTemplateColumns: '200px 28px 1fr',
+                gridTemplateColumns: '120px 28px 1fr',
                 alignItems: 'center',
                 minHeight: '36px',
                 borderBottom: '1px solid #1e1e1e',
@@ -301,15 +330,28 @@ function TrackRow({ track, isSelected, isPlaying, timelineDurationMs, onSelect, 
             </div>
 
             {/* Delete track */}
-            <div style={{ display: 'flex', justifyContent: 'center', paddingRight: '8px' }}>
-                <SmallButton
-                    onClick={handleRemove}
-                    title={`Remove "${trackName}"`}
-                    hoverBorder="#c44"
-                    hoverColor="#f88"
-                >
-                    ×
-                </SmallButton>
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', paddingRight: '4px' }}>
+                {confirming ? (
+                    <div style={{ display: 'flex', gap: '3px' }} onClick={e => e.stopPropagation()}>
+                        <button
+                            onClick={handleConfirmRemove}
+                            style={{ fontSize: '9px', padding: '2px 5px', background: '#5a1a1a', color: '#ff9090', border: '1px solid #c44', borderRadius: '3px', cursor: 'pointer', letterSpacing: '0.04em', fontWeight: 600 }}
+                        >DEL</button>
+                        <button
+                            onClick={handleCancelRemove}
+                            style={{ fontSize: '9px', padding: '2px 5px', background: 'transparent', color: '#888', border: '1px solid #444', borderRadius: '3px', cursor: 'pointer', letterSpacing: '0.04em' }}
+                        >✕</button>
+                    </div>
+                ) : (
+                    <SmallButton
+                        onClick={handleRemove}
+                        title={`Remove "${trackName}"`}
+                        hoverBorder="#c44"
+                        hoverColor="#f88"
+                    >
+                        ×
+                    </SmallButton>
+                )}
             </div>
 
             {/* Note/timeline area — clicking here seeks, does not select */}

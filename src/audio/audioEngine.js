@@ -112,7 +112,7 @@ export async function initializeAudioEngine(audioContext) {
             const node = new AudioWorkletNode(audioContext, 'moth-synth-processor', {
                 numberOfInputs: 0,
                 numberOfOutputs: 1,
-                outputChannelCount: [1]
+                outputChannelCount: [2]
             });
             node.port.onmessage = handleWorkletMessage;
             node.port.onmessageerror = (event) => {

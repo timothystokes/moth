@@ -16,6 +16,7 @@ export default function ToolbarButton({ children, variant, active, style, disabl
 
     const base = {
         padding: '4px 10px',
+        paddingBlock: 0,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -34,6 +35,9 @@ export default function ToolbarButton({ children, variant, active, style, disabl
         opacity: disabled ? 0.4 : 1,
         transition: 'background 0.1s, border-color 0.1s',
         fontFamily: 'inherit',
+        appearance: 'none',
+        WebkitAppearance: 'none',
+        boxSizing: 'border-box',
     };
 
     return (

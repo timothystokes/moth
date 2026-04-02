@@ -150,7 +150,7 @@ function Keyboard({ module, onOutputClick, isConnecting, isFixed, selectedTrackI
                                     style={{
                                         position: 'absolute',
                                         top: `${index * keyHeight}px`,
-                                        left: 0,
+                                        left: 1,
                                         width: '100%',
                                         height: `${keyHeight}px`,
                                         background: isActive ? '#0a0' : (isHovered ? '#eee' : '#eee'),
@@ -169,7 +169,7 @@ function Keyboard({ module, onOutputClick, isConnecting, isFixed, selectedTrackI
                                     title={note.noteName}
                                 >
                                     {note.noteName.startsWith('C') && !note.noteName.includes('#') && (
-                                        <span style={{ fontSize: '7px', color: isActive ? '#fff' : '#000', lineHeight: 1, pointerEvents: 'none', userSelect: 'none' }}>
+                                        <span style={{ fontSize: '9px', color: isActive ? '#fff' : '#000', lineHeight: 1, pointerEvents: 'none', userSelect: 'none' }}>
                                             {note.noteName}
                                         </span>
                                     )}
@@ -189,12 +189,11 @@ function Keyboard({ module, onOutputClick, isConnecting, isFixed, selectedTrackI
                                     onMouseLeave={handleMouseLeave}
                                     style={{
                                         position: 'absolute',
-                                        top: `${whiteKeyIndex * keyHeight - keyHeight / 2}px`,
+                                        top: `${whiteKeyIndex * keyHeight - keyHeight / 2 + 1}px`,
                                         left: 0,
                                         width: `${blackKeyWidthPct}%`,
-                                        height: `${keyHeight - 1}px`,
+                                        height: `${keyHeight - 2}px`,
                                         background: isActive ? '#0a0' : (isHovered ? '#333' : '#333'),
-                                        marginBottom: '2px',
                                         cursor: 'pointer',
                                         zIndex: 10,
                                         borderTopRightRadius: 3,

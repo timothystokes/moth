@@ -266,7 +266,11 @@ function normalizeTrack(track, index, moduleStateLookup = new Map(), timeSignatu
         durationMs,
         mix: {
             volume: typeof track?.mix?.volume === 'number' ? Math.min(1, Math.max(0, track.mix.volume)) : 0.8,
-            mute: Boolean(track?.mix?.mute)
+            mute: Boolean(track?.mix?.mute),
+            high: typeof track?.mix?.high === 'number' ? Math.max(-12, Math.min(12, track.mix.high)) : 0,
+            mid: typeof track?.mix?.mid === 'number' ? Math.max(-12, Math.min(12, track.mix.mid)) : 0,
+            low: typeof track?.mix?.low === 'number' ? Math.max(-12, Math.min(12, track.mix.low)) : 0,
+            pan: typeof track?.mix?.pan === 'number' ? Math.max(-1, Math.min(1, track.mix.pan)) : 0,
         },
         modules: normalizedModules,
         connections: normalizedConnections
@@ -285,6 +289,7 @@ function syncCountersFromTracks(projectTracks) {
 function buildSerializedProjectTracks(projectTracks) {
     return projectTracks.map(({ sequences: _seq, arrangement: _arr, noteSegments: _ns, ...track }) => ({
         ...track,
+        mix: { ...track.mix, solo: undefined },
         modules: track.modules.map((module) => {
             const moduleState = getModuleState(module.id);
             return {
@@ -464,6 +469,10 @@ function App() {
                 mute: effectiveMute,
                 polyphony: track.polyphony ?? 4,
                 portamento: track.portamento ?? 0,
+                high: track.mix.high ?? 0,
+                mid: track.mix.mid ?? 0,
+                low: track.mix.low ?? 0,
+                pan: track.mix.pan ?? 0,
             });
 
             track.connections.forEach((connection) => {
@@ -484,7 +493,8 @@ function App() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
         tracks.map(t => JSON.stringify({
             id: t.id,
-            mix: t.mix,
+            mute: t.mix?.mute,
+            solo: t.mix?.solo,
             polyphony: t.polyphony,
             portamento: t.portamento,
             connections: t.connections,
@@ -897,11 +907,24 @@ function App() {
     const handleUpdateTrackMix = (trackId, patch) => {
         updateTrack(trackId, (track) => ({
             ...track,
-            mix: {
-                ...track.mix,
-                ...patch
-            }
+            mix: { ...track.mix, ...patch }
         }));
+        // Send audio params directly — bypasses the module-registration effect to avoid recompile
+        const track = tracks.find(t => t.id === trackId);
+        if (track) {
+            const mix = { ...track.mix, ...patch };
+            const anySolo = tracks.some(t => t.mix?.solo || (t.id === trackId && patch.solo));
+            upsertTrack(trackId, {
+                volume: mix.volume ?? track.mix?.volume ?? 0.8,
+                mute: mix.mute || (anySolo && !mix.solo) || false,
+                polyphony: track.polyphony ?? 4,
+                portamento: track.portamento ?? 0,
+                high: mix.high ?? 0,
+                mid: mix.mid ?? 0,
+                low: mix.low ?? 0,
+                pan: mix.pan ?? 0,
+            });
+        }
     };
 
     const handleCreateTrack = () => {
@@ -1028,6 +1051,9 @@ function App() {
                 onSaveProject={handleProjectSave}
                 viewMode={viewMode}
                 setViewMode={setViewMode}
+                selectedTrack={selectedTrack}
+                onUpdatePolyphony={handleUpdatePolyphony}
+                onUpdatePortamento={handleUpdatePortamento}
             />
 
             <div ref={contentRef} style={{ flex: 1, position: 'relative', display: 'flex', flexDirection: 'column', minHeight: 0 }} onMouseMove={handleCanvasMouseMove}>
@@ -1101,45 +1127,6 @@ function App() {
                         );
                     })()}
                 </svg>}
-
-                {/* Full-width track title bar */}
-                <div style={{ height: '30px', borderBottom: '1px solid #2d2d2d', display: 'flex', alignItems: 'center', padding: '0 10px', gap: '8px', background: '#1a1a1a', flexShrink: 0, zIndex: 1 }}>
-                    <span style={{ color: '#555', fontSize: '11px', letterSpacing: '0.06em', flexShrink: 0 }}>TRACK:</span>
-                    <span style={{ color: '#8a8a8a', fontSize: '11px', letterSpacing: '0.06em', flexShrink: 0 }}>
-                        {selectedTrack ? selectedTrack.name : 'none'}
-                    </span>
-                    {selectedTrack && (
-                        <>
-                            <div style={{ width: '1px', alignSelf: 'stretch', background: '#333', margin: '4px 4px' }} />
-                            <span style={{ color: '#555', fontSize: '10px', letterSpacing: '0.05em', flexShrink: 0 }}>POLYPHONY</span>
-                            <select
-                                value={selectedTrack.polyphony ?? 4}
-                                onChange={(e) => handleUpdatePolyphony(selectedTrack.id, Number(e.target.value))}
-                                style={{ width: '46px', background: '#1e1e1e', color: '#aaa', border: '1px solid #444', borderRadius: '3px', fontSize: '11px', height: '20px', padding: '0 2px', cursor: 'pointer', outline: 'none' }}
-                                title="Voices (polyphony)"
-                            >
-                                {Array.from({ length: 16 }, (_, i) => i + 1).map(n => (
-                                    <option key={n} value={n}>{n}</option>
-                                ))}
-                            </select>
-                        </>
-                    )}
-                    {selectedTrack && (selectedTrack.polyphony ?? 4) === 1 && (
-                        <>
-                            <span style={{ color: '#555', fontSize: '10px', letterSpacing: '0.05em', flexShrink: 0 }}>PORTA</span>
-                            <input
-                                type="range" min="0" max="2" step="0.01"
-                                value={selectedTrack.portamento ?? 0}
-                                onChange={(e) => handleUpdatePortamento(selectedTrack.id, parseFloat(e.target.value))}
-                                style={{ width: '80px', cursor: 'pointer', accentColor: COLOR_SLIDER }}
-                                title={`Portamento: ${(selectedTrack.portamento ?? 0).toFixed(2)}s`}
-                            />
-                            <span style={{ color: '#bbb', fontSize: '10px', minWidth: '28px' }}>
-                                {(selectedTrack.portamento ?? 0).toFixed(2)}s
-                            </span>
-                        </>
-                    )}
-                </div>
 
                 {/* Main row: changes based on view mode */}
                 <div style={{ flex: 1, position: 'relative', display: 'flex', minHeight: 0 }}>
@@ -1301,52 +1288,106 @@ function MidiSelector() {
     );
 }
 
-function Toolbar({ addModule, hasSelectedTrack, audioError, onImportMidi, onLoadProject, onSaveProject, viewMode, setViewMode }) {
-
+function Toolbar({ addModule, hasSelectedTrack, audioError, onImportMidi, onLoadProject, onSaveProject, viewMode, setViewMode, selectedTrack, onUpdatePolyphony, onUpdatePortamento }) {
+    const tabBase = {
+        padding: '0 14px',
+        fontSize: '10px',
+        fontWeight: 600,
+        letterSpacing: '0.08em',
+        textTransform: 'uppercase',
+        border: 'none',
+        borderBottom: '2px solid transparent',
+        background: 'transparent',
+        cursor: 'pointer',
+        height: '100%',
+        flexShrink: 0,
+        transition: 'color 0.1s, border-color 0.1s',
+    };
 
     return (
         <div style={{
             height: `${toolbarHeight}px`,
-            background: '#2a2a2a',
+            background: '#222222',
             borderBottom: '2px solid #444',
             display: 'flex',
-            alignItems: 'center',
-            padding: '0 20px',
-            gap: '10px',
+            alignItems: 'stretch',
+            padding: '0 10px 0 10px',
+            gap: '0',
             zIndex: 1000,
             flexShrink: 0
         }}>
-            <b>MOTH1</b>
-            <div style={{ width: '1px', alignSelf: 'stretch', background: '#505050', margin: '6px 4px' }} />
+            {/* App title */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingRight: '14px', flexShrink: 0 }}>
+                <img src="/moth.svg" alt="moth" style={{ height: 44, width: 'auto', display: 'block', opacity: 0.9 }} />
+                <b style={{ fontSize: '16px', letterSpacing: '0.1em' }}>MOTH</b>
+            </div>
+            <div style={{ width: '1px', alignSelf: 'stretch', background: '#505050', margin: '8px 12px' }} />
+
+            {/* Track name + polyphony */}
+            {selectedTrack ? (
+                <>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingRight: '12px', flexShrink: 0 }}>
+                        <span style={{ color: '#8a8a8a', fontSize: '11px', letterSpacing: '0.06em' }}>{selectedTrack.name}</span>
+                        
+                    </div>
+                </>
+            ) : (
+                <div style={{ display: 'flex', alignItems: 'center', paddingRight: '12px' }}>
+                    <span style={{ color: '#444', fontSize: '11px', letterSpacing: '0.06em' }}>no track</span>
+                </div>
+            )}
+
+            {/* View tabs */}
             {(['voice', 'notes']).map((mode) => (
                 <button
                     key={mode}
                     onClick={() => setViewMode(mode)}
                     style={{
-                        padding: '2px 10px',
-                        fontSize: '10px',
-                        fontWeight: 600,
-                        letterSpacing: '0.06em',
-                        textTransform: 'uppercase',
-                        border: `1px solid ${viewMode === mode ? '#5a9a5a' : '#444'}`,
-                        borderRadius: '10px',
-                        background: viewMode === mode ? '#2a4a2a' : 'transparent',
+                        ...tabBase,
+                        marginLeft: mode === 'voice' ? '8px' : '0',
+                        borderBottom: `2px solid ${viewMode === mode ? '#5aaa5a' : 'transparent'}`,
                         color: viewMode === mode ? '#8adb8a' : '#666',
-                        cursor: 'pointer',
-                        lineHeight: 1.4,
-                        flexShrink: 0,
                     }}
                 >
                     {mode}
                 </button>
             ))}
+
+            {/* Right-side tools */}
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
+                <span style={{ color: '#555', fontSize: '10px', letterSpacing: '0.05em' }}>POLY</span>
+                        <select
+                            value={selectedTrack.polyphony ?? 4}
+                            onChange={(e) => onUpdatePolyphony(selectedTrack.id, Number(e.target.value))}
+                            style={{ width: '42px', background: '#1e1e1e', color: '#aaa', border: '1px solid #444', borderRadius: '3px', fontSize: '11px', height: '20px', padding: '0 2px', cursor: 'pointer', outline: 'none' }}
+                            title="Voices (polyphony)"
+                        >
+                            {Array.from({ length: 16 }, (_, i) => i + 1).map(n => (
+                                <option key={n} value={n}>{n}</option>
+                            ))}
+                        </select>
+                        {(selectedTrack.polyphony ?? 4) === 1 && (
+                            <>
+                                <span style={{ color: '#555', fontSize: '10px', letterSpacing: '0.05em' }}>PORTA</span>
+                                <input
+                                    type="range" min="0" max="2" step="0.01"
+                                    value={selectedTrack.portamento ?? 0}
+                                    onChange={(e) => onUpdatePortamento(selectedTrack.id, parseFloat(e.target.value))}
+                                    style={{ width: '70px', cursor: 'pointer', accentColor: COLOR_SLIDER }}
+                                    title={`Portamento: ${(selectedTrack.portamento ?? 0).toFixed(2)}s`}
+                                />
+                                <span style={{ color: '#bbb', fontSize: '10px', minWidth: '28px' }}>
+                                    {(selectedTrack.portamento ?? 0).toFixed(2)}s
+                                </span>
+                            </>
+                        )}
+                                        <div style={{ width: '1px', alignSelf: 'stretch', background: '#505050', margin: '8px 0' }} />
+
                 <MidiSelector />
-                <div style={{ width: '1px', alignSelf: 'stretch', background: '#505050', margin: '6px 0' }} />
+                <div style={{ width: '1px', alignSelf: 'stretch', background: '#505050', margin: '8px 0' }} />
                 <ToolbarButton onClick={onLoadProject}>LOAD</ToolbarButton>
                 <ToolbarButton onClick={onSaveProject}>SAVE</ToolbarButton>
                 <ToolbarButton onClick={onImportMidi}>IMPORT</ToolbarButton>
-                <div style={{ width: '1px', alignSelf: 'stretch', background: '#505050', margin: '6px 0' }} />
 
                 {audioError && (
                     <div style={{

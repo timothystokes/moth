@@ -27,6 +27,10 @@ function createTrackState(trackId, track = {}) {
         trackId,
         volume: track.volume ?? 0.8,
         mute: Boolean(track.mute),
+        high: track.high ?? 0,
+        mid: track.mid ?? 0,
+        low: track.low ?? 0,
+        pan: track.pan ?? 0,
         portamentoTime: track.portamento ?? 0,
         noteStack: [],
         lastMonoCv: 0,
@@ -370,6 +374,10 @@ class MothSynthProcessor extends AudioWorkletProcessor {
         const existing = this.trackStates.get(trackId) ?? createTrackState(trackId, track);
         existing.volume = track.volume ?? existing.volume;
         existing.mute = Boolean(track.mute);
+        existing.high = track.high ?? existing.high ?? 0;
+        existing.mid = track.mid ?? existing.mid ?? 0;
+        existing.low = track.low ?? existing.low ?? 0;
+        existing.pan = track.pan ?? existing.pan ?? 0;
 
         const desiredPoly = Math.min(16, Math.max(1, track.polyphony ?? existing.voices.length));
         if (existing.voices.length !== desiredPoly) {
@@ -1301,7 +1309,8 @@ class MothSynthProcessor extends AudioWorkletProcessor {
 
     process(_inputs, outputs) {
         try {
-            const outputChannel = outputs[0][0];
+            const outputChannelL = outputs[0][0];
+            const outputChannelR = outputs[0][1];
             const msPerSample = 1000 / sampleRate;
             const trackRenderPlans = [];
 
@@ -1325,10 +1334,11 @@ class MothSynthProcessor extends AudioWorkletProcessor {
 
             const activeTrackCount = trackRenderPlans.length;
 
-            for (let sampleIndex = 0; sampleIndex < outputChannel.length; sampleIndex++) {
+            for (let sampleIndex = 0; sampleIndex < outputChannelL.length; sampleIndex++) {
                 this.frameCache.clear();
                 const sampleTimeMs = this.currentTimeMs;
-                let mixedSample = 0;
+                let mixedL = 0;
+                let mixedR = 0;
                 let scopedSample = 0;
                 const topTrackIds = [null, null, null, null];
                 const topModuleIds = [null, null, null, null];
@@ -1384,6 +1394,30 @@ class MothSynthProcessor extends AudioWorkletProcessor {
                         timeMs: sampleTimeMs
                     });
 
+                    // Apply 3-band shelving EQ (high/mid/low in dB) using simple 1-pole IIR shelves
+                    const { high, mid, low } = trackState;
+                    if (high !== 0 || mid !== 0 || low !== 0) {
+                        if (!trackState.eqState) {
+                            trackState.eqState = { lp1: 0, lp2: 0, hp1: 0 };
+                        }
+                        const eq = trackState.eqState;
+                        const sr = sampleRate;
+                        // Low shelf: 1-pole LP at 250Hz
+                        const lowAlpha = 1 - Math.exp(-2 * Math.PI * 250 / sr);
+                        eq.lp1 += lowAlpha * (trackSample - eq.lp1);
+                        const lowBand = eq.lp1;
+                        // High shelf: HP = signal - LP at 4000Hz
+                        const highAlpha = 1 - Math.exp(-2 * Math.PI * 4000 / sr);
+                        eq.hp1 += highAlpha * (trackSample - eq.hp1);
+                        const highBand = trackSample - eq.hp1;
+                        // Mid = signal - low - high
+                        const midBand = trackSample - lowBand - highBand;
+                        const lowGain = Math.pow(10, low / 20);
+                        const midGain = Math.pow(10, mid / 20);
+                        const highGain = Math.pow(10, high / 20);
+                        trackSample = lowBand * lowGain + midBand * midGain + highBand * highGain;
+                    }
+
                     const trackSampleAbs = Math.abs(trackSample);
                     if (trackSampleAbs > 0.0001) {
                         for (let index = 0; index < topSamples.length; index++) {
@@ -1402,7 +1436,12 @@ class MothSynthProcessor extends AudioWorkletProcessor {
                         }
                     }
 
-                    mixedSample += trackSample;
+                    // Constant-power pan law: pan in [-1, 1]
+                    const panAngle = ((trackState.pan ?? 0) + 1) * 0.25 * Math.PI; // 0..π/2
+                    const panL = Math.cos(panAngle);
+                    const panR = Math.sin(panAngle);
+                    mixedL += trackSample * panL;
+                    mixedR += trackSample * panR;
 
                     if (isScopeTrack) {
                         scopedSample = trackSample;
@@ -1410,9 +1449,12 @@ class MothSynthProcessor extends AudioWorkletProcessor {
                 }
 
                 if (activeTrackCount > 1) {
-                    mixedSample /= Math.sqrt(activeTrackCount);
+                    const norm = 1 / Math.sqrt(activeTrackCount);
+                    mixedL *= norm;
+                    mixedR *= norm;
                 }
 
+                const mixedSample = (mixedL + mixedR) * 0.5; // mono sum for clipping/diagnostic check
                 const trackContributions = Math.abs(mixedSample) > MAX_OUTPUT_SAMPLE
                     ? topTrackIds
                         .map((trackId, index) => trackId
@@ -1425,7 +1467,14 @@ class MothSynthProcessor extends AudioWorkletProcessor {
                         .filter(Boolean)
                     : undefined;
 
-                mixedSample = this.sanitizeSample(mixedSample, 'mixed-sample', {
+                mixedL = this.sanitizeSample(mixedL, 'mixed-sample', {
+                    phase: 'mixed-sample',
+                    timeMs: sampleTimeMs,
+                    activeTrackCount,
+                    trackCount: this.trackStates.size,
+                    trackContributions
+                });
+                mixedR = this.sanitizeSample(mixedR, 'mixed-sample', {
                     phase: 'mixed-sample',
                     timeMs: sampleTimeMs,
                     activeTrackCount,
@@ -1438,7 +1487,8 @@ class MothSynthProcessor extends AudioWorkletProcessor {
                     scopeTrackId: this.scopeTrackId
                 });
 
-                outputChannel[sampleIndex] = mixedSample;
+                outputChannelL[sampleIndex] = mixedL;
+                outputChannelR[sampleIndex] = mixedR;
                 this.scopeBuffer[this.scopeWriteIndex] = scopedSample * 5;
                 this.scopeWriteIndex = (this.scopeWriteIndex + 1) % this.scopeBuffer.length;
                 this.scopeSampleCounter += 1;
