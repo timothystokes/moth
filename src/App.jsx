@@ -76,8 +76,7 @@ const initialProjectSequence = {
 
 const initialVoiceStatus = {
     capacityVoices: 0,
-    noteAffinedVoices: 0,
-    releaseVoices: 0,
+    activeVoices: 0,
     processingVoices: 0,
     activeTrackCount: 0,
     perTrack: []
@@ -406,8 +405,7 @@ function App() {
         const unsubscribe = subscribeToVoiceStatus((nextVoiceStatus) => {
             setVoiceStatus({
                 capacityVoices: Number.isFinite(nextVoiceStatus?.capacityVoices) ? nextVoiceStatus.capacityVoices : 0,
-                noteAffinedVoices: Number.isFinite(nextVoiceStatus?.noteAffinedVoices) ? nextVoiceStatus.noteAffinedVoices : 0,
-                releaseVoices: Number.isFinite(nextVoiceStatus?.releaseVoices) ? nextVoiceStatus.releaseVoices : 0,
+                activeVoices: Number.isFinite(nextVoiceStatus?.activeVoices) ? nextVoiceStatus.activeVoices : 0,
                 processingVoices: Number.isFinite(nextVoiceStatus?.processingVoices) ? nextVoiceStatus.processingVoices : 0,
                 activeTrackCount: Number.isFinite(nextVoiceStatus?.activeTrackCount) ? nextVoiceStatus.activeTrackCount : 0,
                 perTrack: Array.isArray(nextVoiceStatus?.perTrack) ? nextVoiceStatus.perTrack : []
@@ -466,9 +464,6 @@ function App() {
                 mute: effectiveMute,
                 polyphony: track.polyphony ?? 4,
                 portamento: track.portamento ?? 0,
-                keyboardLatchModeEnabled: !track.connections.some(
-                    (connection) => connection.from.moduleId === 'keyboard-singleton' && connection.from.outputId === 'gate-out'
-                )
             });
 
             track.connections.forEach((connection) => {
@@ -925,9 +920,6 @@ function App() {
             mute: selectedTrack?.mix?.mute ?? false,
             polyphony,
             portamento: selectedTrack?.portamento ?? 0,
-            keyboardLatchModeEnabled: !selectedTrack?.connections?.some(
-                (c) => c.from.moduleId === 'keyboard-singleton' && c.from.outputId === 'gate-out'
-            )
         });
     };
 
@@ -951,9 +943,6 @@ function App() {
             mute: selectedTrack?.mix?.mute ?? false,
             polyphony: selectedTrack?.polyphony ?? 4,
             portamento,
-            keyboardLatchModeEnabled: !selectedTrack?.connections?.some(
-                (c) => c.from.moduleId === 'keyboard-singleton' && c.from.outputId === 'gate-out'
-            )
         });
     };
 
@@ -1022,7 +1011,6 @@ function App() {
                 addModule={addModule}
                 hasSelectedTrack={Boolean(selectedTrack)}
                 audioError={audioError}
-                voiceStatus={voiceStatus}
                 onImportMidi={() => midiImportInputRef.current?.click()}
                 onLoadProject={() => projectLoadInputRef.current?.click()}
                 onSaveProject={handleProjectSave}
@@ -1283,17 +1271,17 @@ function MidiSelector() {
 
     return (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={lbl}>MIDI</div>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <div style={lbl}>MIDI IN</div>
-                <select style={sel} value={selectedId} onChange={handleDevice}>
+                
+                <select style={{ ...sel, width: 100 }} value={selectedId} onChange={handleDevice}>
                     {midiInputs.length === 0 && <option value="">No MIDI devices</option>}
                     {midiInputs.map(inp => <option key={inp.id} value={inp.id}>{inp.name}</option>)}
                 </select>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <div style={lbl}>CHANNEL</div>
-                <select style={{ ...sel, width: 54 }} value={channel} onChange={handleChannel}>
-                    <option value="all">All</option>
+                <select style={{ ...sel, width: 100 }} value={channel} onChange={handleChannel}>
+                    <option value="all">All Channels</option>
                     {Array.from({ length: 16 }, (_, i) => <option key={i} value={i}>{i + 1}</option>)}
                 </select>
             </div>
@@ -1301,7 +1289,7 @@ function MidiSelector() {
     );
 }
 
-function Toolbar({ addModule, hasSelectedTrack, audioError, voiceStatus, onImportMidi, onLoadProject, onSaveProject, viewMode, setViewMode }) {
+function Toolbar({ addModule, hasSelectedTrack, audioError, onImportMidi, onLoadProject, onSaveProject, viewMode, setViewMode }) {
 
 
     return (
@@ -1370,8 +1358,20 @@ function Toolbar({ addModule, hasSelectedTrack, audioError, voiceStatus, onImpor
 }
 
 function Canvas({ canvasRef, modules, connections, connectingFrom, onModuleDragStart, onOutputClick, onMouseMove, onClick, audioContext, moduleUiRevision, onRemove }) {
-    // Helper to determine if a module is fixed (not removable)
     const isFixed = (module) => module.id === 'keyboard-singleton' || module.id === 'track-output-singleton';
+
+    const moduleComponents = {
+        oscillator: Oscillator,
+        filter: Filter,
+        random: RandomVoltageGenerator,
+        envelope: Envelope,
+        mixer: Mixer,
+        multi: Multi,
+        vca: VCA,
+        delay: MFX,
+        mfx: MFX,
+        scope: Scope,
+    };
 
     return (
         <div
@@ -1387,31 +1387,22 @@ function Canvas({ canvasRef, modules, connections, connectingFrom, onModuleDragS
             }}
         >
             {modules.map((module) => {
+                const Component = moduleComponents[module.type];
+                if (!Component) return null;
                 const removeProp = !isFixed(module) ? { onRemove: () => onRemove(module.id) } : {};
-                let child = null;
-                if (module.type === 'oscillator') {
-                    child = <Oscillator key={`${module.id}:${moduleUiRevision}`} module={module} onDragStart={onModuleDragStart} onOutputClick={onOutputClick} isConnecting={connectingFrom?.moduleId === module.id} audioContext={audioContext} connections={connections} {...removeProp} />;
-                } else if (module.type === 'filter') {
-                    child = <Filter key={`${module.id}:${moduleUiRevision}`} module={module} onDragStart={onModuleDragStart} onOutputClick={onOutputClick} isConnecting={connectingFrom?.moduleId === module.id} audioContext={audioContext} connections={connections} {...removeProp} />;
-                } else if (module.type === 'random') {
-                    child = <RandomVoltageGenerator key={`${module.id}:${moduleUiRevision}`} module={module} onDragStart={onModuleDragStart} onOutputClick={onOutputClick} isConnecting={connectingFrom?.moduleId === module.id} audioContext={audioContext} connections={connections} {...removeProp} />;
-                } else if (module.type === 'envelope') {
-                    child = <Envelope key={`${module.id}:${moduleUiRevision}`} module={module} onDragStart={onModuleDragStart} onOutputClick={onOutputClick} isConnecting={connectingFrom?.moduleId === module.id} audioContext={audioContext} connections={connections} {...removeProp} />;
-                } else if (module.type === 'mixer') {
-                    child = <Mixer key={`${module.id}:${moduleUiRevision}`} module={module} onDragStart={onModuleDragStart} onOutputClick={onOutputClick} isConnecting={connectingFrom?.moduleId === module.id} connections={connections} {...removeProp} />;
-                } else if (module.type === 'multi') {
-                    child = <Multi key={`${module.id}:${moduleUiRevision}`} module={module} onDragStart={onModuleDragStart} onOutputClick={onOutputClick} isConnecting={connectingFrom?.moduleId === module.id} {...removeProp} />;
-                } else if (module.type === 'vca') {
-                    child = <VCA key={`${module.id}:${moduleUiRevision}`} module={module} onDragStart={onModuleDragStart} onOutputClick={onOutputClick} isConnecting={connectingFrom?.moduleId === module.id} connections={connections} {...removeProp} />;
-                } else if (module.type === 'delay' || module.type === 'mfx') {
-                    child = <MFX key={`${module.id}:${moduleUiRevision}`} module={module} onDragStart={onModuleDragStart} onOutputClick={onOutputClick} isConnecting={connectingFrom?.moduleId === module.id} {...removeProp} />;
-                } else if (module.type === 'scope') {
-                    child = <Scope key={`${module.id}:${moduleUiRevision}`} module={module} onDragStart={onModuleDragStart} onOutputClick={onOutputClick} isConnecting={connectingFrom?.moduleId === module.id} isAudioReady={!!audioContext} {...removeProp} />;
-                }
-                if (!child) return null;
                 return (
                     <div key={module.id} style={{ position: 'absolute', left: module.x, top: module.y }}>
-                        {child}
+                        <Component
+                            key={`${module.id}:${moduleUiRevision}`}
+                            module={module}
+                            onDragStart={onModuleDragStart}
+                            onOutputClick={onOutputClick}
+                            isConnecting={connectingFrom?.moduleId === module.id}
+                            audioContext={audioContext}
+                            connections={connections}
+                            isAudioReady={!!audioContext}
+                            {...removeProp}
+                        />
                     </div>
                 );
             })}

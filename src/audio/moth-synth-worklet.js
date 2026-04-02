@@ -1,10 +1,8 @@
 const MAX_VOICES = 4;
 const VOICE_FREE = 'free';
 const VOICE_ACTIVE = 'active';
-const VOICE_RELEASE = 'release';
 const TIME_MIN = 0.001;
 const TIME_MAX = 10;
-const KEYBOARD_LATCH_VOICE_INDEX = 0;
 const GATE_HIGH_VOLTAGE = 5;
 const ENVELOPE_MAX_VOLTAGE = 5;
 const MAX_OUTPUT_SAMPLE = 1;
@@ -29,11 +27,11 @@ function createTrackState(trackId, track = {}) {
         trackId,
         volume: track.volume ?? 0.8,
         mute: Boolean(track.mute),
-        keyboardLatchModeEnabled: Boolean(track.keyboardLatchModeEnabled),
         portamentoTime: track.portamento ?? 0,
-        noteStack: [],      // mono mode: held notes in press order (most recent last)
-        lastMonoCv: 0,      // last CV target, persists after voice goes free
-        nextVoiceIndex: 0,
+        noteStack: [],
+        lastMonoCv: 0,
+        voiceAllocationOrder: [],   // voiceIds of ACTIVE voices, oldest key-press first
+        voiceFreeOrder: [],         // voiceIds of FREE voices, oldest key-release first
         noteToVoiceMap: new Map(),
         voices: Array.from({ length: polyphony }, (_, index) => createVoice(trackId, index))
     };
@@ -58,10 +56,6 @@ class MothSynthProcessor extends AudioWorkletProcessor {
         this.scopeTrackId = null;
         this.moduleScopeBuffers = new Map();
 
-        this.oscillatorStates = new Map();
-        this.filterStates = new Map();
-        this.envelopeStates = new Map();
-        this.randomStates = new Map();
         this.reportedRuntimeIssues = new Set();
         this.diagnosticSerial = 0;
         this.lastVoiceStatusSignature = null;
@@ -198,8 +192,7 @@ class MothSynthProcessor extends AudioWorkletProcessor {
 
     buildVoiceStatus() {
         const perTrack = [];
-        let noteAffinedVoices = 0;
-        let releaseVoices = 0;
+        let activeVoices = 0;
         let processingVoices = 0;
         let capacityVoices = 0;
 
@@ -207,20 +200,14 @@ class MothSynthProcessor extends AudioWorkletProcessor {
             const outputRoute = this.getCompiledTrackOutputRoute(trackId);
             const outputSourceId = outputRoute?.sourceModuleId ?? null;
             const isVoiceDependent = outputSourceId ? this.isModuleVoiceDependent(outputSourceId) : false;
-            let trackNoteAffinedVoices = 0;
-            let trackReleaseVoices = 0;
+            let trackActiveVoices = 0;
             let trackProcessingVoices = 0;
 
             capacityVoices += trackState.voices.length;
 
             trackState.voices.forEach((voice) => {
                 if (voice.state === VOICE_ACTIVE) {
-                    trackNoteAffinedVoices += 1;
-                    return;
-                }
-
-                if (voice.state === VOICE_RELEASE) {
-                    trackReleaseVoices += 1;
+                    trackActiveVoices += 1;
                 }
             });
 
@@ -228,8 +215,7 @@ class MothSynthProcessor extends AudioWorkletProcessor {
                 trackProcessingVoices = isVoiceDependent ? trackState.voices.length : 1;
             }
 
-            noteAffinedVoices += trackNoteAffinedVoices;
-            releaseVoices += trackReleaseVoices;
+            activeVoices += trackActiveVoices;
             processingVoices += trackProcessingVoices;
 
             perTrack.push({
@@ -237,8 +223,7 @@ class MothSynthProcessor extends AudioWorkletProcessor {
                 capacityVoices: trackState.voices.length,
                 outputConnected: Boolean(outputSourceId),
                 voiceDependent: isVoiceDependent,
-                noteAffinedVoices: trackNoteAffinedVoices,
-                releaseVoices: trackReleaseVoices,
+                activeVoices: trackActiveVoices,
                 processingVoices: trackProcessingVoices,
                 muted: trackState.mute
             });
@@ -246,8 +231,7 @@ class MothSynthProcessor extends AudioWorkletProcessor {
 
         return {
             capacityVoices,
-            noteAffinedVoices,
-            releaseVoices,
+            activeVoices,
             processingVoices,
             activeTrackCount: perTrack.filter((track) => track.processingVoices > 0).length,
             perTrack
@@ -302,7 +286,6 @@ class MothSynthProcessor extends AudioWorkletProcessor {
                 case 'remove-module':
                     this.modules.delete(message.moduleId);
                     this.moduleScopeBuffers.delete(message.moduleId);
-                    this.clearRuntimeState(message.moduleId);
                     this.rebuildCompiledRouting();
                     this.invalidateGraphAnalysisCache();
                     break;
@@ -328,17 +311,19 @@ class MothSynthProcessor extends AudioWorkletProcessor {
                     this.scopeTrackId = message.trackId ?? null;
                     break;
                 case 'note-on':
-                    this.allocateVoice(message.trackId, message.noteNumber, message.velocity, message.forcePoly);
+                    this.allocateVoice(message.trackId, message.noteNumber, message.velocity);
                     break;
                 case 'note-off':
-                    this.releaseVoice(message.trackId, message.noteNumber, message.forcePoly);
+                    this.releaseVoice(message.trackId, message.noteNumber);
                     break;
                 case 'all-notes-off':
                     this.trackStates.forEach((trackState) => {
                         this.getActiveVoices(trackState).forEach((voice) => {
                             voice.gate = 0;
-                            voice.state = VOICE_RELEASE;
+                            voice.state = VOICE_FREE;
                         });
+                        trackState.voiceAllocationOrder = [];
+                        trackState.voiceFreeOrder = trackState.voices.map(v => v.voiceId);
                     });
                     break;
                 case 'clear-state':
@@ -369,18 +354,19 @@ class MothSynthProcessor extends AudioWorkletProcessor {
         const existing = this.trackStates.get(trackId) ?? createTrackState(trackId, track);
         existing.volume = track.volume ?? existing.volume;
         existing.mute = Boolean(track.mute);
-        existing.keyboardLatchModeEnabled = Boolean(track.keyboardLatchModeEnabled);
 
         const desiredPoly = Math.min(16, Math.max(1, track.polyphony ?? existing.voices.length));
         if (existing.voices.length !== desiredPoly) {
             existing.noteStack = [];
+            existing.voiceAllocationOrder = [];
+            existing.voiceFreeOrder = [];
             // Release any voices being removed
             for (let i = desiredPoly; i < existing.voices.length; i++) {
                 const v = existing.voices[i];
                 if (v.state !== VOICE_FREE) {
                     this.removeVoiceMapping(existing, v.noteNumber, v.voiceId);
                     v.gate = 0;
-                    v.state = VOICE_RELEASE;
+                    v.state = VOICE_FREE;
                 }
             }
             // Resize: trim or extend with fresh voices
@@ -389,13 +375,11 @@ class MothSynthProcessor extends AudioWorkletProcessor {
                 ...Array.from({ length: Math.max(0, desiredPoly - existing.voices.length) },
                     (_, i) => createVoice(trackId, existing.voices.length + i))
             ];
-            existing.nextVoiceIndex = existing.nextVoiceIndex % desiredPoly;
         }
 
         existing.portamentoTime = track.portamento ?? existing.portamentoTime ?? 0;
 
         this.trackStates.set(trackId, existing);
-        this.updateKeyboardLatchVoice(existing);
     }
 
     removeTrack(trackId) {
@@ -406,7 +390,6 @@ class MothSynthProcessor extends AudioWorkletProcessor {
             .filter((moduleId) => moduleId.startsWith(trackPrefix))
             .forEach((moduleId) => {
                 this.modules.delete(moduleId);
-                this.clearRuntimeState(moduleId);
             });
 
         Array.from(this.connections.keys()).forEach((toModuleId) => {
@@ -447,18 +430,7 @@ class MothSynthProcessor extends AudioWorkletProcessor {
     }
 
     resetRuntimeState() {
-        this.oscillatorStates.clear();
-        this.filterStates.clear();
-        this.envelopeStates.clear();
-        this.randomStates.clear();
         this.reportedRuntimeIssues.clear();
-    }
-
-    clearRuntimeState(moduleId) {
-        this.oscillatorStates.delete(moduleId);
-        this.filterStates.delete(moduleId);
-        this.envelopeStates.delete(moduleId);
-        this.randomStates.delete(moduleId);
     }
 
     getTrackOutputModuleId(trackId) {
@@ -475,28 +447,6 @@ class MothSynthProcessor extends AudioWorkletProcessor {
         }
 
         return this.trackStates.get(trackId);
-    }
-
-    getKeyboardLatchVoice(trackState) {
-        return trackState.voices[KEYBOARD_LATCH_VOICE_INDEX];
-    }
-
-    updateKeyboardLatchVoice(trackState) {
-        const latchedVoice = this.getKeyboardLatchVoice(trackState);
-        if (!latchedVoice) {
-            return;
-        }
-
-        if (trackState.keyboardLatchModeEnabled) {
-            if (latchedVoice.state === VOICE_FREE) {
-                latchedVoice.state = VOICE_ACTIVE;
-            }
-            return;
-        }
-
-        if (latchedVoice.gate <= 0 && latchedVoice.noteNumber === null) {
-            this.clearVoice(trackState, latchedVoice);
-        }
     }
 
     addVoiceMapping(trackState, noteNumber, voiceId) {
@@ -535,11 +485,23 @@ class MothSynthProcessor extends AudioWorkletProcessor {
         voice.portamentoTime = 0;
     }
 
-    claimRoundRobinVoice(trackState) {
-        const count = trackState.voices.length;
-        const voice = trackState.voices[trackState.nextVoiceIndex % count];
-        trackState.nextVoiceIndex = (trackState.nextVoiceIndex + 1) % count;
-        return voice;
+    claimVoice(trackState) {
+        const { voices, voiceFreeOrder, voiceAllocationOrder } = trackState;
+
+        // Prefer oldest freed voice (had most time for envelope tail)
+        if (voiceFreeOrder.length > 0) {
+            const oldestFreeId = voiceFreeOrder[0];
+            const v = voices.find(v => v.voiceId === oldestFreeId);
+            if (v) return v;
+        }
+
+        // Fallback: any free voice not yet tracked (e.g. never used)
+        const freeVoice = voices.find(v => v.state === VOICE_FREE);
+        if (freeVoice) return freeVoice;
+
+        // All keys held — steal oldest active (FIFO)
+        const oldestActiveId = voiceAllocationOrder[0];
+        return voices.find(v => v.voiceId === oldestActiveId) ?? voices[0];
     }
 
     getGlidedCv(voice) {
@@ -572,7 +534,7 @@ class MothSynthProcessor extends AudioWorkletProcessor {
         }
     }
 
-    allocateVoice(trackId, noteNumber, velocity, forcePoly = false) {
+    allocateVoice(trackId, noteNumber, velocity) {
         const trackState = this.getTrackState(trackId);
         if (!trackState) return;
 
@@ -581,14 +543,12 @@ class MothSynthProcessor extends AudioWorkletProcessor {
         const targetCv = (noteNumber - 69) / 12;
 
         // Mono mode: note stacking + optional portamento
-        if (trackState.voices.length === 1 && !trackState.keyboardLatchModeEnabled) {
+        if (trackState.voices.length === 1) {
             const voice = trackState.voices[0];
 
-            // Maintain note stack — remove then re-add so it's always at the top
             trackState.noteStack = trackState.noteStack.filter(n => n !== noteNumber);
             trackState.noteStack.push(noteNumber);
 
-            // Re-map to new note number
             this.removeVoiceMapping(trackState, voice.noteNumber, voice.voiceId);
             this.addVoiceMapping(trackState, noteNumber, voice.voiceId);
             voice.noteNumber = noteNumber;
@@ -596,7 +556,6 @@ class MothSynthProcessor extends AudioWorkletProcessor {
 
             this.setupGlide(voice, targetCv, trackState);
 
-            // Trigger gate/envelope unless playing legato (key still held = VOICE_ACTIVE)
             if (voice.state !== VOICE_ACTIVE) {
                 voice.gate = gateV;
                 voice.state = VOICE_ACTIVE;
@@ -604,10 +563,13 @@ class MothSynthProcessor extends AudioWorkletProcessor {
             return;
         }
 
-        // Poly mode: round-robin allocation. forcePoly bypasses latch voice reservation.
-        const targetVoice = (!forcePoly && trackState.keyboardLatchModeEnabled)
-            ? this.getKeyboardLatchVoice(trackState)
-            : this.claimRoundRobinVoice(trackState);
+        // Poly mode: FIFO voice allocation
+        const targetVoice = this.claimVoice(trackState);
+        const voiceId = targetVoice.voiceId;
+
+        // Remove from whichever order list it's currently in
+        trackState.voiceFreeOrder = trackState.voiceFreeOrder.filter(id => id !== voiceId);
+        trackState.voiceAllocationOrder = trackState.voiceAllocationOrder.filter(id => id !== voiceId);
 
         this.clearVoice(trackState, targetVoice);
         targetVoice.state = VOICE_ACTIVE;
@@ -615,35 +577,36 @@ class MothSynthProcessor extends AudioWorkletProcessor {
         targetVoice.velocity = velocityV;
         targetVoice.gate = gateV;
         targetVoice.cv = targetCv;
-        this.addVoiceMapping(trackState, noteNumber, targetVoice.voiceId);
+        this.addVoiceMapping(trackState, noteNumber, voiceId);
+
+        // Track as newest active voice
+        trackState.voiceAllocationOrder.push(voiceId);
     }
 
-    releaseVoice(trackId, noteNumber, forcePoly = false) {
+    releaseVoice(trackId, noteNumber) {
         const trackState = this.getTrackState(trackId);
         if (!trackState) return;
 
         // Mono mode: pop from stack, return to previous held key if any
-        if (trackState.voices.length === 1 && !trackState.keyboardLatchModeEnabled) {
+        if (trackState.voices.length === 1) {
             const voice = trackState.voices[0];
             trackState.noteStack = trackState.noteStack.filter(n => n !== noteNumber);
             this.removeVoiceMapping(trackState, noteNumber, voice.voiceId);
 
             if (trackState.noteStack.length > 0) {
-                // Return to the most recently held key — no gate change
                 const prevNote = trackState.noteStack[trackState.noteStack.length - 1];
                 this.addVoiceMapping(trackState, prevNote, voice.voiceId);
                 voice.noteNumber = prevNote;
                 this.setupGlide(voice, (prevNote - 69) / 12, trackState);
             } else {
-                // All keys released — gate off, let envelope release
                 trackState.lastMonoCv = this.getGlidedCv(voice);
                 voice.gate = 0;
-                voice.state = VOICE_RELEASE;
+                voice.state = VOICE_FREE;
             }
             return;
         }
 
-        // Poly mode: normal release
+        // Poly mode: key-up frees the voice immediately for reallocation
         const voiceIds = trackState.noteToVoiceMap.get(noteNumber);
         const voiceId = voiceIds?.[voiceIds.length - 1];
         if (!voiceId) return;
@@ -656,17 +619,13 @@ class MothSynthProcessor extends AudioWorkletProcessor {
 
         this.removeVoiceMapping(trackState, noteNumber, voiceId);
         voice.gate = 0;
-
-        if (!forcePoly && trackState.keyboardLatchModeEnabled && voice.voiceId === this.getKeyboardLatchVoice(trackState).voiceId) {
-            voice.state = VOICE_ACTIVE;
-            return;
-        }
-
-        voice.state = VOICE_RELEASE;
+        voice.state = VOICE_FREE;
+        trackState.voiceAllocationOrder = trackState.voiceAllocationOrder.filter(id => id !== voiceId);
+        trackState.voiceFreeOrder.push(voiceId);
     }
 
     getActiveVoices(trackState) {
-        return trackState.voices.filter((voice) => voice.state === VOICE_ACTIVE || voice.state === VOICE_RELEASE);
+        return trackState.voices.filter((voice) => voice.state === VOICE_ACTIVE);
     }
 
     isInputVoiceDependent(moduleId, inputName, visited) {
@@ -739,14 +698,6 @@ class MothSynthProcessor extends AudioWorkletProcessor {
         visited.delete(moduleId);
         this.voiceDependencyCache.set(moduleId, isVoiceDependent);
         return isVoiceDependent;
-    }
-
-    getRuntimeMap(store, moduleId) {
-        if (!store.has(moduleId)) {
-            store.set(moduleId, new Map());
-        }
-
-        return store.get(moduleId);
     }
 
     compileModuleEvaluator(moduleId, activeStack = new Set()) {
@@ -1272,39 +1223,43 @@ class MothSynthProcessor extends AudioWorkletProcessor {
         };
     }
 
+    buildScopeSnapshot(buffer, writeIndex, scale = 1) {
+        const snapshotLength = 360;
+        const bufferSize = buffer.length;
+        let triggerIndex = -1;
+
+        for (let searchOffset = snapshotLength; searchOffset < Math.min(1000, bufferSize - 3); searchOffset++) {
+            const index = (writeIndex - searchOffset + bufferSize) % bufferSize;
+            const prev3 = (index - 3 + bufferSize) % bufferSize;
+            const prev2 = (index - 2 + bufferSize) % bufferSize;
+            const prev1 = (index - 1 + bufferSize) % bufferSize;
+            const next1 = (index + 1) % bufferSize;
+            const next2 = (index + 2) % bufferSize;
+
+            const prev3Below = buffer[prev3] <= 0 && buffer[prev2] <= 0 && buffer[prev1] <= 0;
+            const next3Above = buffer[index] >= 0 && buffer[next1] >= 0 && buffer[next2] >= 0;
+
+            if (prev3Below && next3Above) {
+                triggerIndex = index;
+                break;
+            }
+        }
+
+        if (triggerIndex === -1) {
+            triggerIndex = (writeIndex - snapshotLength + bufferSize) % bufferSize;
+        }
+
+        const snapshot = new Float32Array(snapshotLength);
+        for (let i = 0; i < snapshotLength; i++) {
+            const v = buffer[(triggerIndex + i) % bufferSize];
+            snapshot[i] = Number.isFinite(v) ? v * scale : 0;
+        }
+        return snapshot;
+    }
+
     publishScopeSnapshot() {
         try {
-            const snapshotLength = 360;
-            const bufferSize = this.scopeBuffer.length;
-            let triggerIndex = -1;
-
-            for (let searchOffset = snapshotLength; searchOffset < Math.min(1000, bufferSize - 3); searchOffset++) {
-                const index = (this.scopeWriteIndex - searchOffset + bufferSize) % bufferSize;
-                const prev3 = (index - 3 + bufferSize) % bufferSize;
-                const prev2 = (index - 2 + bufferSize) % bufferSize;
-                const prev1 = (index - 1 + bufferSize) % bufferSize;
-                const next1 = (index + 1) % bufferSize;
-                const next2 = (index + 2) % bufferSize;
-
-                const prev3Below = this.scopeBuffer[prev3] <= 0 && this.scopeBuffer[prev2] <= 0 && this.scopeBuffer[prev1] <= 0;
-                const next3Above = this.scopeBuffer[index] >= 0 && this.scopeBuffer[next1] >= 0 && this.scopeBuffer[next2] >= 0;
-
-                if (prev3Below && next3Above) {
-                    triggerIndex = index;
-                    break;
-                }
-            }
-
-            if (triggerIndex === -1) {
-                triggerIndex = (this.scopeWriteIndex - snapshotLength + bufferSize) % bufferSize;
-            }
-
-            const snapshot = new Float32Array(360);
-            for (let index = 0; index < snapshot.length; index++) {
-                const bufferIndex = (triggerIndex + index) % this.scopeBuffer.length;
-                snapshot[index] = Number.isFinite(this.scopeBuffer[bufferIndex]) ? this.scopeBuffer[bufferIndex] * 2 : 0;
-            }
-
+            const snapshot = this.buildScopeSnapshot(this.scopeBuffer, this.scopeWriteIndex, 2);
             this.port.postMessage({ type: 'scope-data', samples: snapshot }, [snapshot.buffer]);
         } catch (error) {
             this.reportRuntimeIssueOnce('scope-publish', 'Failed to publish scope snapshot.', {
@@ -1316,37 +1271,7 @@ class MothSynthProcessor extends AudioWorkletProcessor {
 
     publishModuleScopeSnapshot(moduleId, scopeState) {
         try {
-            const snapshotLength = 360;
-            const bufferSize = scopeState.buffer.length;
-            let triggerIndex = -1;
-
-            for (let searchOffset = snapshotLength; searchOffset < Math.min(1000, bufferSize - 3); searchOffset++) {
-                const index = (scopeState.writeIndex - searchOffset + bufferSize) % bufferSize;
-                const prev3 = (index - 3 + bufferSize) % bufferSize;
-                const prev2 = (index - 2 + bufferSize) % bufferSize;
-                const prev1 = (index - 1 + bufferSize) % bufferSize;
-                const next1 = (index + 1) % bufferSize;
-                const next2 = (index + 2) % bufferSize;
-
-                const prev3Below = scopeState.buffer[prev3] <= 0 && scopeState.buffer[prev2] <= 0 && scopeState.buffer[prev1] <= 0;
-                const next3Above = scopeState.buffer[index] >= 0 && scopeState.buffer[next1] >= 0 && scopeState.buffer[next2] >= 0;
-
-                if (prev3Below && next3Above) {
-                    triggerIndex = index;
-                    break;
-                }
-            }
-
-            if (triggerIndex === -1) {
-                triggerIndex = (scopeState.writeIndex - snapshotLength + bufferSize) % bufferSize;
-            }
-
-            const snapshot = new Float32Array(snapshotLength);
-            for (let index = 0; index < snapshotLength; index++) {
-                const bufferIndex = (triggerIndex + index) % bufferSize;
-                snapshot[index] = Number.isFinite(scopeState.buffer[bufferIndex]) ? scopeState.buffer[bufferIndex] : 0;
-            }
-
+            const snapshot = this.buildScopeSnapshot(scopeState.buffer, scopeState.writeIndex);
             this.port.postMessage({ type: 'module-scope-data', moduleId, samples: snapshot }, [snapshot.buffer]);
         } catch (error) {
             this.reportRuntimeIssueOnce(`module-scope-publish:${moduleId}`, `Failed to publish module scope snapshot for ${moduleId}.`, {
@@ -1398,9 +1323,7 @@ class MothSynthProcessor extends AudioWorkletProcessor {
 
                     if (requiresPerVoiceMix) {
                         for (const voice of trackState.voices) {
-                            const laneContext = voice;
-
-                            const voiceSignal = outputRead(sampleTimeMs, laneContext);
+                            const voiceSignal = outputRead(sampleTimeMs, voice);
                             if (!Number.isFinite(voiceSignal)) {
                                 this.reportRuntimeIssueOnce(
                                     `track-voice-signal:${trackId}:${outputSourceId}`,

@@ -147,9 +147,9 @@ function stopSequencePlayback({ resetPosition = false } = {}) {
     notifyTransportListeners();
 }
 
-function handleNoteOn(trackId, noteNumber, velocity, timestamp, forcePoly = false) {
+function handleNoteOn(trackId, noteNumber, velocity, timestamp) {
     if (!trackId) return;
-    noteOn(trackId, noteNumber, velocity, forcePoly);
+    noteOn(trackId, noteNumber, velocity);
     noteOnListeners.forEach(l => l({ trackId, noteNumber, velocity, noteOnTime: timestamp }));
     if (isRecording && trackId === activeTrackId) {
         activeRecordingNotes.set(noteNumber, {
@@ -159,9 +159,9 @@ function handleNoteOn(trackId, noteNumber, velocity, timestamp, forcePoly = fals
     }
 }
 
-function handleNoteOff(trackId, noteNumber, timestamp, forcePoly = false) {
+function handleNoteOff(trackId, noteNumber, timestamp) {
     if (!trackId) return;
-    noteOff(trackId, noteNumber, forcePoly);
+    noteOff(trackId, noteNumber);
     noteOffListeners.forEach(l => l({ trackId, noteNumber, timestamp }));
     if (isRecording && trackId === activeTrackId) {
         const data = activeRecordingNotes.get(noteNumber);
@@ -273,27 +273,29 @@ export function stopRecording() {
     return result;
 }
 
-export function loadSession(sessionMeta, tracks) {
-    stopSequencePlayback({ resetPosition: true });
+function computeNoteSegments(notes, msPerBeat, timeSignatures) {
+    return notes
+        .filter(n => n.note && n.note !== '-')
+        .map(note => {
+            const noteNumber = noteNameToMidi(note.note);
+            if (noteNumber == null) return null;
+            const startBeat = barBeatToAbsoluteBeat(note.bar ?? 1, note.beat ?? 0, timeSignatures);
+            const startMs = startBeat * msPerBeat;
+            const endMs = startMs + (note.duration || QUANTIZE_RESOLUTION) * msPerBeat;
+            return { noteNumber, startMs, endMs };
+        })
+        .filter(Boolean)
+        .sort((a, b) => a.startMs - b.startMs || a.noteNumber - b.noteNumber);
+}
 
-    const bpm = sessionMeta?.bpm ?? sessionMeta?.tempoMap?.[0]?.bpm ?? 120;
-    const msPerBeat = 60000 / bpm;
-    const timeSignatures = sessionMeta?.timeSignatures ?? [];
-
+function buildSessionTracks(tracks, bpm, msPerBeat, timeSignatures) {
     const validTracks = (tracks ?? []).filter(track =>
         (Array.isArray(track?.notes) && track.notes.length > 0) ||
         (Array.isArray(track?.sequences) && track.sequences.length > 0 &&
          Array.isArray(track?.arrangement) && track.arrangement.length > 0)
     );
 
-    if (!validTracks.length) {
-        console.warn('[loadSession] no valid tracks found.', (tracks ?? []).map(t => ({ id: t.id, notes: t.notes?.length })));
-        loadedSession = null;
-        notifyTransportListeners();
-        return getTransportState();
-    }
-
-    const sessionTracks = validTracks.map(track => {
+    return validTracks.map(track => {
         const notes = flattenTrackToNotes(track, timeSignatures);
         const durationMs = Number.isFinite(track.durationMs) && track.durationMs > 0
             ? track.durationMs
@@ -301,34 +303,40 @@ export function loadSession(sessionMeta, tracks) {
                 const startBeat = barBeatToAbsoluteBeat(note.bar ?? 1, note.beat ?? 0, timeSignatures);
                 return Math.max(max, (startBeat + (note.duration || QUANTIZE_RESOLUTION)) * msPerBeat);
             }, 0);
-
-        // Re-compute noteSegments from notes[] when not provided (project files strip them on save).
         const provided = Array.isArray(track.noteSegments) && track.noteSegments.length > 0 ? track.noteSegments : null;
-        const noteSegments = provided ?? notes
-            .filter(n => n.note && n.note !== '-')
-            .map(note => {
-                const noteNumber = noteNameToMidi(note.note);
-                if (noteNumber == null) return null;
-                const startBeat = barBeatToAbsoluteBeat(note.bar ?? 1, note.beat ?? 0, timeSignatures);
-                const startMs = startBeat * msPerBeat;
-                const endMs = startMs + (note.duration || QUANTIZE_RESOLUTION) * msPerBeat;
-                return { noteNumber, startMs, endMs };
-            })
-            .filter(Boolean)
-            .sort((a, b) => a.startMs - b.startMs || a.noteNumber - b.noteNumber);
-
+        const noteSegments = provided ?? computeNoteSegments(notes, msPerBeat, timeSignatures);
         return { id: track.id, name: track.name, notes, noteSegments, durationMs, mix: track.mix ?? { volume: 0.8, mute: false } };
     });
+}
 
-    loadedSession = {
+function buildLoadedSession(sessionMeta, sessionTracks) {
+    const bpm = sessionMeta?.bpm ?? sessionMeta?.tempoMap?.[0]?.bpm ?? 120;
+    return {
         bpm,
         ticksPerBeat: sessionMeta?.ticksPerBeat ?? null,
         tempoMap: sessionMeta?.tempoMap ?? [],
-        timeSignatures,
+        timeSignatures: sessionMeta?.timeSignatures ?? [],
         durationMs: sessionTracks.reduce((max, t) => Math.max(max, t.durationMs), 0),
         tracks: sessionTracks
     };
+}
 
+export function loadSession(sessionMeta, tracks) {
+    stopSequencePlayback({ resetPosition: true });
+
+    const bpm = sessionMeta?.bpm ?? sessionMeta?.tempoMap?.[0]?.bpm ?? 120;
+    const msPerBeat = 60000 / bpm;
+    const timeSignatures = sessionMeta?.timeSignatures ?? [];
+    const sessionTracks = buildSessionTracks(tracks, bpm, msPerBeat, timeSignatures);
+
+    if (!sessionTracks.length) {
+        console.warn('[loadSession] no valid tracks found.', (tracks ?? []).map(t => ({ id: t.id, notes: t.notes?.length })));
+        loadedSession = null;
+        notifyTransportListeners();
+        return getTransportState();
+    }
+
+    loadedSession = buildLoadedSession(sessionMeta, sessionTracks);
     notifyTransportListeners();
     return getTransportState();
 }
@@ -342,53 +350,17 @@ export function updateSession(sessionMeta, tracks) {
     const bpm = sessionMeta?.bpm ?? sessionMeta?.tempoMap?.[0]?.bpm ?? 120;
     const msPerBeat = 60000 / bpm;
     const timeSignatures = sessionMeta?.timeSignatures ?? [];
+    const sessionTracks = buildSessionTracks(tracks, bpm, msPerBeat, timeSignatures);
 
-    const validTracks = (tracks ?? []).filter(track =>
-        (Array.isArray(track?.notes) && track.notes.length > 0) ||
-        (Array.isArray(track?.sequences) && track.sequences.length > 0 &&
-         Array.isArray(track?.arrangement) && track.arrangement.length > 0)
-    );
-
-    if (!validTracks.length) {
+    if (!sessionTracks.length) {
         loadedSession = null;
         notifyTransportListeners();
         return getTransportState();
     }
 
-    const sessionTracks = validTracks.map(track => {
-        const notes = flattenTrackToNotes(track, timeSignatures);
-        const durationMs = Number.isFinite(track.durationMs) && track.durationMs > 0
-            ? track.durationMs
-            : notes.reduce((max, note) => {
-                const startBeat = barBeatToAbsoluteBeat(note.bar ?? 1, note.beat ?? 0, timeSignatures);
-                return Math.max(max, (startBeat + (note.duration || QUANTIZE_RESOLUTION)) * msPerBeat);
-            }, 0);
-        const noteSegments = notes
-            .filter(n => n.note && n.note !== '-')
-            .map(note => {
-                const noteNumber = noteNameToMidi(note.note);
-                if (noteNumber == null) return null;
-                const startBeat = barBeatToAbsoluteBeat(note.bar ?? 1, note.beat ?? 0, timeSignatures);
-                const startMs = startBeat * msPerBeat;
-                const endMs = startMs + (note.duration || QUANTIZE_RESOLUTION) * msPerBeat;
-                return { noteNumber, startMs, endMs };
-            })
-            .filter(Boolean)
-            .sort((a, b) => a.startMs - b.startMs || a.noteNumber - b.noteNumber);
-        return { id: track.id, name: track.name, notes, noteSegments, durationMs, mix: track.mix ?? { volume: 0.8, mute: false } };
-    });
-
-    loadedSession = {
-        bpm,
-        ticksPerBeat: sessionMeta?.ticksPerBeat ?? null,
-        tempoMap: sessionMeta?.tempoMap ?? [],
-        timeSignatures,
-        durationMs: sessionTracks.reduce((max, t) => Math.max(max, t.durationMs), 0),
-        tracks: sessionTracks
-    };
+    loadedSession = buildLoadedSession(sessionMeta, sessionTracks);
 
     if (isPlaying) {
-        // Snapshot the current playback position and reschedule remaining events
         playbackPositionMs = getCurrentPlaybackPositionMs();
         playbackStartTimestampMs = performance.now();
         scheduleEvents(playbackPositionMs);
@@ -490,6 +462,7 @@ export function subscribeToTransport(callback) {
 }
 
 export async function initializeMidi() {
+    if (midiAccess) return true;
     if (!navigator.requestMIDIAccess) { console.warn('Web MIDI API not supported'); return false; }
     try {
         midiAccess = await navigator.requestMIDIAccess();
@@ -536,23 +509,12 @@ export function subscribeMidiStateChange(callback) {
     return () => midiStateChangeListeners.delete(callback);
 }
 
-export function getActiveNotes() {
-    const notes = [];
-    activeSequenceNotes.forEach((count, key) => {
-        if (count > 0) {
-            const [trackId, noteNumberStr] = key.split('::');
-            notes.push({ trackId, noteNumber: Number(noteNumberStr) });
-        }
-    });
-    return notes;
-}
-
 export function triggerNoteOn(trackId, noteNumber, velocity = 0.8) {
-    handleNoteOn(trackId, noteNumber, velocity, performance.now(), true);
+    handleNoteOn(trackId, noteNumber, velocity, performance.now());
 }
 
 export function triggerNoteOff(trackId, noteNumber) {
-    handleNoteOff(trackId, noteNumber, performance.now(), true);
+    handleNoteOff(trackId, noteNumber, performance.now());
 }
 
 export function onNoteOn(callback) {
@@ -564,5 +526,3 @@ export function onNoteOff(callback) {
     noteOffListeners.push(callback);
     return () => { const i = noteOffListeners.indexOf(callback); if (i > -1) noteOffListeners.splice(i, 1); };
 }
-
-export function clearAllNotes() { noteOff(null, -1); }

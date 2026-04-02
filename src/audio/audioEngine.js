@@ -1,6 +1,5 @@
 const moduleStates = new Map();
 const inputConnections = new Map();
-const scopeListeners = new Set();
 const moduleScopeListeners = new Map();
 const trackStates = new Map();
 const audioErrorListeners = new Set();
@@ -62,11 +61,6 @@ function serializeTracks() {
 
 function handleWorkletMessage(event) {
     const message = event.data;
-    if (message.type === 'scope-data') {
-        scopeListeners.forEach((listener) => listener(message.samples));
-        return;
-    }
-
     if (message.type === 'module-scope-data') {
         const listeners = moduleScopeListeners.get(message.moduleId);
         if (listeners) listeners.forEach((listener) => listener(message.samples));
@@ -173,34 +167,6 @@ export function registerModule(moduleId, module) {
     postToWorklet({ type: 'upsert-module', moduleId, module });
 }
 
-export function unregisterModule(moduleId) {
-    moduleStates.delete(moduleId);
-    const affectedDestinations = [];
-
-    inputConnections.forEach((inputs, toModuleId) => {
-        const nextInputs = Object.fromEntries(
-            Object.entries(inputs).filter(([, fromModuleId]) => fromModuleId !== moduleId)
-        );
-
-        if (Object.keys(nextInputs).length !== Object.keys(inputs).length) {
-            affectedDestinations.push({ toModuleId, inputNames: Object.keys(inputs) });
-            if (Object.keys(nextInputs).length > 0) {
-                inputConnections.set(toModuleId, nextInputs);
-            } else {
-                inputConnections.delete(toModuleId);
-            }
-        }
-    });
-
-    affectedDestinations.forEach(({ toModuleId, inputNames }) => {
-        inputNames.forEach((inputName) => {
-            postToWorklet({ type: 'disconnect', toModuleId, inputName });
-        });
-    });
-
-    postToWorklet({ type: 'remove-module', moduleId });
-}
-
 export function getModuleState(moduleId) {
     return moduleStates.get(moduleId) ?? null;
 }
@@ -270,15 +236,15 @@ export function setScopeTrack(trackId) {
     postToWorklet({ type: 'set-scope-track', trackId: scopeTrackId });
 }
 
-export function noteOn(trackId, noteNumber, velocity, forcePoly = false) {
+export function noteOn(trackId, noteNumber, velocity) {
     if (!trackId) {
         return;
     }
 
-    postToWorklet({ type: 'note-on', trackId, noteNumber, velocity, forcePoly });
+    postToWorklet({ type: 'note-on', trackId, noteNumber, velocity });
 }
 
-export function noteOff(trackId, noteNumber, forcePoly = false) {
+export function noteOff(trackId, noteNumber) {
     if (trackId === null && noteNumber === -1) {
         postToWorklet({ type: 'all-notes-off' });
         return;
@@ -288,14 +254,7 @@ export function noteOff(trackId, noteNumber, forcePoly = false) {
         return;
     }
 
-    postToWorklet({ type: 'note-off', trackId, noteNumber, forcePoly });
-}
-
-export function subscribeToScopeData(listener) {
-    scopeListeners.add(listener);
-    return () => {
-        scopeListeners.delete(listener);
-    };
+    postToWorklet({ type: 'note-off', trackId, noteNumber });
 }
 
 export function subscribeToModuleScopeData(moduleId, listener) {
