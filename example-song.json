@@ -1,0 +1,2718 @@
+{
+  "version": 1,
+  "savedAt": "2026-04-03T00:57:54.259Z",
+  "sequence": {
+    "bpm": 120,
+    "ticksPerBeat": null,
+    "tempoMap": [],
+    "timeSignatures": [
+      {
+        "numerator": 4,
+        "denominator": 4
+      }
+    ]
+  },
+  "selectedTrackId": "import-1-track-1-channel-1",
+  "tracks": [
+    {
+      "id": "import-1-track-7-channel-8",
+      "name": "LEAD",
+      "polyphony": 4,
+      "portamento": 0,
+      "notes": [
+        {
+          "note": "F4",
+          "bar": 1,
+          "beat": 0,
+          "duration": 1,
+          "velocity": 0.74
+        },
+        {
+          "note": "G4s",
+          "bar": 1,
+          "beat": 1,
+          "duration": 0.75,
+          "velocity": 0.91
+        },
+        {
+          "note": "F4",
+          "bar": 1,
+          "beat": 1.75,
+          "duration": 0.5,
+          "velocity": 0.82
+        },
+        {
+          "note": "F4",
+          "bar": 1,
+          "beat": 2.25,
+          "duration": 0.25,
+          "velocity": 0.7
+        },
+        {
+          "note": "A4s",
+          "bar": 1,
+          "beat": 2.5,
+          "duration": 0.5,
+          "velocity": 0.66
+        },
+        {
+          "note": "F4",
+          "bar": 1,
+          "beat": 3,
+          "duration": 0.5,
+          "velocity": 0.6
+        },
+        {
+          "note": "D4s",
+          "bar": 1,
+          "beat": 3.5,
+          "duration": 0.5,
+          "velocity": 0.78
+        },
+        {
+          "note": "F4",
+          "bar": 2,
+          "beat": 0,
+          "duration": 1,
+          "velocity": 0.76
+        },
+        {
+          "note": "C5",
+          "bar": 2,
+          "beat": 1,
+          "duration": 0.75,
+          "velocity": 0.7
+        },
+        {
+          "note": "F4",
+          "bar": 2,
+          "beat": 1.75,
+          "duration": 0.5,
+          "velocity": 0.76
+        },
+        {
+          "note": "F4",
+          "bar": 2,
+          "beat": 2.25,
+          "duration": 0.25,
+          "velocity": 0.79
+        },
+        {
+          "note": "C5s",
+          "bar": 2,
+          "beat": 2.5,
+          "duration": 0.5,
+          "velocity": 0.78
+        },
+        {
+          "note": "C5",
+          "bar": 2,
+          "beat": 3,
+          "duration": 0.5,
+          "velocity": 0.71
+        },
+        {
+          "note": "G4s",
+          "bar": 2,
+          "beat": 3.5,
+          "duration": 0.5,
+          "velocity": 0.83
+        },
+        {
+          "note": "F4",
+          "bar": 3,
+          "beat": 0,
+          "duration": 0.5,
+          "velocity": 0.87
+        },
+        {
+          "note": "C5",
+          "bar": 3,
+          "beat": 0.5,
+          "duration": 0.5,
+          "velocity": 0.71
+        },
+        {
+          "note": "F5",
+          "bar": 3,
+          "beat": 1,
+          "duration": 0.5,
+          "velocity": 0.73
+        },
+        {
+          "note": "F4",
+          "bar": 3,
+          "beat": 1.5,
+          "duration": 0.25,
+          "velocity": 0.72
+        },
+        {
+          "note": "D4s",
+          "bar": 3,
+          "beat": 1.75,
+          "duration": 0.5,
+          "velocity": 0.88
+        },
+        {
+          "note": "D4s",
+          "bar": 3,
+          "beat": 2.25,
+          "duration": 0.25,
+          "velocity": 0.86
+        },
+        {
+          "note": "C4",
+          "bar": 3,
+          "beat": 2.5,
+          "duration": 0.5,
+          "velocity": 0.83
+        },
+        {
+          "note": "G4",
+          "bar": 3,
+          "beat": 3,
+          "duration": 0.5,
+          "velocity": 0.79
+        },
+        {
+          "note": "F4",
+          "bar": 3,
+          "beat": 3.5,
+          "duration": 1,
+          "velocity": 0.76
+        },
+        {
+          "note": "F4",
+          "bar": 5,
+          "beat": 0,
+          "duration": 1,
+          "velocity": 0.88
+        },
+        {
+          "note": "G4s",
+          "bar": 5,
+          "beat": 1,
+          "duration": 0.75,
+          "velocity": 0.85
+        },
+        {
+          "note": "F4",
+          "bar": 5,
+          "beat": 1.75,
+          "duration": 0.5,
+          "velocity": 0.84
+        },
+        {
+          "note": "F4",
+          "bar": 5,
+          "beat": 2.25,
+          "duration": 0.25,
+          "velocity": 0.73
+        },
+        {
+          "note": "A4s",
+          "bar": 5,
+          "beat": 2.5,
+          "duration": 0.5,
+          "velocity": 0.73
+        },
+        {
+          "note": "F4",
+          "bar": 5,
+          "beat": 3,
+          "duration": 0.5,
+          "velocity": 0.88
+        },
+        {
+          "note": "D4s",
+          "bar": 5,
+          "beat": 3.5,
+          "duration": 0.5,
+          "velocity": 0.79
+        },
+        {
+          "note": "F4",
+          "bar": 6,
+          "beat": 0,
+          "duration": 1,
+          "velocity": 0.78
+        },
+        {
+          "note": "C5",
+          "bar": 6,
+          "beat": 1,
+          "duration": 0.75,
+          "velocity": 0.86
+        },
+        {
+          "note": "F4",
+          "bar": 6,
+          "beat": 1.75,
+          "duration": 0.5,
+          "velocity": 0.85
+        },
+        {
+          "note": "F4",
+          "bar": 6,
+          "beat": 2.25,
+          "duration": 0.25,
+          "velocity": 0.82
+        },
+        {
+          "note": "C5s",
+          "bar": 6,
+          "beat": 2.5,
+          "duration": 0.5,
+          "velocity": 0.8
+        },
+        {
+          "note": "C5",
+          "bar": 6,
+          "beat": 3,
+          "duration": 0.5,
+          "velocity": 0.79
+        },
+        {
+          "note": "G4s",
+          "bar": 6,
+          "beat": 3.5,
+          "duration": 0.5,
+          "velocity": 0.73
+        },
+        {
+          "note": "F4",
+          "bar": 7,
+          "beat": 0,
+          "duration": 0.5,
+          "velocity": 0.88
+        },
+        {
+          "note": "C5",
+          "bar": 7,
+          "beat": 0.5,
+          "duration": 0.5,
+          "velocity": 0.71
+        },
+        {
+          "note": "F5",
+          "bar": 7,
+          "beat": 1,
+          "duration": 0.5,
+          "velocity": 0.8
+        },
+        {
+          "note": "F4",
+          "bar": 7,
+          "beat": 1.5,
+          "duration": 0.25,
+          "velocity": 0.81
+        },
+        {
+          "note": "D4s",
+          "bar": 7,
+          "beat": 1.75,
+          "duration": 0.5,
+          "velocity": 0.77
+        },
+        {
+          "note": "D4s",
+          "bar": 7,
+          "beat": 2.25,
+          "duration": 0.25,
+          "velocity": 0.76
+        },
+        {
+          "note": "C4",
+          "bar": 7,
+          "beat": 2.5,
+          "duration": 0.5,
+          "velocity": 0.8
+        },
+        {
+          "note": "G4",
+          "bar": 7,
+          "beat": 3,
+          "duration": 0.5,
+          "velocity": 0.82
+        },
+        {
+          "note": "F4",
+          "bar": 7,
+          "beat": 3.5,
+          "duration": 1,
+          "velocity": 0.74
+        },
+        {
+          "note": "F4",
+          "bar": 9,
+          "beat": 0,
+          "duration": 1,
+          "velocity": 0.83
+        },
+        {
+          "note": "G4s",
+          "bar": 9,
+          "beat": 1,
+          "duration": 0.75,
+          "velocity": 0.89
+        },
+        {
+          "note": "F4",
+          "bar": 9,
+          "beat": 1.75,
+          "duration": 0.5,
+          "velocity": 0.74
+        },
+        {
+          "note": "F4",
+          "bar": 9,
+          "beat": 2.25,
+          "duration": 0.25,
+          "velocity": 0.75
+        },
+        {
+          "note": "A4s",
+          "bar": 9,
+          "beat": 2.5,
+          "duration": 0.5,
+          "velocity": 0.78
+        },
+        {
+          "note": "F4",
+          "bar": 9,
+          "beat": 3,
+          "duration": 0.5,
+          "velocity": 0.71
+        },
+        {
+          "note": "D4s",
+          "bar": 9,
+          "beat": 3.5,
+          "duration": 0.5,
+          "velocity": 0.77
+        },
+        {
+          "note": "F4",
+          "bar": 10,
+          "beat": 0,
+          "duration": 1,
+          "velocity": 0.71
+        },
+        {
+          "note": "C5",
+          "bar": 10,
+          "beat": 1,
+          "duration": 0.75,
+          "velocity": 0.83
+        },
+        {
+          "note": "F4",
+          "bar": 10,
+          "beat": 1.75,
+          "duration": 0.5,
+          "velocity": 0.87
+        },
+        {
+          "note": "F4",
+          "bar": 10,
+          "beat": 2.25,
+          "duration": 0.25,
+          "velocity": 0.82
+        },
+        {
+          "note": "C5s",
+          "bar": 10,
+          "beat": 2.5,
+          "duration": 0.5,
+          "velocity": 0.74
+        },
+        {
+          "note": "C5",
+          "bar": 10,
+          "beat": 3,
+          "duration": 0.5,
+          "velocity": 0.81
+        },
+        {
+          "note": "G4s",
+          "bar": 10,
+          "beat": 3.5,
+          "duration": 0.5,
+          "velocity": 0.8
+        },
+        {
+          "note": "F4",
+          "bar": 11,
+          "beat": 0,
+          "duration": 0.5,
+          "velocity": 0.76
+        },
+        {
+          "note": "C5",
+          "bar": 11,
+          "beat": 0.5,
+          "duration": 0.5,
+          "velocity": 0.86
+        },
+        {
+          "note": "F5",
+          "bar": 11,
+          "beat": 1,
+          "duration": 0.5,
+          "velocity": 0.83
+        },
+        {
+          "note": "F4",
+          "bar": 11,
+          "beat": 1.5,
+          "duration": 0.25,
+          "velocity": 0.84
+        },
+        {
+          "note": "D4s",
+          "bar": 11,
+          "beat": 1.75,
+          "duration": 0.5,
+          "velocity": 0.76
+        },
+        {
+          "note": "D4s",
+          "bar": 11,
+          "beat": 2.25,
+          "duration": 0.25,
+          "velocity": 0.89
+        },
+        {
+          "note": "C4",
+          "bar": 11,
+          "beat": 2.5,
+          "duration": 0.5,
+          "velocity": 0.84
+        },
+        {
+          "note": "G4",
+          "bar": 11,
+          "beat": 3,
+          "duration": 0.5,
+          "velocity": 0.78
+        },
+        {
+          "note": "F4",
+          "bar": 11,
+          "beat": 3.5,
+          "duration": 1,
+          "velocity": 0.78
+        },
+        {
+          "note": "F4",
+          "bar": 13,
+          "beat": 0,
+          "duration": 1,
+          "velocity": 0.89
+        },
+        {
+          "note": "G4s",
+          "bar": 13,
+          "beat": 1,
+          "duration": 0.75,
+          "velocity": 0.78
+        },
+        {
+          "note": "F4",
+          "bar": 13,
+          "beat": 1.75,
+          "duration": 0.5,
+          "velocity": 0.76
+        },
+        {
+          "note": "F4",
+          "bar": 13,
+          "beat": 2.25,
+          "duration": 0.25,
+          "velocity": 0.72
+        },
+        {
+          "note": "A4s",
+          "bar": 13,
+          "beat": 2.5,
+          "duration": 0.5,
+          "velocity": 0.86
+        },
+        {
+          "note": "F4",
+          "bar": 13,
+          "beat": 3,
+          "duration": 0.5,
+          "velocity": 0.85
+        },
+        {
+          "note": "D4s",
+          "bar": 13,
+          "beat": 3.5,
+          "duration": 0.5,
+          "velocity": 0.88
+        },
+        {
+          "note": "F4",
+          "bar": 14,
+          "beat": 0,
+          "duration": 1,
+          "velocity": 0.73
+        },
+        {
+          "note": "C5",
+          "bar": 14,
+          "beat": 1,
+          "duration": 0.75,
+          "velocity": 0.78
+        },
+        {
+          "note": "F4",
+          "bar": 14,
+          "beat": 1.75,
+          "duration": 0.5,
+          "velocity": 0.75
+        },
+        {
+          "note": "F4",
+          "bar": 14,
+          "beat": 2.25,
+          "duration": 0.25,
+          "velocity": 0.75
+        },
+        {
+          "note": "C5s",
+          "bar": 14,
+          "beat": 2.5,
+          "duration": 0.5,
+          "velocity": 0.81
+        },
+        {
+          "note": "C5",
+          "bar": 14,
+          "beat": 3,
+          "duration": 0.5,
+          "velocity": 0.87
+        },
+        {
+          "note": "G4s",
+          "bar": 14,
+          "beat": 3.5,
+          "duration": 0.5,
+          "velocity": 0.86
+        },
+        {
+          "note": "F4",
+          "bar": 15,
+          "beat": 0,
+          "duration": 0.5,
+          "velocity": 0.86
+        },
+        {
+          "note": "C5",
+          "bar": 15,
+          "beat": 0.5,
+          "duration": 0.5,
+          "velocity": 0.74
+        },
+        {
+          "note": "F5",
+          "bar": 15,
+          "beat": 1,
+          "duration": 0.5,
+          "velocity": 0.76
+        },
+        {
+          "note": "F4",
+          "bar": 15,
+          "beat": 1.5,
+          "duration": 0.25,
+          "velocity": 0.73
+        },
+        {
+          "note": "D4s",
+          "bar": 15,
+          "beat": 1.75,
+          "duration": 0.5,
+          "velocity": 0.89
+        },
+        {
+          "note": "D4s",
+          "bar": 15,
+          "beat": 2.25,
+          "duration": 0.25,
+          "velocity": 0.73
+        },
+        {
+          "note": "C4",
+          "bar": 15,
+          "beat": 2.5,
+          "duration": 0.5,
+          "velocity": 0.76
+        },
+        {
+          "note": "G4",
+          "bar": 15,
+          "beat": 3,
+          "duration": 0.5,
+          "velocity": 0.86
+        },
+        {
+          "note": "F4",
+          "bar": 15,
+          "beat": 3.5,
+          "duration": 1,
+          "velocity": 0.79
+        },
+        {
+          "note": "F4",
+          "bar": 17,
+          "beat": 0,
+          "duration": 1,
+          "velocity": 0.84
+        },
+        {
+          "note": "G4s",
+          "bar": 17,
+          "beat": 1,
+          "duration": 0.75,
+          "velocity": 0.89
+        },
+        {
+          "note": "F4",
+          "bar": 17,
+          "beat": 1.75,
+          "duration": 0.5,
+          "velocity": 0.84
+        },
+        {
+          "note": "F4",
+          "bar": 17,
+          "beat": 2.25,
+          "duration": 0.25,
+          "velocity": 0.84
+        },
+        {
+          "note": "A4s",
+          "bar": 17,
+          "beat": 2.5,
+          "duration": 0.5,
+          "velocity": 0.88
+        },
+        {
+          "note": "F4",
+          "bar": 17,
+          "beat": 3,
+          "duration": 0.5,
+          "velocity": 0.86
+        },
+        {
+          "note": "D4s",
+          "bar": 17,
+          "beat": 3.5,
+          "duration": 0.5,
+          "velocity": 0.76
+        },
+        {
+          "note": "F4",
+          "bar": 18,
+          "beat": 0,
+          "duration": 1,
+          "velocity": 0.78
+        },
+        {
+          "note": "C5",
+          "bar": 18,
+          "beat": 1,
+          "duration": 0.75,
+          "velocity": 0.87
+        },
+        {
+          "note": "F4",
+          "bar": 18,
+          "beat": 1.75,
+          "duration": 0.5,
+          "velocity": 0.85
+        },
+        {
+          "note": "F4",
+          "bar": 18,
+          "beat": 2.25,
+          "duration": 0.25,
+          "velocity": 0.83
+        },
+        {
+          "note": "C5s",
+          "bar": 18,
+          "beat": 2.5,
+          "duration": 0.5,
+          "velocity": 0.71
+        },
+        {
+          "note": "C5",
+          "bar": 18,
+          "beat": 3,
+          "duration": 0.5,
+          "velocity": 0.74
+        },
+        {
+          "note": "G4s",
+          "bar": 18,
+          "beat": 3.5,
+          "duration": 0.5,
+          "velocity": 0.73
+        },
+        {
+          "note": "F4",
+          "bar": 19,
+          "beat": 0,
+          "duration": 0.5,
+          "velocity": 0.78
+        },
+        {
+          "note": "C5",
+          "bar": 19,
+          "beat": 0.5,
+          "duration": 0.5,
+          "velocity": 0.89
+        },
+        {
+          "note": "F5",
+          "bar": 19,
+          "beat": 1,
+          "duration": 0.5,
+          "velocity": 0.78
+        },
+        {
+          "note": "F4",
+          "bar": 19,
+          "beat": 1.5,
+          "duration": 0.25,
+          "velocity": 0.79
+        },
+        {
+          "note": "D4s",
+          "bar": 19,
+          "beat": 1.75,
+          "duration": 0.5,
+          "velocity": 0.89
+        },
+        {
+          "note": "D4s",
+          "bar": 19,
+          "beat": 2.25,
+          "duration": 0.25,
+          "velocity": 0.87
+        },
+        {
+          "note": "C4",
+          "bar": 19,
+          "beat": 2.5,
+          "duration": 0.5,
+          "velocity": 0.8
+        },
+        {
+          "note": "G4",
+          "bar": 19,
+          "beat": 3,
+          "duration": 0.5,
+          "velocity": 0.81
+        },
+        {
+          "note": "F4",
+          "bar": 19,
+          "beat": 3.5,
+          "duration": 1,
+          "velocity": 0.84
+        },
+        {
+          "note": "F4",
+          "bar": 21,
+          "beat": 0,
+          "duration": 1,
+          "velocity": 0.74
+        },
+        {
+          "note": "G4s",
+          "bar": 21,
+          "beat": 1,
+          "duration": 0.75,
+          "velocity": 0.86
+        },
+        {
+          "note": "F4",
+          "bar": 21,
+          "beat": 1.75,
+          "duration": 0.5,
+          "velocity": 0.79
+        },
+        {
+          "note": "F4",
+          "bar": 21,
+          "beat": 2.25,
+          "duration": 0.25,
+          "velocity": 0.79
+        },
+        {
+          "note": "A4s",
+          "bar": 21,
+          "beat": 2.5,
+          "duration": 0.5,
+          "velocity": 0.88
+        },
+        {
+          "note": "F4",
+          "bar": 21,
+          "beat": 3,
+          "duration": 0.5,
+          "velocity": 0.83
+        },
+        {
+          "note": "D4s",
+          "bar": 21,
+          "beat": 3.5,
+          "duration": 0.5,
+          "velocity": 0.86
+        },
+        {
+          "note": "F4",
+          "bar": 22,
+          "beat": 0,
+          "duration": 1,
+          "velocity": 0.84
+        },
+        {
+          "note": "C5",
+          "bar": 22,
+          "beat": 1,
+          "duration": 0.75,
+          "velocity": 0.87
+        },
+        {
+          "note": "F4",
+          "bar": 22,
+          "beat": 1.75,
+          "duration": 0.5,
+          "velocity": 0.77
+        },
+        {
+          "note": "F4",
+          "bar": 22,
+          "beat": 2.25,
+          "duration": 0.25,
+          "velocity": 0.71
+        },
+        {
+          "note": "C5s",
+          "bar": 22,
+          "beat": 2.5,
+          "duration": 0.5,
+          "velocity": 0.89
+        },
+        {
+          "note": "C5",
+          "bar": 22,
+          "beat": 3,
+          "duration": 0.5,
+          "velocity": 0.87
+        },
+        {
+          "note": "G4s",
+          "bar": 22,
+          "beat": 3.5,
+          "duration": 0.5,
+          "velocity": 0.77
+        },
+        {
+          "note": "F4",
+          "bar": 23,
+          "beat": 0,
+          "duration": 0.5,
+          "velocity": 0.86
+        },
+        {
+          "note": "C5",
+          "bar": 23,
+          "beat": 0.5,
+          "duration": 0.5,
+          "velocity": 0.87
+        },
+        {
+          "note": "F5",
+          "bar": 23,
+          "beat": 1,
+          "duration": 0.5,
+          "velocity": 0.84
+        },
+        {
+          "note": "F4",
+          "bar": 23,
+          "beat": 1.5,
+          "duration": 0.25,
+          "velocity": 0.79
+        },
+        {
+          "note": "D4s",
+          "bar": 23,
+          "beat": 1.75,
+          "duration": 0.5,
+          "velocity": 0.81
+        },
+        {
+          "note": "D4s",
+          "bar": 23,
+          "beat": 2.25,
+          "duration": 0.25,
+          "velocity": 0.76
+        },
+        {
+          "note": "C4",
+          "bar": 23,
+          "beat": 2.5,
+          "duration": 0.5,
+          "velocity": 0.88
+        },
+        {
+          "note": "G4",
+          "bar": 23,
+          "beat": 3,
+          "duration": 0.5,
+          "velocity": 0.86
+        },
+        {
+          "note": "F4",
+          "bar": 23,
+          "beat": 3.5,
+          "duration": 1,
+          "velocity": 0.79
+        }
+      ],
+      "durationMs": 128000,
+      "mix": {
+        "volume": 0.8,
+        "mute": false,
+        "high": 0,
+        "mid": 0.7200000000000006,
+        "low": -5.28,
+        "pan": -0.6599999999999999
+      },
+      "modules": [
+        {
+          "id": "import-1-track-7-channel-8:module-1",
+          "type": "oscillator",
+          "x": 401,
+          "y": 194,
+          "params": {
+            "frequency": 440,
+            "amplitude": 1.0055415018560432,
+            "shape": 1,
+            "dutyCycle": 1
+          },
+          "instanceNum": 1
+        },
+        {
+          "id": "import-1-track-7-channel-8:module-2",
+          "type": "envelope",
+          "x": 86,
+          "y": 135,
+          "params": {
+            "attack": 0.01,
+            "decay": 0.2,
+            "sustain": 0.7,
+            "release": 0.14321878992735437
+          },
+          "instanceNum": 1
+        },
+        {
+          "id": "import-1-track-7-channel-8:filter-1",
+          "type": "filter",
+          "instanceNum": 1,
+          "x": 1001,
+          "y": 39,
+          "params": {
+            "cutoffSlider": 0.284,
+            "resonance": 0.89,
+            "filterType": "lowpass"
+          }
+        },
+        {
+          "id": "import-1-track-7-channel-8:vca-1",
+          "type": "vca",
+          "instanceNum": 1,
+          "x": 719,
+          "y": 43,
+          "params": {
+            "gain": 1.9952623149688795,
+            "invert": true
+          }
+        },
+        {
+          "id": "import-1-track-7-channel-8:mfx-1",
+          "type": "mfx",
+          "instanceNum": 1,
+          "x": 1266,
+          "y": 48,
+          "params": {
+            "fxType": "reverb",
+            "time": 3.7187499999999996e-18,
+            "feedback": 0.13,
+            "mix": 0.22
+          }
+        }
+      ],
+      "connections": [
+        {
+          "id": "conn-1774876021032-mlrcbj",
+          "from": {
+            "moduleId": "keyboard-singleton",
+            "outputId": "cv-out",
+            "position": null
+          },
+          "to": {
+            "moduleId": "import-1-track-7-channel-8:module-1",
+            "outputId": "freq-input",
+            "position": null
+          }
+        },
+        {
+          "id": "conn-1774876023444-jbhs5k",
+          "from": {
+            "moduleId": "keyboard-singleton",
+            "outputId": "gate-out",
+            "position": null
+          },
+          "to": {
+            "moduleId": "import-1-track-7-channel-8:module-2",
+            "outputId": "gate-input",
+            "position": null
+          }
+        },
+        {
+          "id": "conn-1774876025983-1gaktf",
+          "from": {
+            "moduleId": "import-1-track-7-channel-8:module-2",
+            "outputId": "output",
+            "position": null
+          },
+          "to": {
+            "moduleId": "import-1-track-7-channel-8:module-1",
+            "outputId": "amp-input",
+            "position": null
+          }
+        },
+        {
+          "id": "conn-1775164996446-azv8j1",
+          "from": {
+            "moduleId": "import-1-track-7-channel-8:module-1",
+            "outputId": "output",
+            "position": null
+          },
+          "to": {
+            "moduleId": "import-1-track-7-channel-8:filter-1",
+            "outputId": "audio-input",
+            "position": null
+          }
+        },
+        {
+          "id": "conn-1775165108192-xx17gp",
+          "from": {
+            "moduleId": "keyboard-singleton",
+            "outputId": "velocity-out",
+            "position": null
+          },
+          "to": {
+            "moduleId": "import-1-track-7-channel-8:vca-1",
+            "outputId": "audio-input",
+            "position": null
+          }
+        },
+        {
+          "id": "conn-1775165123750-9e4wph",
+          "from": {
+            "moduleId": "import-1-track-7-channel-8:vca-1",
+            "outputId": "output",
+            "position": null
+          },
+          "to": {
+            "moduleId": "import-1-track-7-channel-8:filter-1",
+            "outputId": "cutoff-input",
+            "position": null
+          }
+        },
+        {
+          "id": "conn-1775165257642-gbveot",
+          "from": {
+            "moduleId": "import-1-track-7-channel-8:filter-1",
+            "outputId": "output",
+            "position": null
+          },
+          "to": {
+            "moduleId": "import-1-track-7-channel-8:mfx-1",
+            "outputId": "audio-input",
+            "position": null
+          }
+        },
+        {
+          "id": "conn-1775165259883-cjmy5y",
+          "from": {
+            "moduleId": "import-1-track-7-channel-8:mfx-1",
+            "outputId": "output",
+            "position": null
+          },
+          "to": {
+            "moduleId": "track-output-singleton",
+            "outputId": "audio-input",
+            "position": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "import-1-track-1-channel-1",
+      "name": "BASS",
+      "polyphony": 4,
+      "portamento": 0,
+      "notes": [
+        {
+          "note": "F1",
+          "bar": 9,
+          "beat": 0,
+          "duration": 0.75,
+          "velocity": 0.82
+        },
+        {
+          "note": "F2",
+          "bar": 9,
+          "beat": 1,
+          "duration": 0.5,
+          "velocity": 0.87
+        },
+        {
+          "note": "D2s",
+          "bar": 9,
+          "beat": 1.75,
+          "duration": 0.25,
+          "velocity": 0.81
+        },
+        {
+          "note": "D3s",
+          "bar": 9,
+          "beat": 2.25,
+          "duration": 0.25,
+          "velocity": 0.87
+        },
+        {
+          "note": "C1",
+          "bar": 9,
+          "beat": 2.5,
+          "duration": 0.25,
+          "velocity": 0.71
+        },
+        {
+          "note": "C2",
+          "bar": 9,
+          "beat": 3,
+          "duration": 0.25,
+          "velocity": 0.71
+        },
+        {
+          "note": "D2s",
+          "bar": 9,
+          "beat": 3.5,
+          "duration": 0.25,
+          "velocity": 0.85
+        },
+        {
+          "note": "F1",
+          "bar": 10,
+          "beat": 0,
+          "duration": 0.75,
+          "velocity": 0.73
+        },
+        {
+          "note": "F2",
+          "bar": 10,
+          "beat": 1,
+          "duration": 0.25,
+          "velocity": 0.84
+        },
+        {
+          "note": "F1",
+          "bar": 10,
+          "beat": 2.25,
+          "duration": 0.25,
+          "velocity": 0.79
+        },
+        {
+          "note": "C2",
+          "bar": 10,
+          "beat": 2.5,
+          "duration": 0.25,
+          "velocity": 0.77
+        },
+        {
+          "note": "D2s",
+          "bar": 10,
+          "beat": 3,
+          "duration": 0.25,
+          "velocity": 0.8
+        },
+        {
+          "note": "F2",
+          "bar": 10,
+          "beat": 3.5,
+          "duration": 0.25,
+          "velocity": 0.75
+        },
+        {
+          "note": "C1s",
+          "bar": 11,
+          "beat": 0,
+          "duration": 0.75,
+          "velocity": 0.78
+        },
+        {
+          "note": "C2s",
+          "bar": 11,
+          "beat": 1,
+          "duration": 0.5,
+          "velocity": 0.75
+        },
+        {
+          "note": "D1s",
+          "bar": 11,
+          "beat": 2.25,
+          "duration": 0.25,
+          "velocity": 0.85
+        },
+        {
+          "note": "D2s",
+          "bar": 11,
+          "beat": 2.5,
+          "duration": 0.25,
+          "velocity": 0.73
+        },
+        {
+          "note": "C2",
+          "bar": 11,
+          "beat": 3,
+          "duration": 0.25,
+          "velocity": 0.73
+        },
+        {
+          "note": "D2s",
+          "bar": 11,
+          "beat": 3.5,
+          "duration": 0.5,
+          "velocity": 0.75
+        },
+        {
+          "note": "F1",
+          "bar": 12,
+          "beat": 0,
+          "duration": 1,
+          "velocity": 0.77
+        },
+        {
+          "note": "D2s",
+          "bar": 12,
+          "beat": 2.25,
+          "duration": 0.25,
+          "velocity": 0.81
+        },
+        {
+          "note": "C2",
+          "bar": 12,
+          "beat": 2.5,
+          "duration": 0.25,
+          "velocity": 0.83
+        },
+        {
+          "note": "A1s",
+          "bar": 12,
+          "beat": 3,
+          "duration": 0.25,
+          "velocity": 0.84
+        },
+        {
+          "note": "G1",
+          "bar": 12,
+          "beat": 3.5,
+          "duration": 0.25,
+          "velocity": 0.75
+        },
+        {
+          "note": "F1",
+          "bar": 13,
+          "beat": 0,
+          "duration": 0.75,
+          "velocity": 0.79
+        },
+        {
+          "note": "F2",
+          "bar": 13,
+          "beat": 1,
+          "duration": 0.5,
+          "velocity": 0.7
+        },
+        {
+          "note": "D2s",
+          "bar": 13,
+          "beat": 1.75,
+          "duration": 0.25,
+          "velocity": 0.9
+        },
+        {
+          "note": "D3s",
+          "bar": 13,
+          "beat": 2.25,
+          "duration": 0.25,
+          "velocity": 0.82
+        },
+        {
+          "note": "C1",
+          "bar": 13,
+          "beat": 2.5,
+          "duration": 0.25,
+          "velocity": 0.8
+        },
+        {
+          "note": "C2",
+          "bar": 13,
+          "beat": 3,
+          "duration": 0.25,
+          "velocity": 0.9
+        },
+        {
+          "note": "D2s",
+          "bar": 13,
+          "beat": 3.5,
+          "duration": 0.25,
+          "velocity": 0.7
+        },
+        {
+          "note": "F1",
+          "bar": 14,
+          "beat": 0,
+          "duration": 0.75,
+          "velocity": 0.84
+        },
+        {
+          "note": "F2",
+          "bar": 14,
+          "beat": 1,
+          "duration": 0.25,
+          "velocity": 0.75
+        },
+        {
+          "note": "F1",
+          "bar": 14,
+          "beat": 2.25,
+          "duration": 0.25,
+          "velocity": 0.77
+        },
+        {
+          "note": "C2",
+          "bar": 14,
+          "beat": 2.5,
+          "duration": 0.25,
+          "velocity": 0.73
+        },
+        {
+          "note": "D2s",
+          "bar": 14,
+          "beat": 3,
+          "duration": 0.25,
+          "velocity": 0.82
+        },
+        {
+          "note": "F2",
+          "bar": 14,
+          "beat": 3.5,
+          "duration": 0.25,
+          "velocity": 0.7
+        },
+        {
+          "note": "C1s",
+          "bar": 15,
+          "beat": 0,
+          "duration": 0.75,
+          "velocity": 0.74
+        },
+        {
+          "note": "C2s",
+          "bar": 15,
+          "beat": 1,
+          "duration": 0.5,
+          "velocity": 0.71
+        },
+        {
+          "note": "D1s",
+          "bar": 15,
+          "beat": 2.25,
+          "duration": 0.25,
+          "velocity": 0.89
+        },
+        {
+          "note": "D2s",
+          "bar": 15,
+          "beat": 2.5,
+          "duration": 0.25,
+          "velocity": 0.74
+        },
+        {
+          "note": "C2",
+          "bar": 15,
+          "beat": 3,
+          "duration": 0.25,
+          "velocity": 0.82
+        },
+        {
+          "note": "D2s",
+          "bar": 15,
+          "beat": 3.5,
+          "duration": 0.5,
+          "velocity": 0.8
+        },
+        {
+          "note": "F1",
+          "bar": 16,
+          "beat": 0,
+          "duration": 1,
+          "velocity": 0.76
+        },
+        {
+          "note": "D2s",
+          "bar": 16,
+          "beat": 2.25,
+          "duration": 0.25,
+          "velocity": 0.77
+        },
+        {
+          "note": "C2",
+          "bar": 16,
+          "beat": 2.5,
+          "duration": 0.25,
+          "velocity": 0.78
+        },
+        {
+          "note": "A1s",
+          "bar": 16,
+          "beat": 3,
+          "duration": 0.25,
+          "velocity": 0.76
+        },
+        {
+          "note": "G1",
+          "bar": 16,
+          "beat": 3.5,
+          "duration": 0.25,
+          "velocity": 0.89
+        },
+        {
+          "note": "F1",
+          "bar": 17,
+          "beat": 0,
+          "duration": 0.75,
+          "velocity": 0.85
+        },
+        {
+          "note": "F2",
+          "bar": 17,
+          "beat": 1,
+          "duration": 0.5,
+          "velocity": 0.79
+        },
+        {
+          "note": "D2s",
+          "bar": 17,
+          "beat": 1.75,
+          "duration": 0.25,
+          "velocity": 0.73
+        },
+        {
+          "note": "D3s",
+          "bar": 17,
+          "beat": 2.25,
+          "duration": 0.25,
+          "velocity": 0.7
+        },
+        {
+          "note": "C1",
+          "bar": 17,
+          "beat": 2.5,
+          "duration": 0.25,
+          "velocity": 0.84
+        },
+        {
+          "note": "C2",
+          "bar": 17,
+          "beat": 3,
+          "duration": 0.25,
+          "velocity": 0.86
+        },
+        {
+          "note": "D2s",
+          "bar": 17,
+          "beat": 3.5,
+          "duration": 0.25,
+          "velocity": 0.72
+        },
+        {
+          "note": "F1",
+          "bar": 18,
+          "beat": 0,
+          "duration": 0.75,
+          "velocity": 0.74
+        },
+        {
+          "note": "F2",
+          "bar": 18,
+          "beat": 1,
+          "duration": 0.25,
+          "velocity": 0.73
+        },
+        {
+          "note": "F1",
+          "bar": 18,
+          "beat": 2.25,
+          "duration": 0.25,
+          "velocity": 0.72
+        },
+        {
+          "note": "C2",
+          "bar": 18,
+          "beat": 2.5,
+          "duration": 0.25,
+          "velocity": 0.87
+        },
+        {
+          "note": "D2s",
+          "bar": 18,
+          "beat": 3,
+          "duration": 0.25,
+          "velocity": 0.75
+        },
+        {
+          "note": "F2",
+          "bar": 18,
+          "beat": 3.5,
+          "duration": 0.25,
+          "velocity": 0.83
+        },
+        {
+          "note": "C1s",
+          "bar": 19,
+          "beat": 0,
+          "duration": 0.75,
+          "velocity": 0.81
+        },
+        {
+          "note": "C2s",
+          "bar": 19,
+          "beat": 1,
+          "duration": 0.5,
+          "velocity": 0.78
+        },
+        {
+          "note": "D1s",
+          "bar": 19,
+          "beat": 2.25,
+          "duration": 0.25,
+          "velocity": 0.88
+        },
+        {
+          "note": "D2s",
+          "bar": 19,
+          "beat": 2.5,
+          "duration": 0.25,
+          "velocity": 0.81
+        },
+        {
+          "note": "C2",
+          "bar": 19,
+          "beat": 3,
+          "duration": 0.25,
+          "velocity": 0.87
+        },
+        {
+          "note": "D2s",
+          "bar": 19,
+          "beat": 3.5,
+          "duration": 0.5,
+          "velocity": 0.73
+        },
+        {
+          "note": "F1",
+          "bar": 20,
+          "beat": 0,
+          "duration": 1,
+          "velocity": 0.86
+        },
+        {
+          "note": "D2s",
+          "bar": 20,
+          "beat": 2.25,
+          "duration": 0.25,
+          "velocity": 0.9
+        },
+        {
+          "note": "C2",
+          "bar": 20,
+          "beat": 2.5,
+          "duration": 0.25,
+          "velocity": 0.86
+        },
+        {
+          "note": "A1s",
+          "bar": 20,
+          "beat": 3,
+          "duration": 0.25,
+          "velocity": 0.88
+        },
+        {
+          "note": "G1",
+          "bar": 20,
+          "beat": 3.5,
+          "duration": 0.25,
+          "velocity": 0.83
+        },
+        {
+          "note": "F1",
+          "bar": 21,
+          "beat": 0,
+          "duration": 0.75,
+          "velocity": 0.88
+        },
+        {
+          "note": "F2",
+          "bar": 21,
+          "beat": 1,
+          "duration": 0.5,
+          "velocity": 0.74
+        },
+        {
+          "note": "D2s",
+          "bar": 21,
+          "beat": 1.75,
+          "duration": 0.25,
+          "velocity": 0.88
+        },
+        {
+          "note": "D3s",
+          "bar": 21,
+          "beat": 2.25,
+          "duration": 0.25,
+          "velocity": 0.71
+        },
+        {
+          "note": "C1",
+          "bar": 21,
+          "beat": 2.5,
+          "duration": 0.25,
+          "velocity": 0.89
+        },
+        {
+          "note": "C2",
+          "bar": 21,
+          "beat": 3,
+          "duration": 0.25,
+          "velocity": 0.7
+        },
+        {
+          "note": "D2s",
+          "bar": 21,
+          "beat": 3.5,
+          "duration": 0.25,
+          "velocity": 0.74
+        },
+        {
+          "note": "F1",
+          "bar": 22,
+          "beat": 0,
+          "duration": 0.75,
+          "velocity": 0.81
+        },
+        {
+          "note": "F2",
+          "bar": 22,
+          "beat": 1,
+          "duration": 0.25,
+          "velocity": 0.81
+        },
+        {
+          "note": "F1",
+          "bar": 22,
+          "beat": 2.25,
+          "duration": 0.25,
+          "velocity": 0.71
+        },
+        {
+          "note": "C2",
+          "bar": 22,
+          "beat": 2.5,
+          "duration": 0.25,
+          "velocity": 0.79
+        },
+        {
+          "note": "D2s",
+          "bar": 22,
+          "beat": 3,
+          "duration": 0.25,
+          "velocity": 0.8
+        },
+        {
+          "note": "F2",
+          "bar": 22,
+          "beat": 3.5,
+          "duration": 0.25,
+          "velocity": 0.73
+        },
+        {
+          "note": "C1s",
+          "bar": 23,
+          "beat": 0,
+          "duration": 0.75,
+          "velocity": 0.86
+        },
+        {
+          "note": "C2s",
+          "bar": 23,
+          "beat": 1,
+          "duration": 0.5,
+          "velocity": 0.86
+        },
+        {
+          "note": "D1s",
+          "bar": 23,
+          "beat": 2.25,
+          "duration": 0.25,
+          "velocity": 0.88
+        },
+        {
+          "note": "D2s",
+          "bar": 23,
+          "beat": 2.5,
+          "duration": 0.25,
+          "velocity": 0.76
+        },
+        {
+          "note": "C2",
+          "bar": 23,
+          "beat": 3,
+          "duration": 0.25,
+          "velocity": 0.84
+        },
+        {
+          "note": "D2s",
+          "bar": 23,
+          "beat": 3.5,
+          "duration": 0.5,
+          "velocity": 0.82
+        },
+        {
+          "note": "F1",
+          "bar": 24,
+          "beat": 0,
+          "duration": 1,
+          "velocity": 0.72
+        },
+        {
+          "note": "D2s",
+          "bar": 24,
+          "beat": 2.25,
+          "duration": 0.25,
+          "velocity": 0.74
+        },
+        {
+          "note": "C2",
+          "bar": 24,
+          "beat": 2.5,
+          "duration": 0.25,
+          "velocity": 0.82
+        },
+        {
+          "note": "A1s",
+          "bar": 24,
+          "beat": 3,
+          "duration": 0.25,
+          "velocity": 0.87
+        },
+        {
+          "note": "G1",
+          "bar": 24,
+          "beat": 3.5,
+          "duration": 0.25,
+          "velocity": 0.86
+        }
+      ],
+      "durationMs": 128000,
+      "mix": {
+        "volume": 0.88,
+        "mute": false,
+        "high": -8.879999999999999,
+        "mid": -5.28,
+        "low": 5.5200000000000005,
+        "pan": 0.56
+      },
+      "modules": [
+        {
+          "id": "import-1-track-1-channel-1:module-3",
+          "type": "oscillator",
+          "x": 542,
+          "y": 52,
+          "params": {
+            "frequency": 440,
+            "amplitude": 1.3384433676499077,
+            "shape": 0.13,
+            "dutyCycle": 0.13
+          },
+          "instanceNum": 1
+        },
+        {
+          "id": "import-1-track-1-channel-1:module-4",
+          "type": "envelope",
+          "x": 140,
+          "y": 124,
+          "params": {
+            "attack": 0.01,
+            "decay": 0.2,
+            "sustain": 0.7,
+            "release": 0.004207266283844441
+          },
+          "instanceNum": 1
+        },
+        {
+          "id": "import-1-track-1-channel-1:mfx-1",
+          "type": "mfx",
+          "instanceNum": 1,
+          "x": 885,
+          "y": 33,
+          "params": {
+            "fxType": "delay",
+            "time": 348,
+            "feedback": 0.4,
+            "mix": 0.25
+          }
+        },
+        {
+          "id": "import-1-track-1-channel-1:scope-1",
+          "type": "scope",
+          "instanceNum": 1,
+          "x": 1201,
+          "y": 33,
+          "params": {}
+        }
+      ],
+      "connections": [
+        {
+          "id": "conn-1774876065780-lmv38f",
+          "from": {
+            "moduleId": "keyboard-singleton",
+            "outputId": "cv-out",
+            "position": null
+          },
+          "to": {
+            "moduleId": "import-1-track-1-channel-1:module-3",
+            "outputId": "freq-input",
+            "position": null
+          }
+        },
+        {
+          "id": "conn-1774876068013-fbpzt1",
+          "from": {
+            "moduleId": "keyboard-singleton",
+            "outputId": "gate-out",
+            "position": null
+          },
+          "to": {
+            "moduleId": "import-1-track-1-channel-1:module-4",
+            "outputId": "gate-input",
+            "position": null
+          }
+        },
+        {
+          "id": "conn-1774876071029-v7hcu1",
+          "from": {
+            "moduleId": "import-1-track-1-channel-1:module-4",
+            "outputId": "output",
+            "position": null
+          },
+          "to": {
+            "moduleId": "import-1-track-1-channel-1:module-3",
+            "outputId": "amp-input",
+            "position": null
+          }
+        },
+        {
+          "id": "conn-1775165312333-q1il6f",
+          "from": {
+            "moduleId": "import-1-track-1-channel-1:module-3",
+            "outputId": "output",
+            "position": null
+          },
+          "to": {
+            "moduleId": "import-1-track-1-channel-1:mfx-1",
+            "outputId": "audio-input",
+            "position": null
+          }
+        },
+        {
+          "id": "conn-1775177831360-4mcrh9",
+          "from": {
+            "moduleId": "import-1-track-1-channel-1:mfx-1",
+            "outputId": "output",
+            "position": null
+          },
+          "to": {
+            "moduleId": "import-1-track-1-channel-1:scope-1",
+            "outputId": "signal-input",
+            "position": null
+          }
+        },
+        {
+          "id": "conn-1775177834509-82294q",
+          "from": {
+            "moduleId": "import-1-track-1-channel-1:scope-1",
+            "outputId": "signal-output",
+            "position": null
+          },
+          "to": {
+            "moduleId": "track-output-singleton",
+            "outputId": "audio-input",
+            "position": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "import-1-track-6-channel-6",
+      "name": "CHORDS",
+      "polyphony": 4,
+      "portamento": 0,
+      "notes": [
+        {
+          "note": "A5",
+          "bar": 17,
+          "beat": 0.5,
+          "duration": 0.25,
+          "velocity": 0.89
+        },
+        {
+          "note": "C6",
+          "bar": 17,
+          "beat": 0.5,
+          "duration": 0.25,
+          "velocity": 0.89
+        },
+        {
+          "note": "F6",
+          "bar": 17,
+          "beat": 0.5,
+          "duration": 0.25,
+          "velocity": 0.71
+        },
+        {
+          "note": "A5",
+          "bar": 17,
+          "beat": 1,
+          "duration": 0.25,
+          "velocity": 0.74
+        },
+        {
+          "note": "C6",
+          "bar": 17,
+          "beat": 1,
+          "duration": 0.25,
+          "velocity": 0.8
+        },
+        {
+          "note": "F6",
+          "bar": 17,
+          "beat": 1,
+          "duration": 0.25,
+          "velocity": 0.72
+        },
+        {
+          "note": "A5",
+          "bar": 17,
+          "beat": 1.5,
+          "duration": 0.25,
+          "velocity": 0.9
+        },
+        {
+          "note": "C6",
+          "bar": 17,
+          "beat": 1.5,
+          "duration": 0.25,
+          "velocity": 0.9
+        },
+        {
+          "note": "F6",
+          "bar": 17,
+          "beat": 1.5,
+          "duration": 0.25,
+          "velocity": 0.87
+        },
+        {
+          "note": "A5s",
+          "bar": 17,
+          "beat": 1.75,
+          "duration": 0.25,
+          "velocity": 0.73
+        },
+        {
+          "note": "D6s",
+          "bar": 17,
+          "beat": 1.75,
+          "duration": 0.25,
+          "velocity": 0.88
+        },
+        {
+          "note": "G5",
+          "bar": 17,
+          "beat": 1.75,
+          "duration": 0.25,
+          "velocity": 0.76
+        },
+        {
+          "note": "A5s",
+          "bar": 17,
+          "beat": 2.25,
+          "duration": 0.25,
+          "velocity": 0.89
+        },
+        {
+          "note": "D6s",
+          "bar": 17,
+          "beat": 2.25,
+          "duration": 0.25,
+          "velocity": 0.8
+        },
+        {
+          "note": "G5",
+          "bar": 17,
+          "beat": 2.25,
+          "duration": 0.25,
+          "velocity": 0.83
+        },
+        {
+          "note": "A5s",
+          "bar": 17,
+          "beat": 2.75,
+          "duration": 0.25,
+          "velocity": 0.79
+        },
+        {
+          "note": "D6s",
+          "bar": 17,
+          "beat": 2.75,
+          "duration": 0.25,
+          "velocity": 0.73
+        },
+        {
+          "note": "G5",
+          "bar": 17,
+          "beat": 2.75,
+          "duration": 0.25,
+          "velocity": 0.72
+        },
+        {
+          "note": "A5s",
+          "bar": 17,
+          "beat": 3,
+          "duration": 0.25,
+          "velocity": 0.74
+        },
+        {
+          "note": "D6",
+          "bar": 17,
+          "beat": 3,
+          "duration": 0.25,
+          "velocity": 0.86
+        },
+        {
+          "note": "F5",
+          "bar": 17,
+          "beat": 3,
+          "duration": 0.25,
+          "velocity": 0.73
+        },
+        {
+          "note": "A5s",
+          "bar": 17,
+          "beat": 3.5,
+          "duration": 0.25,
+          "velocity": 0.85
+        },
+        {
+          "note": "D6",
+          "bar": 17,
+          "beat": 3.5,
+          "duration": 0.25,
+          "velocity": 0.73
+        },
+        {
+          "note": "F5",
+          "bar": 17,
+          "beat": 3.5,
+          "duration": 0.25,
+          "velocity": 0.82
+        },
+        {
+          "note": "A5",
+          "bar": 18,
+          "beat": 0.5,
+          "duration": 0.25,
+          "velocity": 0.8
+        },
+        {
+          "note": "C6",
+          "bar": 18,
+          "beat": 0.5,
+          "duration": 0.25,
+          "velocity": 0.74
+        },
+        {
+          "note": "F5",
+          "bar": 18,
+          "beat": 0.5,
+          "duration": 0.25,
+          "velocity": 0.8
+        },
+        {
+          "note": "A5",
+          "bar": 18,
+          "beat": 1,
+          "duration": 0.25,
+          "velocity": 0.78
+        },
+        {
+          "note": "C6",
+          "bar": 18,
+          "beat": 1,
+          "duration": 0.25,
+          "velocity": 0.84
+        },
+        {
+          "note": "F5",
+          "bar": 18,
+          "beat": 1,
+          "duration": 0.25,
+          "velocity": 0.71
+        },
+        {
+          "note": "A5",
+          "bar": 18,
+          "beat": 1.5,
+          "duration": 0.25,
+          "velocity": 0.88
+        },
+        {
+          "note": "C6",
+          "bar": 18,
+          "beat": 1.5,
+          "duration": 0.25,
+          "velocity": 0.84
+        },
+        {
+          "note": "F5",
+          "bar": 18,
+          "beat": 1.5,
+          "duration": 0.25,
+          "velocity": 0.84
+        },
+        {
+          "note": "A5s",
+          "bar": 18,
+          "beat": 1.75,
+          "duration": 0.25,
+          "velocity": 0.8
+        },
+        {
+          "note": "D6s",
+          "bar": 18,
+          "beat": 1.75,
+          "duration": 0.25,
+          "velocity": 0.81
+        },
+        {
+          "note": "G5",
+          "bar": 18,
+          "beat": 1.75,
+          "duration": 0.25,
+          "velocity": 0.7
+        },
+        {
+          "note": "A5s",
+          "bar": 18,
+          "beat": 2.25,
+          "duration": 0.25,
+          "velocity": 0.76
+        },
+        {
+          "note": "D6s",
+          "bar": 18,
+          "beat": 2.25,
+          "duration": 0.25,
+          "velocity": 0.76
+        },
+        {
+          "note": "G5",
+          "bar": 18,
+          "beat": 2.25,
+          "duration": 0.25,
+          "velocity": 0.76
+        },
+        {
+          "note": "B5",
+          "bar": 18,
+          "beat": 2.5,
+          "duration": 0.25,
+          "velocity": 0.83
+        },
+        {
+          "note": "D6",
+          "bar": 18,
+          "beat": 2.5,
+          "duration": 0.25,
+          "velocity": 0.71
+        },
+        {
+          "note": "G5",
+          "bar": 18,
+          "beat": 2.5,
+          "duration": 0.25,
+          "velocity": 0.85
+        },
+        {
+          "note": "A5",
+          "bar": 18,
+          "beat": 3,
+          "duration": 0.25,
+          "velocity": 0.85
+        },
+        {
+          "note": "C6",
+          "bar": 18,
+          "beat": 3,
+          "duration": 0.25,
+          "velocity": 0.83
+        },
+        {
+          "note": "F5",
+          "bar": 18,
+          "beat": 3,
+          "duration": 0.25,
+          "velocity": 0.79
+        },
+        {
+          "note": "C5s",
+          "bar": 19,
+          "beat": 0.5,
+          "duration": 0.25,
+          "velocity": 0.71
+        },
+        {
+          "note": "F5",
+          "bar": 19,
+          "beat": 0.5,
+          "duration": 0.25,
+          "velocity": 0.72
+        },
+        {
+          "note": "G5s",
+          "bar": 19,
+          "beat": 0.5,
+          "duration": 0.25,
+          "velocity": 0.74
+        },
+        {
+          "note": "C5s",
+          "bar": 19,
+          "beat": 1,
+          "duration": 0.25,
+          "velocity": 0.71
+        },
+        {
+          "note": "F5",
+          "bar": 19,
+          "beat": 1,
+          "duration": 0.25,
+          "velocity": 0.73
+        },
+        {
+          "note": "G5s",
+          "bar": 19,
+          "beat": 1,
+          "duration": 0.25,
+          "velocity": 0.78
+        },
+        {
+          "note": "C5s",
+          "bar": 19,
+          "beat": 1.5,
+          "duration": 0.25,
+          "velocity": 0.84
+        },
+        {
+          "note": "F5",
+          "bar": 19,
+          "beat": 1.5,
+          "duration": 0.25,
+          "velocity": 0.78
+        },
+        {
+          "note": "G5s",
+          "bar": 19,
+          "beat": 1.5,
+          "duration": 0.25,
+          "velocity": 0.89
+        },
+        {
+          "note": "C5s",
+          "bar": 19,
+          "beat": 2,
+          "duration": 0.25,
+          "velocity": 0.73
+        },
+        {
+          "note": "F5",
+          "bar": 19,
+          "beat": 2,
+          "duration": 0.25,
+          "velocity": 0.8
+        },
+        {
+          "note": "G5s",
+          "bar": 19,
+          "beat": 2,
+          "duration": 0.25,
+          "velocity": 0.76
+        },
+        {
+          "note": "A5s",
+          "bar": 19,
+          "beat": 2.25,
+          "duration": 0.25,
+          "velocity": 0.87
+        },
+        {
+          "note": "D5s",
+          "bar": 19,
+          "beat": 2.25,
+          "duration": 0.25,
+          "velocity": 0.84
+        },
+        {
+          "note": "G5",
+          "bar": 19,
+          "beat": 2.25,
+          "duration": 0.25,
+          "velocity": 0.77
+        },
+        {
+          "note": "A5s",
+          "bar": 19,
+          "beat": 2.75,
+          "duration": 0.25,
+          "velocity": 0.78
+        },
+        {
+          "note": "D5s",
+          "bar": 19,
+          "beat": 2.75,
+          "duration": 0.25,
+          "velocity": 0.71
+        },
+        {
+          "note": "G5",
+          "bar": 19,
+          "beat": 2.75,
+          "duration": 0.25,
+          "velocity": 0.85
+        },
+        {
+          "note": "A5s",
+          "bar": 19,
+          "beat": 3.25,
+          "duration": 0.25,
+          "velocity": 0.84
+        },
+        {
+          "note": "D5s",
+          "bar": 19,
+          "beat": 3.25,
+          "duration": 0.25,
+          "velocity": 0.79
+        },
+        {
+          "note": "G5",
+          "bar": 19,
+          "beat": 3.25,
+          "duration": 0.25,
+          "velocity": 0.78
+        },
+        {
+          "note": "A5s",
+          "bar": 19,
+          "beat": 3.75,
+          "duration": 0.25,
+          "velocity": 0.72
+        },
+        {
+          "note": "D5s",
+          "bar": 19,
+          "beat": 3.75,
+          "duration": 0.25,
+          "velocity": 0.88
+        },
+        {
+          "note": "G5",
+          "bar": 19,
+          "beat": 3.75,
+          "duration": 0.25,
+          "velocity": 0.76
+        },
+        {
+          "note": "A5s",
+          "bar": 20,
+          "beat": 0,
+          "duration": 0.25,
+          "velocity": 0.88
+        },
+        {
+          "note": "D5s",
+          "bar": 20,
+          "beat": 0,
+          "duration": 0.25,
+          "velocity": 0.82
+        },
+        {
+          "note": "G5",
+          "bar": 20,
+          "beat": 0,
+          "duration": 0.25,
+          "velocity": 0.74
+        },
+        {
+          "note": "A5",
+          "bar": 20,
+          "beat": 0.5,
+          "duration": 0.25,
+          "velocity": 0.74
+        },
+        {
+          "note": "C6",
+          "bar": 20,
+          "beat": 0.5,
+          "duration": 0.25,
+          "velocity": 0.87
+        },
+        {
+          "note": "F5",
+          "bar": 20,
+          "beat": 0.5,
+          "duration": 0.25,
+          "velocity": 0.73
+        },
+        {
+          "note": "A5",
+          "bar": 20,
+          "beat": 1,
+          "duration": 0.25,
+          "velocity": 0.85
+        },
+        {
+          "note": "C6",
+          "bar": 20,
+          "beat": 1,
+          "duration": 0.25,
+          "velocity": 0.81
+        },
+        {
+          "note": "F5",
+          "bar": 20,
+          "beat": 1,
+          "duration": 0.25,
+          "velocity": 0.78
+        },
+        {
+          "note": "A5",
+          "bar": 20,
+          "beat": 1.5,
+          "duration": 0.25,
+          "velocity": 0.83
+        },
+        {
+          "note": "C6",
+          "bar": 20,
+          "beat": 1.5,
+          "duration": 0.25,
+          "velocity": 0.85
+        },
+        {
+          "note": "F5",
+          "bar": 20,
+          "beat": 1.5,
+          "duration": 0.25,
+          "velocity": 0.83
+        },
+        {
+          "note": "A5s",
+          "bar": 20,
+          "beat": 2,
+          "duration": 0.25,
+          "velocity": 0.83
+        },
+        {
+          "note": "D5s",
+          "bar": 20,
+          "beat": 2,
+          "duration": 0.25,
+          "velocity": 0.78
+        },
+        {
+          "note": "G5",
+          "bar": 20,
+          "beat": 2,
+          "duration": 0.25,
+          "velocity": 0.88
+        },
+        {
+          "note": "A5",
+          "bar": 20,
+          "beat": 2.25,
+          "duration": 0.25,
+          "velocity": 0.72
+        },
+        {
+          "note": "C6",
+          "bar": 20,
+          "beat": 2.25,
+          "duration": 0.25,
+          "velocity": 0.76
+        },
+        {
+          "note": "F5",
+          "bar": 20,
+          "beat": 2.25,
+          "duration": 0.25,
+          "velocity": 0.87
+        },
+        {
+          "note": "A5",
+          "bar": 20,
+          "beat": 2.75,
+          "duration": 0.25,
+          "velocity": 0.78
+        },
+        {
+          "note": "C6",
+          "bar": 20,
+          "beat": 2.75,
+          "duration": 0.25,
+          "velocity": 0.83
+        },
+        {
+          "note": "F5",
+          "bar": 20,
+          "beat": 2.75,
+          "duration": 0.25,
+          "velocity": 0.89
+        }
+      ],
+      "durationMs": 128000,
+      "mix": {
+        "volume": 0.8,
+        "mute": false,
+        "high": 0,
+        "mid": 0,
+        "low": 0,
+        "pan": 0
+      },
+      "modules": [
+        {
+          "id": "import-1-track-6-channel-6:module-5",
+          "type": "oscillator",
+          "x": 536,
+          "y": 97,
+          "params": {
+            "frequency": 440,
+            "amplitude": 1.002766922996587,
+            "shape": 0.49,
+            "dutyCycle": 0.5
+          },
+          "instanceNum": 1
+        },
+        {
+          "id": "import-1-track-6-channel-6:module-6",
+          "type": "envelope",
+          "x": 106,
+          "y": 121,
+          "params": {
+            "attack": 0.01,
+            "decay": 0.2,
+            "sustain": 0.7,
+            "release": 0.008871560120379608
+          },
+          "instanceNum": 1
+        }
+      ],
+      "connections": [
+        {
+          "id": "conn-1774879662323-cm69wp",
+          "from": {
+            "moduleId": "keyboard-singleton",
+            "outputId": "cv-out",
+            "position": null
+          },
+          "to": {
+            "moduleId": "import-1-track-6-channel-6:module-5",
+            "outputId": "freq-input",
+            "position": null
+          }
+        },
+        {
+          "id": "conn-1774879666448-5j1m60",
+          "from": {
+            "moduleId": "keyboard-singleton",
+            "outputId": "gate-out",
+            "position": null
+          },
+          "to": {
+            "moduleId": "import-1-track-6-channel-6:module-6",
+            "outputId": "gate-input",
+            "position": null
+          }
+        },
+        {
+          "id": "conn-1774879668594-0l1zf3",
+          "from": {
+            "moduleId": "import-1-track-6-channel-6:module-6",
+            "outputId": "output",
+            "position": null
+          },
+          "to": {
+            "moduleId": "import-1-track-6-channel-6:module-5",
+            "outputId": "amp-input",
+            "position": null
+          }
+        },
+        {
+          "id": "conn-1774879670885-h94znu",
+          "from": {
+            "moduleId": "import-1-track-6-channel-6:module-5",
+            "outputId": "output",
+            "position": null
+          },
+          "to": {
+            "moduleId": "track-output-singleton",
+            "outputId": "audio-input",
+            "position": null
+          }
+        }
+      ]
+    }
+  ]
+}
