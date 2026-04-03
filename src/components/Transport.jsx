@@ -29,6 +29,7 @@ function Transport({
     onRecord,
     bpm,
     onBpmChange,
+    notesViewport,
 }) {
     const [statusMessage, setStatusMessage] = useState('No sequence loaded');
     const [editingBpm, setEditingBpm] = useState(false);
@@ -133,7 +134,7 @@ function Transport({
                                 style={{
                                     width: '48px', background: '#1a2a1a', color: '#9cff9c',
                                     border: '1px solid #4f9b54', borderRadius: '3px',
-                                    fontSize: '11px', fontFamily: 'inherit',
+                                    fontSize: '12.5px', fontFamily: 'inherit',
                                     padding: '1px 4px', outline: 'none', textAlign: 'right',
                                 }}
                             />
@@ -175,6 +176,7 @@ function Transport({
                         onSeek={(ms) => onSetTransportPosition(ms)}
                         onRemove={() => onRemoveTrack(track.id)}
                         onRename={(name) => onRenameTrack(track.id, name)}
+                        notesViewport={track.id === selectedTrackId ? notesViewport : null}
                     />
                 ))}
                 {/* Add track row */}
@@ -187,7 +189,7 @@ function Transport({
                         padding: '0 12px',
                         cursor: 'pointer',
                         color: '#ccc',
-                        fontSize: '10px',
+                        fontSize: '12px',
                         letterSpacing: '0.05em',
                         borderTop: tracks.length > 0 ? '1px solid #1a1a1a' : 'none',
                         userSelect: 'none',
@@ -202,7 +204,7 @@ function Transport({
     );
 }
 
-function TrackRow({ track, isSelected, isPlaying, timelineDurationMs, onSelect, onSeek, onRemove, onRename }) {
+function TrackRow({ track, isSelected, isPlaying, timelineDurationMs, onSelect, onSeek, onRemove, onRename, notesViewport }) {
     const noteAreaRef = React.useRef(null);
     const playheadRef = React.useRef(null);
     const durationRef = React.useRef(timelineDurationMs);
@@ -282,7 +284,8 @@ function TrackRow({ track, isSelected, isPlaying, timelineDurationMs, onSelect, 
                 alignItems: 'center',
                 minHeight: '36px',
                 borderBottom: '1px solid #1e1e1e',
-                background: isSelected ? '#1c241c' : '#111'
+                background: isSelected ? '#0d1f0d' : '#111',
+                borderLeft: isSelected ? '3px solid #5aaa5a' : '3px solid transparent',
             }}
         >
             {/* Name — click to select, double-click to rename */}
@@ -305,7 +308,7 @@ function TrackRow({ track, isSelected, isPlaying, timelineDurationMs, onSelect, 
                             border: '1px solid #4f9b54',
                             borderRadius: '3px',
                             color: '#eaffea',
-                            fontSize: '12px',
+                            fontSize: '16px',
                             padding: '2px 4px',
                             fontFamily: 'inherit',
                             outline: 'none'
@@ -316,7 +319,7 @@ function TrackRow({ track, isSelected, isPlaying, timelineDurationMs, onSelect, 
                     <div style={{ minWidth: 0, width: '100%' }}>
                         <div
                             title="Double-click to rename"
-                            style={{ fontSize: '16px', color: '#e3e3e3', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                            style={{ fontSize: '16px', color: isSelected ? '#8adb8a' : '#e3e3e3', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
                         >
                             {trackName}
                         </div>
@@ -390,6 +393,20 @@ function TrackRow({ track, isSelected, isPlaying, timelineDurationMs, onSelect, 
                         opacity: 0.9
                     }}
                 />
+                {/* Notes-mode viewport bounding box */}
+                {notesViewport && (
+                    <div style={{
+                        position: 'absolute',
+                        left: `${(notesViewport.startMs / timelineDurationMs) * 100}%`,
+                        width: `${((notesViewport.endMs - notesViewport.startMs) / timelineDurationMs) * 100}%`,
+                        top: `${notesViewport.topFraction * 100}%`,
+                        height: `${(notesViewport.bottomFraction - notesViewport.topFraction) * 100}%`,
+                        border: '1px solid rgba(138, 219, 138, 0.6)',
+                        background: 'rgba(138, 219, 138, 0.06)',
+                        pointerEvents: 'none',
+                        boxSizing: 'border-box',
+                    }} />
+                )}
             </div>
         </div>
     );
@@ -405,12 +422,12 @@ const metaBlockStyle = {
 const metaLabelStyle = {
     fontSize: '10px',
     letterSpacing: '0.08em',
-    color: '#6f6f6f'
+    color: '#ccc'
 };
 
 const metaValueStyle = {
-    fontSize: '14px',
-    color: '#f0f0f0'
+    fontSize: '16px',
+    color: '#fff'
 };
 
 export default Transport;

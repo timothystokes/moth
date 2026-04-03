@@ -22,10 +22,10 @@ const ROW_PATTERN = (() => {
     const BLACK_IN_OCTAVE = new Set([2, 4, 6, 9, 11]);
     const h = ROW_HEIGHT * 12;
     const rects = Array.from({ length: 12 }, (_, r) =>
-        `<rect x="0" y="${r * ROW_HEIGHT}" width="1" height="${ROW_HEIGHT}" fill="${BLACK_IN_OCTAVE.has(r) ? '#141416' : '#1c1c20'}"/>`
+        `<rect x="0" y="${r * ROW_HEIGHT}" width="1" height="${ROW_HEIGHT}" fill="${BLACK_IN_OCTAVE.has(r) ? '#222' : '#333'}"/>`
     ).join('');
     const lines = Array.from({ length: 11 }, (_, i) =>
-        `<line x1="0" y1="${(i + 1) * ROW_HEIGHT - .5}" x2="1" y2="${(i + 1) * ROW_HEIGHT - .5}" stroke="#252528" stroke-width=".5"/>`
+        `<line x1="0" y1="${(i + 1) * ROW_HEIGHT - .5}" x2="1" y2="${(i + 1) * ROW_HEIGHT - .5}" stroke="#000" stroke-width=".5"/>`
     ).join('');
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1" height="${h}">${rects}${lines}</svg>`;
     return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
@@ -40,11 +40,11 @@ function makeColBg(cellsPerBar, cellsPerBeat) {
     for (let c = 1; c < cellsPerBar; c++) {
         const x = c * CELL_WIDTH + .5;
         const line = (color) => `<line x1="${x}" y1="0" x2="${x}" y2="1" stroke="${color}" stroke-width="1"/>`;
-        if (c % cellsPerBeat === 0) beatLines.push(line('#505068'));
-        else subLines.push(line('#282832'));
+        if (c % cellsPerBeat === 0) beatLines.push(line('#666'));
+        else subLines.push(line('#444'));
     }
     // Bar line at left edge of tile (x=0 wraps to form bar boundary when tiled)
-    barLines.push(`<line x1=".5" y1="0" x2=".5" y2="1" stroke="#7878a0" stroke-width="1"/>`);
+    barLines.push(`<line x1=".5" y1="0" x2=".5" y2="1" stroke="#aaa" stroke-width="1"/>`);
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="1">${[...subLines, ...beatLines, ...barLines].join('')}</svg>`;
     return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
 }
@@ -66,16 +66,12 @@ function drawKeyboard(canvas) {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     // Base white keys
-    ctx.fillStyle = '#c2c2c2';
+    ctx.fillStyle = '#eee';
     ctx.fillRect(0, 0, KEY_WIDTH, cssH);
     // Black key fills
-    ctx.fillStyle = '#282828';
+    ctx.fillStyle = '#111';
     for (let row = 0; row < NOTE_COUNT; row++) {
         if (isBlack(rowToMidi(row))) ctx.fillRect(0, row * ROW_HEIGHT, KEY_WIDTH, ROW_HEIGHT);
-    }
-    ctx.fillStyle = '#181818';
-    for (let row = 0; row < NOTE_COUNT; row++) {
-        if (isBlack(rowToMidi(row))) ctx.fillRect(KEY_WIDTH * 0.55, row * ROW_HEIGHT, KEY_WIDTH * 0.45, ROW_HEIGHT);
     }
     // White key right edge
     ctx.fillStyle = '#aaa';
@@ -114,7 +110,7 @@ function drawKeyboard(canvas) {
     ctx.stroke();
 }
 
-export default function PianoRoll({ track, timeSignatures, onNotesChange, selectedTrackId }) {
+export default function PianoRoll({ track, timeSignatures, bpm, onNotesChange, selectedTrackId, onViewportChange }) {
     const keyCanvasRef = useRef(null);
     const gridDivRef = useRef(null);
     const dragGhostRef = useRef(null);
@@ -144,6 +140,50 @@ export default function PianoRoll({ track, timeSignatures, onNotesChange, select
     useEffect(() => {
         if (keyCanvasRef.current) drawKeyboard(keyCanvasRef.current);
     }, []);
+
+    // Keep a ref to onViewportChange for use in unmount cleanup
+    const onViewportChangeRef = useRef(onViewportChange);
+    useEffect(() => { onViewportChangeRef.current = onViewportChange; }, [onViewportChange]);
+
+    // Compute viewport (horizontal ms + vertical fractions) and report to parent.
+    const reportViewport = useCallback(() => {
+        if (!onViewportChange || !scrollRef.current) return;
+        const el = scrollRef.current;
+        const pixelsPerBeat = CELL_WIDTH * cellsPerBeat;
+        const msPerBeat = 60000 / (bpm || 120);
+        const startMs = (el.scrollLeft / pixelsPerBeat) * msPerBeat;
+        const endMs = ((el.scrollLeft + el.clientWidth - KEY_WIDTH) / pixelsPerBeat) * msPerBeat;
+        const totalGridHeight = NOTE_COUNT * ROW_HEIGHT;
+        const topFraction = el.scrollTop / totalGridHeight;
+        const bottomFraction = (el.scrollTop + el.clientHeight) / totalGridHeight;
+        onViewportChange({
+            startMs: Math.max(0, startMs),
+            endMs,
+            topFraction: Math.max(0, topFraction),
+            bottomFraction: Math.min(1, bottomFraction),
+        });
+    }, [onViewportChange, cellsPerBeat, bpm]);
+
+    // Clear viewport on unmount only
+    useEffect(() => {
+        return () => { if (onViewportChangeRef.current) onViewportChangeRef.current(null); };
+    }, []);
+
+    // Re-report viewport whenever totalCells changes (notes added/removed changes scroll width)
+    useEffect(() => {
+        if (!onViewportChange || !scrollRef.current) return;
+        const id = requestAnimationFrame(reportViewport);
+        return () => cancelAnimationFrame(id);
+    }, [totalCells, reportViewport, onViewportChange]);
+
+    // Re-report when the container is resized (window resize changes clientWidth)
+    useEffect(() => {
+        const el = scrollRef.current;
+        if (!el || !onViewportChange) return;
+        const ro = new ResizeObserver(reportViewport);
+        ro.observe(el);
+        return () => ro.disconnect();
+    }, [reportViewport, onViewportChange]);
 
     // ── Audio ────────────────────────────────────────────────────────────────
     const playingNoteRef = useRef(null);
@@ -292,7 +332,7 @@ export default function PianoRoll({ track, timeSignatures, onNotesChange, select
                                 width: cellsPerBar * CELL_WIDTH,
                                 height: '100%',
                                 display: 'flex', alignItems: 'center', paddingLeft: 5,
-                                fontSize: '9px', color: '#555',
+                                fontSize: '10px', color: '#ccc',
                                 borderLeft: i > 0 ? '1px solid #2a2a2a' : 'none',
                                 boxSizing: 'border-box', pointerEvents: 'none',
                             }}>
@@ -309,6 +349,7 @@ export default function PianoRoll({ track, timeSignatures, onNotesChange, select
                 style={{ flex: 1, overflow: 'auto', position: 'relative' }}
                 onScroll={(e) => {
                     if (rulerInnerRef.current) rulerInnerRef.current.style.left = `-${e.target.scrollLeft}px`;
+                    reportViewport();
                 }}
             >
                 <div style={{ display: 'inline-flex', minWidth: '100%' }}>

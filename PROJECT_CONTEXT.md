@@ -6,7 +6,26 @@
 
 Web-based modular synthesiser built with React 18 and Vite. Runs entirely in the browser. Models analog-style signal routing between modules using a pseudo-voltage signal model evaluated in an AudioWorklet.
 
-## Completed Architecture
+---
+
+## Architectural Requirements
+
+| Constraint | Benefit |
+|---|---|
+| All audio rendering runs in an AudioWorklet thread; main thread only sends messages | Real-time audio scheduling, isolated from GC pauses and DOM work — no glitches |
+| Module graph compiled to closures at topology-change time; `process()` only calls closures | Zero dynamic dispatch at audio rates; O(1) render cost per sample |
+| Param changes mutate stable in-place objects — never trigger recompile | Real-time param sweeps (cutoff, BPM, etc.) are allocation-free and instantaneous |
+| Frame cache prevents evaluating a shared module more than once per audio frame | Splitters and shared routing don't multiply CPU cost by fan-out |
+| Per-voice module state stored in Maps keyed by `voiceId`, never in closure-level variables | True independent polyphony; stolen voices reset cleanly without affecting others |
+| Voices have only two states: FREE or ACTIVE; envelope tails are owned by the envelope module | Voice pool stays simple; coupling pool lifetime to envelope duration is avoided |
+| FIFO voice allocation — oldest free voice preferred; oldest active voice stolen last | Maximises time for envelope tails before reuse; reduces audible steal clicks |
+| Flat note data model `{note, bar, beat, duration, velocity}`; no nested sequences | Simple serialisation and MIDI import; eliminates pattern/arrangement indirection |
+| All inter-module signals use defined pseudo-voltage ranges (1V/oct, 0–5V, ±1V audio) | Predictable, composable patching; explicit clamping rather than silent saturation |
+| Playhead animation uses direct DOM rAF writes, not React state | 60fps position updates without triggering React render cycles |
+| Callbacks used in `useEffect` deps must be `useCallback(fn, [])` stable references | Prevents cleanup/re-setup cycles on every render — a class of hard-to-debug state resets |
+| React state holds only serialisable UI representation; audio state lives in the worklet | Audio events never trigger React renders; state systems communicate one-way via `postMessage` |
+
+---
 
 - [x] Multitrack architecture — tracks derived from MIDI import or created manually
 - [x] Per-track module graphs and connection state

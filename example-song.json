@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "savedAt": "2026-04-02T08:17:10.309Z",
+  "savedAt": "2026-04-03T00:57:54.259Z",
   "sequence": {
     "bpm": 120,
     "ticksPerBeat": null,
@@ -12,7 +12,7 @@
       }
     ]
   },
-  "selectedTrackId": "track-manual-1775117238695-2",
+  "selectedTrackId": "import-1-track-1-channel-1",
   "tracks": [
     {
       "id": "import-1-track-7-channel-8",
@@ -992,36 +992,72 @@
         "volume": 0.8,
         "mute": false,
         "high": 0,
-        "mid": 0,
-        "low": 0,
-        "pan": -1
+        "mid": 0.7200000000000006,
+        "low": -5.28,
+        "pan": -0.6599999999999999
       },
       "modules": [
         {
           "id": "import-1-track-7-channel-8:module-1",
           "type": "oscillator",
-          "x": 535,
-          "y": 99,
+          "x": 401,
+          "y": 194,
           "params": {
             "frequency": 440,
             "amplitude": 1.0055415018560432,
             "shape": 1,
-            "dutyCycle": 0.9
+            "dutyCycle": 1
           },
           "instanceNum": 1
         },
         {
           "id": "import-1-track-7-channel-8:module-2",
           "type": "envelope",
-          "x": 140,
-          "y": 124,
+          "x": 86,
+          "y": 135,
           "params": {
             "attack": 0.01,
             "decay": 0.2,
             "sustain": 0.7,
-            "release": 0.039445730207527854
+            "release": 0.14321878992735437
           },
           "instanceNum": 1
+        },
+        {
+          "id": "import-1-track-7-channel-8:filter-1",
+          "type": "filter",
+          "instanceNum": 1,
+          "x": 1001,
+          "y": 39,
+          "params": {
+            "cutoffSlider": 0.284,
+            "resonance": 0.89,
+            "filterType": "lowpass"
+          }
+        },
+        {
+          "id": "import-1-track-7-channel-8:vca-1",
+          "type": "vca",
+          "instanceNum": 1,
+          "x": 719,
+          "y": 43,
+          "params": {
+            "gain": 1.9952623149688795,
+            "invert": true
+          }
+        },
+        {
+          "id": "import-1-track-7-channel-8:mfx-1",
+          "type": "mfx",
+          "instanceNum": 1,
+          "x": 1266,
+          "y": 48,
+          "params": {
+            "fxType": "reverb",
+            "time": 3.7187499999999996e-18,
+            "feedback": 0.13,
+            "mix": 0.22
+          }
         }
       ],
       "connections": [
@@ -1065,9 +1101,61 @@
           }
         },
         {
-          "id": "conn-1774876028760-vgc3oy",
+          "id": "conn-1775164996446-azv8j1",
           "from": {
             "moduleId": "import-1-track-7-channel-8:module-1",
+            "outputId": "output",
+            "position": null
+          },
+          "to": {
+            "moduleId": "import-1-track-7-channel-8:filter-1",
+            "outputId": "audio-input",
+            "position": null
+          }
+        },
+        {
+          "id": "conn-1775165108192-xx17gp",
+          "from": {
+            "moduleId": "keyboard-singleton",
+            "outputId": "velocity-out",
+            "position": null
+          },
+          "to": {
+            "moduleId": "import-1-track-7-channel-8:vca-1",
+            "outputId": "audio-input",
+            "position": null
+          }
+        },
+        {
+          "id": "conn-1775165123750-9e4wph",
+          "from": {
+            "moduleId": "import-1-track-7-channel-8:vca-1",
+            "outputId": "output",
+            "position": null
+          },
+          "to": {
+            "moduleId": "import-1-track-7-channel-8:filter-1",
+            "outputId": "cutoff-input",
+            "position": null
+          }
+        },
+        {
+          "id": "conn-1775165257642-gbveot",
+          "from": {
+            "moduleId": "import-1-track-7-channel-8:filter-1",
+            "outputId": "output",
+            "position": null
+          },
+          "to": {
+            "moduleId": "import-1-track-7-channel-8:mfx-1",
+            "outputId": "audio-input",
+            "position": null
+          }
+        },
+        {
+          "id": "conn-1775165259883-cjmy5y",
+          "from": {
+            "moduleId": "import-1-track-7-channel-8:mfx-1",
             "outputId": "output",
             "position": null
           },
@@ -1765,17 +1853,17 @@
         "high": -8.879999999999999,
         "mid": -5.28,
         "low": 5.5200000000000005,
-        "pan": 1
+        "pan": 0.56
       },
       "modules": [
         {
           "id": "import-1-track-1-channel-1:module-3",
           "type": "oscillator",
-          "x": 632,
-          "y": 88,
+          "x": 542,
+          "y": 52,
           "params": {
             "frequency": 440,
-            "amplitude": 0.5,
+            "amplitude": 1.3384433676499077,
             "shape": 0.13,
             "dutyCycle": 0.13
           },
@@ -1793,6 +1881,27 @@
             "release": 0.004207266283844441
           },
           "instanceNum": 1
+        },
+        {
+          "id": "import-1-track-1-channel-1:mfx-1",
+          "type": "mfx",
+          "instanceNum": 1,
+          "x": 885,
+          "y": 33,
+          "params": {
+            "fxType": "delay",
+            "time": 348,
+            "feedback": 0.4,
+            "mix": 0.25
+          }
+        },
+        {
+          "id": "import-1-track-1-channel-1:scope-1",
+          "type": "scope",
+          "instanceNum": 1,
+          "x": 1201,
+          "y": 33,
+          "params": {}
         }
       ],
       "connections": [
@@ -1836,10 +1945,36 @@
           }
         },
         {
-          "id": "conn-1774876073414-ugv3cj",
+          "id": "conn-1775165312333-q1il6f",
           "from": {
             "moduleId": "import-1-track-1-channel-1:module-3",
             "outputId": "output",
+            "position": null
+          },
+          "to": {
+            "moduleId": "import-1-track-1-channel-1:mfx-1",
+            "outputId": "audio-input",
+            "position": null
+          }
+        },
+        {
+          "id": "conn-1775177831360-4mcrh9",
+          "from": {
+            "moduleId": "import-1-track-1-channel-1:mfx-1",
+            "outputId": "output",
+            "position": null
+          },
+          "to": {
+            "moduleId": "import-1-track-1-channel-1:scope-1",
+            "outputId": "signal-input",
+            "position": null
+          }
+        },
+        {
+          "id": "conn-1775177834509-82294q",
+          "from": {
+            "moduleId": "import-1-track-1-channel-1:scope-1",
+            "outputId": "signal-output",
             "position": null
           },
           "to": {
@@ -2500,12 +2635,12 @@
         {
           "id": "import-1-track-6-channel-6:module-5",
           "type": "oscillator",
-          "x": 539,
-          "y": 125,
+          "x": 536,
+          "y": 97,
           "params": {
             "frequency": 440,
-            "amplitude": 0.5,
-            "shape": 0.91,
+            "amplitude": 1.002766922996587,
+            "shape": 0.49,
             "dutyCycle": 0.5
           },
           "instanceNum": 1
@@ -2513,8 +2648,8 @@
         {
           "id": "import-1-track-6-channel-6:module-6",
           "type": "envelope",
-          "x": 143,
-          "y": 164,
+          "x": 106,
+          "y": 121,
           "params": {
             "attack": 0.01,
             "decay": 0.2,
@@ -2574,340 +2709,6 @@
           "to": {
             "moduleId": "track-output-singleton",
             "outputId": "audio-input",
-            "position": null
-          }
-        }
-      ]
-    },
-    {
-      "id": "track-manual-1775117238695-2",
-      "name": "DRUMS",
-      "notes": [
-        {
-          "note": "A1s",
-          "bar": 1,
-          "beat": 0,
-          "duration": 1,
-          "velocity": 0.8
-        },
-        {
-          "note": "A1s",
-          "bar": 1,
-          "beat": 2,
-          "duration": 1,
-          "velocity": 0.8
-        },
-        {
-          "note": "A1s",
-          "bar": 2,
-          "beat": 0,
-          "duration": 1,
-          "velocity": 0.8
-        },
-        {
-          "note": "A1s",
-          "bar": 2,
-          "beat": 2,
-          "duration": 1,
-          "velocity": 0.8
-        },
-        {
-          "note": "A1s",
-          "bar": 3,
-          "beat": 0,
-          "duration": 1,
-          "velocity": 0.8
-        },
-        {
-          "note": "A1s",
-          "bar": 3,
-          "beat": 2,
-          "duration": 1,
-          "velocity": 0.8
-        },
-        {
-          "note": "A1s",
-          "bar": 4,
-          "beat": 0,
-          "duration": 1,
-          "velocity": 0.8
-        },
-        {
-          "note": "A1s",
-          "bar": 4,
-          "beat": 2,
-          "duration": 1,
-          "velocity": 0.8
-        },
-        {
-          "note": "D4",
-          "bar": 1,
-          "beat": 1,
-          "duration": 1,
-          "velocity": 0.8
-        },
-        {
-          "note": "D4",
-          "bar": 1,
-          "beat": 3,
-          "duration": 1,
-          "velocity": 0.8
-        },
-        {
-          "note": "D4",
-          "bar": 2,
-          "beat": 1,
-          "duration": 1,
-          "velocity": 0.8
-        },
-        {
-          "note": "D4",
-          "bar": 2,
-          "beat": 3,
-          "duration": 1,
-          "velocity": 0.8
-        },
-        {
-          "note": "D4",
-          "bar": 3,
-          "beat": 1,
-          "duration": 1,
-          "velocity": 0.8
-        },
-        {
-          "note": "D4",
-          "bar": 3,
-          "beat": 3,
-          "duration": 1,
-          "velocity": 0.8
-        },
-        {
-          "note": "D4",
-          "bar": 4,
-          "beat": 1,
-          "duration": 1,
-          "velocity": 0.8
-        },
-        {
-          "note": "D4",
-          "bar": 4,
-          "beat": 3,
-          "duration": 1,
-          "velocity": 0.8
-        }
-      ],
-      "durationMs": 125,
-      "mix": {
-        "volume": 0.8,
-        "mute": false
-      },
-      "modules": [
-        {
-          "id": "track-manual-1775117238695-2:random-1",
-          "type": "random",
-          "instanceNum": 1,
-          "x": 715,
-          "y": 311,
-          "params": {
-            "rate": 8000
-          }
-        },
-        {
-          "id": "track-manual-1775117238695-2:vca-1",
-          "type": "vca",
-          "instanceNum": 1,
-          "x": 944,
-          "y": 347,
-          "params": {
-            "gain": 0.001,
-            "invert": false
-          }
-        },
-        {
-          "id": "track-manual-1775117238695-2:envelope-1",
-          "type": "envelope",
-          "instanceNum": 1,
-          "x": 63,
-          "y": 90,
-          "params": {
-            "attack": 0.001,
-            "decay": 0.06426877173170198,
-            "sustain": 0,
-            "release": 0.001
-          }
-        },
-        {
-          "id": "track-manual-1775117238695-2:oscillator-1",
-          "type": "oscillator",
-          "instanceNum": 1,
-          "x": 482,
-          "y": 21,
-          "params": {
-            "frequency": 440,
-            "amplitude": 1.9952623149688795,
-            "shape": 0,
-            "dutyCycle": 0.5
-          }
-        },
-        {
-          "id": "track-manual-1775117238695-2:mixer-1",
-          "type": "mixer",
-          "instanceNum": 1,
-          "x": 1256,
-          "y": 170,
-          "params": {
-            "levelA": 0.5,
-            "levelB": 0.5
-          }
-        },
-        {
-          "id": "track-manual-1775117238695-2:multi-1",
-          "type": "multi",
-          "instanceNum": 1,
-          "x": 275,
-          "y": 335,
-          "params": {}
-        },
-        {
-          "id": "track-manual-1775117238695-2:vca-2",
-          "type": "vca",
-          "instanceNum": 2,
-          "x": 917,
-          "y": 65,
-          "params": {
-            "gain": 1.507301044163132,
-            "invert": false
-          }
-        }
-      ],
-      "connections": [
-        {
-          "id": "conn-1775117295053-t0f2r5",
-          "from": {
-            "moduleId": "keyboard-singleton",
-            "outputId": "gate-out",
-            "position": null
-          },
-          "to": {
-            "moduleId": "track-manual-1775117238695-2:envelope-1",
-            "outputId": "gate-input",
-            "position": null
-          }
-        },
-        {
-          "id": "conn-1775117439654-51zhjf",
-          "from": {
-            "moduleId": "keyboard-singleton",
-            "outputId": "cv-out",
-            "position": null
-          },
-          "to": {
-            "moduleId": "track-manual-1775117238695-2:oscillator-1",
-            "outputId": "freq-input",
-            "position": null
-          }
-        },
-        {
-          "id": "conn-1775117461960-s5vrv6",
-          "from": {
-            "moduleId": "track-manual-1775117238695-2:mixer-1",
-            "outputId": "output",
-            "position": null
-          },
-          "to": {
-            "moduleId": "track-output-singleton",
-            "outputId": "audio-input",
-            "position": null
-          }
-        },
-        {
-          "id": "conn-1775117477680-jvpt61",
-          "from": {
-            "moduleId": "track-manual-1775117238695-2:envelope-1",
-            "outputId": "output",
-            "position": null
-          },
-          "to": {
-            "moduleId": "track-manual-1775117238695-2:multi-1",
-            "outputId": "signal-input",
-            "position": null
-          }
-        },
-        {
-          "id": "conn-1775117527803-6oxykg",
-          "from": {
-            "moduleId": "track-manual-1775117238695-2:random-1",
-            "outputId": "output",
-            "position": null
-          },
-          "to": {
-            "moduleId": "track-manual-1775117238695-2:vca-1",
-            "outputId": "gain-input",
-            "position": null
-          }
-        },
-        {
-          "id": "conn-1775117532220-4k9582",
-          "from": {
-            "moduleId": "track-manual-1775117238695-2:multi-1",
-            "outputId": "output-a",
-            "position": null
-          },
-          "to": {
-            "moduleId": "track-manual-1775117238695-2:oscillator-1",
-            "outputId": "amp-input",
-            "position": null
-          }
-        },
-        {
-          "id": "conn-1775117535119-nr9lf9",
-          "from": {
-            "moduleId": "track-manual-1775117238695-2:multi-1",
-            "outputId": "output-b",
-            "position": null
-          },
-          "to": {
-            "moduleId": "track-manual-1775117238695-2:vca-1",
-            "outputId": "audio-input",
-            "position": null
-          }
-        },
-        {
-          "id": "conn-1775117628733-abzbzi",
-          "from": {
-            "moduleId": "track-manual-1775117238695-2:oscillator-1",
-            "outputId": "output",
-            "position": null
-          },
-          "to": {
-            "moduleId": "track-manual-1775117238695-2:vca-2",
-            "outputId": "audio-input",
-            "position": null
-          }
-        },
-        {
-          "id": "conn-1775117631908-d5xcw5",
-          "from": {
-            "moduleId": "track-manual-1775117238695-2:vca-2",
-            "outputId": "output",
-            "position": null
-          },
-          "to": {
-            "moduleId": "track-manual-1775117238695-2:mixer-1",
-            "outputId": "input-a",
-            "position": null
-          }
-        },
-        {
-          "id": "conn-1775117633924-b4kvoo",
-          "from": {
-            "moduleId": "track-manual-1775117238695-2:vca-1",
-            "outputId": "output",
-            "position": null
-          },
-          "to": {
-            "moduleId": "track-manual-1775117238695-2:mixer-1",
-            "outputId": "input-b",
             "position": null
           }
         }

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import exampleSong from '../example-song.json';
 import AppSelect from './components/AppSelect.jsx';
 import { COLOR_WIRE, COLOR_WIRE_DIM, COLOR_SLIDER } from './theme.js';
 import ToolbarButton from './components/ToolbarButton.jsx';
@@ -370,6 +371,11 @@ function App() {
     const previousTrackIdsRef = useRef(new Set());
 
     const [viewMode, setViewMode] = useState('voice'); // 'voice' | 'notes'
+    const [notesViewport, setNotesViewport] = useState(null); // {startMs, endMs} or null
+
+    const handleViewportChange = useCallback((vp) => {
+        setNotesViewport(vp ?? null);
+    }, []);
 
     const selectedTrack = tracks.find((track) => track.id === selectedTrackId) ?? tracks[0] ?? null;
     const effectiveSelectedTrackId = selectedTrack?.id ?? null;
@@ -793,12 +799,7 @@ function App() {
         window.URL.revokeObjectURL(objectUrl);
     };
 
-    const handleProjectLoad = async (file) => {
-        stop();
-
-        const rawText = await file.text();
-        const parsedProject = JSON.parse(rawText);
-
+    const loadProjectData = useCallback((parsedProject) => {
         if (!Array.isArray(parsedProject?.tracks)) {
             throw new Error('Invalid project file: expected a tracks array.');
         }
@@ -840,6 +841,31 @@ function App() {
         });
         setTracks(tracksWithSegments);
         setSelectedTrackId(nextSelectedTrackId);
+        setModuleUiRevision((current) => current + 1);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Load example song on initial mount
+    useEffect(() => {
+        loadProjectData(exampleSong);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const handleProjectLoad = async (file) => {
+        stop();
+        const rawText = await file.text();
+        const parsedProject = JSON.parse(rawText);
+        loadProjectData(parsedProject);
+    };
+
+    const handleReset = () => {
+        stop();
+        clearAllModules();
+        const emptyTrack = createManualTrack('Track 1');
+        manualTrackCounter = 2;
+        const emptySequence = { ...initialProjectSequence };
+        setProjectSequence(emptySequence);
+        loadSession(emptySequence, [emptyTrack]);
+        setTracks([emptyTrack]);
+        setSelectedTrackId(emptyTrack.id);
         setModuleUiRevision((current) => current + 1);
     };
 
@@ -1054,6 +1080,7 @@ function App() {
                 onImportMidi={() => midiImportInputRef.current?.click()}
                 onLoadProject={() => projectLoadInputRef.current?.click()}
                 onSaveProject={handleProjectSave}
+                onResetProject={handleReset}
                 viewMode={viewMode}
                 setViewMode={setViewMode}
                 selectedTrack={selectedTrack}
@@ -1140,8 +1167,10 @@ function App() {
                         <PianoRoll
                             track={selectedTrack}
                             timeSignatures={projectSequence.timeSignatures}
+                            bpm={projectSequence.bpm ?? 120}
                             onNotesChange={handleNotesChange}
                             selectedTrackId={effectiveSelectedTrackId}
+                            onViewportChange={handleViewportChange}
                         />
                     ) : (
                         // VOICE mode: keyboard | canvas | amplifier
@@ -1231,6 +1260,7 @@ function App() {
                 onSetTransportPosition={seekTo}
                 isRecording={isRecording}
                 onRecord={handleToggleRecord}
+                notesViewport={viewMode === 'notes' ? notesViewport : null}
                 bpm={projectSequence.bpm ?? 120}
                 onBpmChange={(newBpm) => {
                     const updated = { ...projectSequence, bpm: newBpm };
@@ -1284,7 +1314,7 @@ function MidiSelector() {
     );
 }
 
-function Toolbar({ addModule, hasSelectedTrack, audioError, onImportMidi, onLoadProject, onSaveProject, viewMode, setViewMode, selectedTrack, onUpdatePolyphony, onUpdatePortamento }) {
+function Toolbar({ addModule, hasSelectedTrack, audioError, onImportMidi, onLoadProject, onSaveProject, onResetProject, viewMode, setViewMode, selectedTrack, onUpdatePolyphony, onUpdatePortamento }) {
     return (
         <div style={{
             height: `${toolbarHeight}px`,
@@ -1292,10 +1322,12 @@ function Toolbar({ addModule, hasSelectedTrack, audioError, onImportMidi, onLoad
             borderBottom: '2px solid #444',
             display: 'flex',
             alignItems: 'center',
-            padding: '0 10px 0 10px',
+            padding: '0 10px',
             gap: '0',
             zIndex: 1000,
-            flexShrink: 0
+            flexShrink: 0,
+            overflow: 'visible',
+            position: 'relative',
         }}>
             {/* App title */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
@@ -1308,7 +1340,7 @@ function Toolbar({ addModule, hasSelectedTrack, audioError, onImportMidi, onLoad
             {selectedTrack ? (
                 <>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingRight: '12px', flexShrink: 0 }}>
-                        <span style={{ color: '#fff', fontSize: '16px', letterSpacing: '0.06em' }}>{selectedTrack.name}</span>
+                        <span style={{ color: '#8adb8a', fontSize: '16px', letterSpacing: '0.06em' }}>{selectedTrack.name}</span>
                     </div>
                 </>
             ) : (
@@ -1317,7 +1349,7 @@ function Toolbar({ addModule, hasSelectedTrack, audioError, onImportMidi, onLoad
                 </div>
             )}
 
-            {/* View tabs — folder tabs connected to content below */}
+            {/* View tabs — folder tabs, bottom-aligned, active merges into content */}
             {(['voice', 'notes']).map((mode) => {
                 const isActive = viewMode === mode;
                 return (
@@ -1325,27 +1357,26 @@ function Toolbar({ addModule, hasSelectedTrack, audioError, onImportMidi, onLoad
                         key={mode}
                         onClick={() => setViewMode(mode)}
                         style={{
-                            padding: '0 16px',
-                            fontSize: '12px',
+                            padding: '0 18px',
+                            fontSize: '11px',
                             fontWeight: 600,
-                            letterSpacing: '0.08em',
+                            letterSpacing: '0.1em',
                             textTransform: 'uppercase',
                             fontFamily: 'inherit',
                             cursor: 'pointer',
-                            height: '80%',
                             flexShrink: 0,
                             alignSelf: 'flex-end',
-                            // Active: raised tab flush with content, no bottom border
-                            background: isActive ? '#101010' : '#1a1a1a',
-                            color: isActive ? '#ccc' : '#555',
-                            border: isActive ? '1px solid #444' : '1px solid #333',
-                            borderBottom: isActive ? '2px solid #101010' : '1px solid #444',
-                            borderRadius: '4px 4px 0 0',
+                            height: isActive ? `${toolbarHeight - 6}px` : `${toolbarHeight - 14}px`,
                             marginBottom: isActive ? '-2px' : '0',
-                            // Inactive tab is slightly shorter to look "behind"
-                            height: isActive ? `${toolbarHeight}px` : `${toolbarHeight - 4}px`,
-                            transition: 'background 0.1s, color 0.1s',
-                            marginLeft: mode === 'voice' ? '8px' : '2px',
+                            background: isActive ? '#101010' : '#1c1c1c',
+                            color: isActive ? '#e0e0e0' : '#505050',
+                            border: '1px solid #444',
+                            borderBottom: isActive ? '2px solid #101010' : '1px solid #444',
+                            borderRadius: '5px 5px 0 0',
+                            marginLeft: mode === 'voice' ? '10px' : '3px',
+                            zIndex: isActive ? 1001 : 999,
+                            position: 'relative',
+                            transition: 'background 0.12s, color 0.12s',
                         }}
                     >
                         {mode}
@@ -1387,6 +1418,7 @@ function Toolbar({ addModule, hasSelectedTrack, audioError, onImportMidi, onLoad
                 <div style={{ display: 'flex', gap: '8px' }}>
                     <ToolbarButton onClick={onLoadProject}>LOAD</ToolbarButton>
                     <ToolbarButton onClick={onSaveProject}>SAVE</ToolbarButton>
+                    <ToolbarButton onClick={onResetProject}>RESET</ToolbarButton>
                     <ToolbarButton onClick={onImportMidi}>IMPORT</ToolbarButton>
                 </div>
 
