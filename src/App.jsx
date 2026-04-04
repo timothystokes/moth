@@ -1331,7 +1331,7 @@ function Toolbar({ addModule, hasSelectedTrack, audioError, onImportMidi, onLoad
         }}>
             {/* App title */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-                <img src="/moth.svg" alt="moth" style={{ height: 44, width: 'auto', display: 'block', opacity: 0.9 }} />
+                <img src={`${import.meta.env.BASE_URL}moth.svg`} alt="moth" style={{ height: 44, width: 'auto', display: 'block', opacity: 0.9 }} />
                 <b style={{ fontSize: '14px', letterSpacing: '0.15em' }}>MOTH</b>
             </div>
             <NavDivider />
