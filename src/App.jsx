@@ -844,9 +844,23 @@ function App() {
         setModuleUiRevision((current) => current + 1);
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Load example song on initial mount
+    // Load example song on initial mount, or a song specified by URL hash (e.g. #ai-song.json)
     useEffect(() => {
-        loadProjectData(exampleSong);
+        const hash = window.location.hash.slice(1); // strip leading '#'
+        if (hash) {
+            fetch(hash)
+                .then((res) => {
+                    if (!res.ok) throw new Error(`Failed to load "${hash}": ${res.status} ${res.statusText}`);
+                    return res.json();
+                })
+                .then((data) => loadProjectData(data))
+                .catch((err) => {
+                    console.error(err);
+                    loadProjectData(exampleSong);
+                });
+        } else {
+            loadProjectData(exampleSong);
+        }
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleProjectLoad = async (file) => {
