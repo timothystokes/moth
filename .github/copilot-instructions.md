@@ -16,61 +16,90 @@ MOTH1 is a web-based modular synthesiser built with **React 18** and **Vite**, r
 
 ---
 
-## Architectural Requirements
+## Architectural Constraints
 
-These are the binding design decisions that shape the codebase. Each entry states the **Constraint** (what must be true) and the **Benefit** (why it must be true).
+These are the binding design decisions that shape the codebase. Each entry states the **Constraint** (what must be true) and the **Rationale** (why it must be true).
 
 ### Audio engine runs in an AudioWorklet, not the main thread
-**Constraint:** All audio rendering — graph evaluation, voice processing, mixing — happens inside `moth-synth-worklet.js` in the AudioWorklet thread. The main thread only manages state and sends messages via `port.postMessage()`.  
-**Benefit:** The AudioWorklet thread is scheduled by the browser on a real-time priority path, isolated from GC pauses, React renders, and DOM work. Without this, audio would glitch whenever the UI does anything non-trivial.
+> #### Constraint:
+> All audio rendering — graph evaluation, voice processing, mixing — happens inside `moth-synth-worklet.js` in the AudioWorklet thread. The main thread only manages state and sends messages via `port.postMessage()`.  
+> #### Rationale:
+> The AudioWorklet thread is scheduled by the browser on a real-time priority path, isolated from GC pauses, React renders, and DOM work. Without this, audio would glitch whenever the UI does anything non-trivial.
 
 ### Module graph compiled to closures at topology-change time
-**Constraint:** When modules or connections change, `compileModuleEvaluator()` runs and assembles a tree of JavaScript closures. The audio `process()` loop calls these closures directly — it never traverses the graph at render time.  
-**Benefit:** Audio render cost is O(1) per sample with no dynamic dispatch or object lookups. This is the only way to safely do complex modular routing at audio rates (44100 samples/sec) in JavaScript.
+
+> #### Constraint:
+> When modules or connections change, `compileModuleEvaluator()` runs and assembles a tree of JavaScript closures. The audio `process()` loop calls these closures directly — it never traverses the graph at render time.  
+> #### Rationale:
+> Audio render cost is O(1) per sample with no dynamic dispatch or object lookups. This is the only way to safely do complex modular routing at audio rates (44100 samples/sec) in JavaScript.
 
 ### Parameter changes update params objects in-place — no recompile
-**Constraint:** Slider and knob changes post an `update-params` message that mutates the stable `params` object captured by the evaluator closure. They never trigger `rebuildCompiledRouting()`.  
-**Benefit:** Real-time parameter sweeps (e.g. cutoff, resonance, BPM) are instantaneous and allocation-free. Recompiling on every knob movement would cause audio dropouts.
+
+> #### Constraint:
+> Slider and knob changes post an `update-params` message that mutates the stable `params` object captured by the evaluator closure. They never trigger `rebuildCompiledRouting()`.  
+> #### Rationale:
+> Real-time parameter sweeps (e.g. cutoff, resonance, BPM) are instantaneous and allocation-free. Recompiling on every knob movement would cause audio dropouts.
 
 ### Shared modules are evaluated at most once per audio frame (frame cache)
-**Constraint:** A `frameCache` map keyed `"voiceId|moduleId"` stores each module's output for the current sample. Before evaluating, every module checks this cache and returns immediately if a result exists for this frame.  
-**Benefit:** Multi modules (signal splitters) and any shared routing only compute once per frame regardless of how many downstream connections they have. Evaluation time stays proportional to graph _size_, not graph _connections_.
+> #### Constraint:
+> A `frameCache` map keyed `"voiceId|moduleId"` stores each module's output for the current sample. Before evaluating, every module checks this cache and returns immediately if a result exists for this frame.  
+> #### Rationale:
+> Multi modules (signal splitters) and any shared routing only compute once per frame regardless of how many downstream connections they have. Evaluation time stays proportional to graph _size_, not graph _connections_.
 
 ### Per-voice module state keyed by voiceId, never global
-**Constraint:** All stateful module data — oscillator phase, envelope stage and level, filter state variables, delay/reverb buffers — is stored in Maps keyed by `voiceId`, not in closure-level variables.  
-**Benefit:** Each of the up-to-16 voices gets truly independent state. New voices start from a clean baseline; stolen voices reset correctly without affecting other voices. True polyphony is impossible without this.
+> #### Constraint:
+> All stateful module data — oscillator phase, envelope stage and level, filter state variables, delay/reverb buffers — is stored in Maps keyed by `voiceId`, not in closure-level variables.  
+> #### Rationale:
+> Each of the up-to-16 voices gets truly independent state. New voices start from a clean baseline; stolen voices reset correctly without affecting other voices. True polyphony is impossible without this.
 
 ### Voice states are only FREE or ACTIVE; envelope tails are owned by the envelope module
-**Constraint:** The voice pool has exactly two states: `'free'` and `'active'`. On note-off a voice is freed immediately. Envelope release tails continue to play because the envelope module's internal state machine keeps running until it reaches `idle` — the voice pool has no knowledge of this.  
-**Benefit:** Voice allocation stays simple and predictable. Adding a RELEASE state would require the pool to know about envelope durations, coupling two unrelated concerns.
+> #### Constraint:
+> The voice pool has exactly two states: `'free'` and `'active'`. On note-off a voice is freed immediately. Envelope release tails continue to play because the envelope module's internal state machine keeps running until it reaches `idle` — the voice pool has no knowledge of this.  
+> #### Rationale:
+> Voice allocation stays simple and predictable. Adding a RELEASE state would require the pool to know about envelope durations, coupling two unrelated concerns.
 
 ### FIFO voice allocation: oldest free first, oldest active stolen last
-**Constraint:** `claimVoice()` always prefers the voice that has been free the longest (`voiceFreeOrder[0]`). If no voice is free, it steals the voice that has been active the longest (`voiceAllocationOrder[0]`).  
-**Benefit:** Maximises the time available for envelope tails to complete before a voice is reused, minimising audible clicks on steal. Deterministic ordering means repeated patterns sound consistent.
+> #### Constraint:
+> `claimVoice()` always prefers the voice that has been free the longest (`voiceFreeOrder[0]`). If no voice is free, it steals the voice that has been active the longest (`voiceAllocationOrder[0]`).  
+> #### Rationale:
+> Maximises the time available for envelope tails to complete before a voice is reused, minimising audible clicks on steal. Deterministic ordering means repeated patterns sound consistent.
 
 ### Voice dependency is computed per-graph, not assumed
-**Constraint:** Before rendering a track, the worklet calls `isModuleVoiceDependent()` to determine whether any keyboard module is reachable from the output. If not, the graph is rendered once globally with `laneContext = null`.  
-**Benefit:** Avoids rendering the full module graph once per voice when no voice-specific signal is used (e.g. a global LFO driving all voices identically). CPU cost scales with actual polyphony need.
+> #### Constraint:
+> Before rendering a track, the worklet calls `isModuleVoiceDependent()` to determine whether any keyboard module is reachable from the output. If not, the graph is rendered once globally with `laneContext = null`.  
+> #### Rationale:
+> Avoids rendering the full module graph once per voice when no voice-specific signal is used (e.g. a global LFO driving all voices identically). CPU cost scales with actual polyphony need.
 
 ### Flat note data model — no nested sequences or arrangements
-**Constraint:** Notes are stored as a flat array per track: `{ note, bar, beat, duration, velocity }`. There is no sequence/pattern/arrangement hierarchy. `noteSegments` (ms timings) are derived on load and never persisted.  
-**Benefit:** Simple to serialise, diff, and merge. MIDI import produces the same format directly. Eliminates a layer of indirection that complicated earlier versions of the code.
+> #### Constraint:
+> Notes are stored as a flat array per track: `{ note, bar, beat, duration, velocity }`. There is no sequence/pattern/arrangement hierarchy. `noteSegments` (ms timings) are derived on load and never persisted.  
+> #### Rationale:
+> Simple to serialise, diff, and merge. MIDI import produces the same format directly. Eliminates a layer of indirection that complicated earlier versions of the code.
 
 ### Pseudo-voltage signal model with defined ranges
-**Constraint:** All inter-module signals use analog modular voltage conventions — 1V/octave pitch, 0–5V gate/velocity/envelope, ±1V audio. Signal range is part of the public contract of every module type.  
-**Benefit:** Patching semantics match real Eurorack conventions, so the behaviour of any patch is predictable and composable. CV inputs that go out of range are clamped explicitly, not silently clipped by floating-point saturation.
+
+> #### Constraint:
+> All inter-module signals use analog modular voltage conventions — 1V/octave pitch, 0–5V gate/velocity/envelope, ±1V audio. Signal range is part of the public contract of every module type.  
+> #### Rationale:
+> Patching semantics match real Eurorack conventions, so the behaviour of any patch is predictable and composable. CV inputs that go out of range are clamped explicitly, not silently clipped by floating-point saturation.
 
 ### Playhead animation uses direct DOM manipulation, not React state
-**Constraint:** Each `TrackRow` in `Transport.jsx` runs its own `requestAnimationFrame` loop. The loop reads `getPlaybackPositionMs()` directly and writes `playheadRef.current.style.left` — it never calls `setState`.  
-**Benefit:** Playhead position updates at 60fps without triggering React renders. Routing 60fps updates through React state would cause the entire transport to re-render on every frame.
+> #### Constraint:
+> Each `TrackRow` in `Transport.jsx` runs its own `requestAnimationFrame` loop. The loop reads `getPlaybackPositionMs()` directly and writes `playheadRef.current.style.left` — it never calls `setState`.  
+> #### Rationale:
+> Playhead position updates at 60fps without triggering React renders. Routing 60fps updates through React state would cause the entire transport to re-render on every frame.
 
 ### Cross-thread callbacks passed into `useEffect` deps must be stable references
-**Constraint:** Any callback that is passed as a prop and used inside a `useEffect` dependency array (e.g. `onViewportChange`) must be wrapped in `useCallback` with an empty dependency array `[]` in the parent.  
-**Benefit:** Prevents `useEffect` cleanup/setup cycles on every render. If an inline arrow function is passed, its reference changes every render, so the effect's cleanup fires and re-fires continuously — a class of subtle bug where state is reset faster than it can be set.
+> #### Constraint:
+> Any callback that is passed as a prop and used inside a `useEffect` dependency array (e.g. `onViewportChange`) must be wrapped in `useCallback` with an empty dependency array `[]` in the parent.  
+> #### Rationale:
+> Prevents `useEffect` cleanup/setup cycles on every render. If an inline arrow function is passed, its reference changes every render, so the effect's cleanup fires and re-fires continuously — a class of subtle bug where state is reset faster than it can be set.
 
 ### React state is UI state only; audio state lives in the worklet
-**Constraint:** Module parameters, voice states, audio buffers, and graph topology are owned by the worklet. React holds only the serialisable representation needed to render the UI and reconstruct the worklet state on reload.  
-**Benefit:** Audio state never triggers React renders. UI renders only on user actions, not on audio events. The two state systems communicate through a one-way message channel, not shared mutable objects.
+> #### Constraint:
+> Module parameters, voice states, audio buffers, and graph topology are owned by the worklet. React holds only the serialisable representation needed to render the UI and reconstruct the worklet state on reload.  
+> #### Rationale:
+> Audio state never triggers React renders. UI renders only on user actions, not on audio events. The two state systems communicate through a one-way message channel, not shared mutable objects.
 
 ---
 
