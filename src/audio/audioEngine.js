@@ -39,9 +39,13 @@ function emitVoiceStatus(voiceStatus) {
     voiceStatusListeners.forEach((listener) => listener(voiceStatus));
 }
 
-function postToWorklet(message) {
+function postToWorklet(message, transfer) {
     if (workletNodeRef) {
-        workletNodeRef.port.postMessage(message);
+        if (transfer) {
+            workletNodeRef.port.postMessage(message, transfer);
+        } else {
+            workletNodeRef.port.postMessage(message);
+        }
     }
 }
 
@@ -171,6 +175,21 @@ export function updateModuleParams(moduleId, params) {
     const existing = moduleStates.get(moduleId);
     if (existing) moduleStates.set(moduleId, { ...existing, params: { ...existing.params, ...params } });
     postToWorklet({ type: 'update-params', moduleId, params });
+}
+
+export function loadSamplerSample(moduleId, sample, sampleRate, recordedFrequency) {
+    const sampleBuffer = sample instanceof Float32Array ? sample : new Float32Array(sample ?? []);
+    postToWorklet({
+        type: 'sampler-sample',
+        moduleId,
+        sample: sampleBuffer,
+        sampleRate,
+        recordedFrequency
+    }, [sampleBuffer.buffer]);
+}
+
+export function triggerSampler(moduleId) {
+    postToWorklet({ type: 'sampler-trigger', moduleId });
 }
 
 export function getModuleState(moduleId) {

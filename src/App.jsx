@@ -14,6 +14,7 @@ import Multi from './components/Multi.jsx';
 import VCA from './components/VCA.jsx';
 import Scope from './components/Scope.jsx';
 import MFX from './components/MFX.jsx';
+import Sampler from './components/Sampler.jsx';
 import Transport from './components/Transport.jsx';
 import NavDivider from './components/NavDivider.jsx';
 import ControlBlock from './components/ControlBlock.jsx';
@@ -1233,6 +1234,7 @@ function App() {
                                         ['multi', 'MUL'],
                                         ['vca', 'VCA'],
                                         ['mfx', 'MFX'],
+                                        ['sampler', 'SAM'],
                                         ['scope', 'SCO'],
                                     ].map(([type, label]) => (
                                         <ToolbarButton
@@ -1470,6 +1472,7 @@ function Canvas({ canvasRef, modules, connections, connectingFrom, onModuleDragS
         vca: VCA,
         delay: MFX,
         mfx: MFX,
+        sampler: Sampler,
         scope: Scope,
     };
 
