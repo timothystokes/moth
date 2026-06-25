@@ -60,6 +60,7 @@ class MothSynthProcessor extends AudioWorkletProcessor {
         this.scopeSampleCounter = 0;
         this.scopeTrackId = null;
         this.moduleScopeBuffers = new Map();
+        this.samplerStates = new Map();
 
         this.reportedRuntimeIssues = new Set();
         this.diagnosticSerial = 0;
@@ -301,10 +302,28 @@ class MothSynthProcessor extends AudioWorkletProcessor {
                     if (mp) Object.assign(mp, message.params);
                     break;
                 }
+                case 'sampler-sample': {
+                    const samplerState = this.getSamplerState(message.moduleId);
+                    samplerState.sample = message.sample instanceof Float32Array
+                        ? message.sample
+                        : new Float32Array(message.sample ?? []);
+                    samplerState.sampleRate = Number.isFinite(message.sampleRate) ? message.sampleRate : 12000;
+                    samplerState.recordedFrequency = Number.isFinite(message.recordedFrequency) ? message.recordedFrequency : 440;
+                    samplerState.mono.active = false;
+                    samplerState.mono.position = 0;
+                    samplerState.polySlots = [];
+                    break;
+                }
+                case 'sampler-trigger': {
+                    const samplerState = this.getSamplerState(message.moduleId);
+                    samplerState.triggerSerial += 1;
+                    break;
+                }
                 case 'remove-module':
                     this.modules.delete(message.moduleId);
                     this.moduleParams.delete(message.moduleId);
                     this.moduleScopeBuffers.delete(message.moduleId);
+                    this.samplerStates.delete(message.moduleId);
                     this.rebuildCompiledRouting();
                     this.invalidateGraphAnalysisCache();
                     break;
@@ -349,6 +368,7 @@ class MothSynthProcessor extends AudioWorkletProcessor {
                     this.modules.clear();
                     this.moduleParams.clear();
                     this.connections.clear();
+                    this.samplerStates.clear();
                     this.compiledModuleInputs.clear();
                     this.compiledModuleEvaluators.clear();
                     this.compiledTrackOutputs.clear();
@@ -455,6 +475,27 @@ class MothSynthProcessor extends AudioWorkletProcessor {
 
     resetRuntimeState() {
         this.reportedRuntimeIssues.clear();
+    }
+
+    getSamplerState(moduleId) {
+        if (!this.samplerStates.has(moduleId)) {
+            this.samplerStates.set(moduleId, {
+                sample: null,
+                sampleRate: 12000,
+                recordedFrequency: 440,
+                triggerSerial: 0,
+                allocationSerial: 0,
+                mono: {
+                    active: false,
+                    position: 0,
+                    lastTriggerSerial: 0
+                },
+                gateByVoiceId: new Map(),
+                polySlots: []
+            });
+        }
+
+        return this.samplerStates.get(moduleId);
     }
 
     getTrackOutputModuleId(trackId) {
@@ -696,6 +737,9 @@ class MothSynthProcessor extends AudioWorkletProcessor {
             case 'random':
                 isVoiceDependent = this.isInputVoiceDependent(moduleId, 'rate-input', visited);
                 break;
+            case 'sampler':
+                isVoiceDependent = Boolean(this.getCompiledInputRoute(moduleId, 'gate-input'));
+                break;
             case 'mixer':
                 isVoiceDependent = ['input-a', 'input-b']
                     .some((inputName) => this.isInputVoiceDependent(moduleId, inputName, visited));
@@ -797,6 +841,8 @@ class MothSynthProcessor extends AudioWorkletProcessor {
                 return this.createEnvelopeFactory(moduleId, params, activeStack);
             case 'random':
                 return this.createRandomFactory(moduleId, params, activeStack);
+            case 'sampler':
+                return this.createSamplerFactory(moduleId, params, activeStack);
             case 'mixer':
                 return this.createMixerFactory(moduleId, params, activeStack);
             case 'vca':
@@ -1129,6 +1175,131 @@ class MothSynthProcessor extends AudioWorkletProcessor {
             }
 
             return randState.currentValue;
+        };
+    }
+
+    createSamplerFactory(moduleId, params, activeStack) {
+        const frequencyRead = this.createInputReader(moduleId, 'freq-input', activeStack);
+        const gateRead = this.createInputReader(moduleId, 'gate-input', activeStack);
+        const samplerState = this.getSamplerState(moduleId);
+        const trackId = moduleId.includes(':') ? moduleId.split(':')[0] : null;
+
+        const readSample = (sample, position) => {
+            const leftIndex = Math.floor(position);
+            if (leftIndex < 0 || leftIndex >= sample.length) {
+                return 0;
+            }
+            const rightIndex = Math.min(sample.length - 1, leftIndex + 1);
+            const fraction = position - leftIndex;
+            return sample[leftIndex] * (1 - fraction) + sample[rightIndex] * fraction;
+        };
+
+        const getFrequency = (timeMs, laneContext) => {
+            const frequencyCv = frequencyRead ? frequencyRead(timeMs, laneContext) : 0;
+            return Math.max(0.001, Math.min(8000, (params.frequency ?? 440) * Math.pow(2, frequencyCv)));
+        };
+
+        const getStep = (frequency, baseFrequency) => {
+            const sample = samplerState.sample;
+            if (!sample || sample.length === 0) {
+                return 0;
+            }
+
+            const referenceFrequency = Math.max(0.001, baseFrequency ?? samplerState.recordedFrequency ?? params.frequency ?? 440);
+            const playbackRatio = Math.max(0, Math.min(64, frequency / referenceFrequency));
+            return (samplerState.sampleRate / sampleRate) * playbackRatio;
+        };
+
+        const allocatePolySlot = (voiceId, playbackFrequency) => {
+            const trackState = this.getTrackState(trackId);
+            const capacity = Math.max(1, trackState?.voices?.length ?? 1);
+            let slot = samplerState.polySlots
+                .filter((entry) => !entry.active)
+                .sort((a, b) => (a.freedSerial ?? 0) - (b.freedSerial ?? 0))[0];
+
+            if (!slot && samplerState.polySlots.length < capacity) {
+                slot = {
+                    slotId: `${moduleId}:sampler-voice-${samplerState.polySlots.length}`,
+                    active: false,
+                    position: 0,
+                    voiceId: null,
+                    allocationSerial: 0,
+                    freedSerial: samplerState.allocationSerial
+                };
+                samplerState.polySlots.push(slot);
+            }
+
+            if (!slot) {
+                slot = samplerState.polySlots
+                    .filter((entry) => entry.active)
+                    .sort((a, b) => a.allocationSerial - b.allocationSerial)[0];
+            }
+
+            if (!slot) {
+                return;
+            }
+
+            slot.active = true;
+            slot.position = 0;
+            slot.voiceId = voiceId;
+            slot.baseFrequency = samplerState.recordedFrequency;
+            slot.playbackFrequency = playbackFrequency;
+            slot.allocationSerial = ++samplerState.allocationSerial;
+        };
+
+        return (timeMs, laneContext) => {
+            const sample = samplerState.sample;
+            if (!sample || sample.length === 0) {
+                return 0;
+            }
+
+            if (!gateRead) {
+                if (samplerState.triggerSerial !== samplerState.mono.lastTriggerSerial) {
+                    samplerState.mono.active = true;
+                    samplerState.mono.position = 0;
+                    samplerState.mono.baseFrequency = samplerState.recordedFrequency;
+                    samplerState.mono.lastTriggerSerial = samplerState.triggerSerial;
+                }
+
+                if (!samplerState.mono.active) {
+                    return 0;
+                }
+
+                const value = readSample(sample, samplerState.mono.position);
+                samplerState.mono.position += getStep(getFrequency(timeMs, null), samplerState.mono.baseFrequency);
+                if (samplerState.mono.position >= sample.length) {
+                    samplerState.mono.active = false;
+                    samplerState.mono.position = 0;
+                }
+                return value;
+            }
+
+            const voiceId = laneContext?.voiceId ?? 'global';
+            const gate = gateRead(timeMs, laneContext);
+            const previousGate = samplerState.gateByVoiceId.get(voiceId) ?? 0;
+
+            if (gate > 0 && previousGate <= 0) {
+                allocatePolySlot(voiceId, getFrequency(timeMs, laneContext));
+            }
+            samplerState.gateByVoiceId.set(voiceId, gate);
+
+            let output = 0;
+            samplerState.polySlots.forEach((slot) => {
+                if (!slot.active || slot.voiceId !== voiceId) {
+                    return;
+                }
+
+                output += readSample(sample, slot.position);
+                slot.position += getStep(slot.playbackFrequency ?? getFrequency(timeMs, laneContext), slot.baseFrequency);
+                if (slot.position >= sample.length) {
+                    slot.active = false;
+                    slot.position = 0;
+                    slot.voiceId = null;
+                    slot.freedSerial = ++samplerState.allocationSerial;
+                }
+            });
+
+            return output;
         };
     }
 
